@@ -1,8 +1,8 @@
 <!--
  * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
  * @Date: 2026-04-17 10:54:49
- * @LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
- * @LastEditTime: 2026-04-17 16:18:50
+ * @LastEditors: wxy2003c 774078984@qq.com
+ * @LastEditTime: 2026-04-17 16:57:33
  * @FilePath: \vite-project\src\pages\home\index.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -10,7 +10,25 @@
 import TgButton from '@/components/TgButton.vue';
 import TgSelect from '@/components/TgSelect.vue';
 import { Icon } from '@iconify/vue'
+import { onMounted, ref } from 'vue';
+import {fetchWheelSizeMakes} from '@/api/wheelsline-size'
 const ButtonItem = ['运动', '性能赛道', 'OEM风格', '豪华商务', '豪华商务', '豪华商务', '豪华商务', '豪华商务', '豪华商务', '豪华商务']
+
+// 品牌字段
+const BrandItem = ref<Array<{ label: string, value: string | number }>>([])
+
+// 品牌
+const getBrand = async ()=>{
+   let res = await fetchWheelSizeMakes()
+   if(res){
+    BrandItem.value = res.map((item) => ({label: item.label, value: item.id}))
+    console.log(BrandItem.value);
+   }
+}
+
+onMounted(async()=>{
+  await getBrand()
+})
 </script>
 
 <template>
@@ -18,7 +36,7 @@ const ButtonItem = ['运动', '性能赛道', 'OEM风格', '豪华商务', '豪�
     <img src="@/assets/image/navLogo.png" class="w-65 h-14" alt="">
     <Swiper class="mt-3" />
     <div class="mt-3 flex gap-2">
-      <TgSelect />
+      <TgSelect :options="BrandItem"/>
       <TgSelect />
       <TgButton type="button" variant="white" shape="pill">
         <span>Go</span>

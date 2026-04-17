@@ -17,10 +17,12 @@ declare global {
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
+  const getOrdersApiLang: typeof import('./src/utils/http').getOrdersApiLang
   const getTelegram: typeof import('./src/utils/userTelegram').getTelegram
   const getTelegramViewportHeight: typeof import('./src/utils/userTelegram').getTelegramViewportHeight
   const getTelegramWebApp: typeof import('./src/utils/userTelegram').getTelegramWebApp
   const h: typeof import('vue').h
+  const http: typeof import('./src/utils/http').default
   const inject: typeof import('vue').inject
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
@@ -101,8 +103,10 @@ declare module 'vue' {
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
     readonly getCurrentWatcher: UnwrapRef<typeof import('vue')['getCurrentWatcher']>
+    readonly getOrdersApiLang: UnwrapRef<typeof import('./src/utils/http')['getOrdersApiLang']>
     readonly getTelegramWebApp: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramWebApp']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
+    readonly http: UnwrapRef<typeof import('./src/utils/http')['default']>
     readonly inject: UnwrapRef<typeof import('vue')['inject']>
     readonly isProxy: UnwrapRef<typeof import('vue')['isProxy']>
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
