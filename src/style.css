@@ -1,0 +1,64 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI',
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --app-bg: var(--tg-theme-bg-color, #f4f4f5);
+  --app-surface: var(--tg-theme-secondary-bg-color, #ffffff);
+  --app-section-bg: var(--tg-theme-section-bg-color, var(--app-surface));
+  --app-header-bg: var(--tg-theme-header-bg-color, var(--app-surface));
+  --app-text: var(--tg-theme-text-color, #111827);
+  --app-subtitle: var(--tg-theme-subtitle-text-color, #707579);
+  --app-hint: var(--tg-theme-hint-color, #707579);
+  --app-link: var(--tg-theme-link-color, #3390ec);
+  --app-accent: var(--tg-theme-button-color, #3390ec);
+  --app-accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --app-accent-soft: color-mix(in srgb, var(--app-accent) 14%, transparent);
+  --app-divider: var(--tg-theme-section-separator-color, rgba(0, 0, 0, 0.08));
+  --app-danger: var(--tg-theme-destructive-text-color, #ff3b30);
+  --app-section-title: var(--tg-theme-section-header-text-color, #6d7883);
+  --app-bottom-bar: var(--tg-theme-bottom-bar-bg-color, var(--app-surface));
+  --app-shadow:
+    0 8px 24px color-mix(in srgb, var(--app-text) 10%, transparent);
+}
+
+:root[data-color-scheme='dark'] {
+  color-scheme: dark;
+  --app-shadow:
+    0 10px 28px color-mix(in srgb, var(--app-text) 18%, transparent);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.tg-tab-active {
+  color: var(--app-accent-text);
+  background: var(--app-accent);
+}
