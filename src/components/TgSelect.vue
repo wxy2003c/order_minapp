@@ -78,7 +78,8 @@ function handleUpdate(option: SelectOption | null) {
 
 <style scoped>
 :deep(.tg-multiselect) {
-  min-width: 8.75rem;
+  width: 100%;
+  min-width: 0;
 }
 
 :deep(.tg-multiselect .multiselect__tags) {
@@ -90,6 +91,7 @@ function handleUpdate(option: SelectOption | null) {
   box-shadow: none;
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 :deep(.tg-multiselect .multiselect__placeholder) {

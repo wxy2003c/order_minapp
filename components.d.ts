@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    HeaderFilter: typeof import('./src/components/HeaderFilter.vue')['default']
     NavBar: typeof import('./src/components/NavBar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
@@ -20,5 +21,6 @@ declare module 'vue' {
     TgSection: typeof import('./src/components/TgSection.vue')['default']
     TgSelect: typeof import('./src/components/TgSelect.vue')['default']
     TgSwitch: typeof import('./src/components/TgSwitch.vue')['default']
+    TgUpload: typeof import('./src/components/TgUpload.vue')['default']
   }
 }

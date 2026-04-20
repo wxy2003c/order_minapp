@@ -1,27 +1,23 @@
 <script setup lang="ts">
-import { SwitchRoot, SwitchThumb } from 'reka-ui'
+const model = defineModel<boolean>()
 
-const model = defineModel<boolean>({ default: false })
-
-withDefaults(
+const props = withDefaults(
   defineProps<{
-    ariaLabel?: string
     disabled?: boolean
   }>(),
-  {
-    ariaLabel: 'Toggle setting',
-    disabled: false,
-  },
+  { disabled: false }
 )
 </script>
 
 <template>
-  <SwitchRoot
-    v-model="model"
-    class="tg-switch"
-    :aria-label="ariaLabel"
-    :disabled="disabled"
-  >
-    <SwitchThumb class="tg-switch-thumb" />
-  </SwitchRoot>
+  <div role="switch" :aria-checked="model" :disabled="disabled" :class="[
+    'relative h-6 w-11 rounded-full cursor-pointer transition-colors duration-200',
+    model ? 'bg-blue-500' : 'bg-gray-300',
+    disabled ? 'opacity-50 cursor-not-allowed' : ''
+  ]" @click="model = !model">
+    <div :class="[
+      'absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform duration-200',
+      model ? 'translate-x-5' : 'translate-x-0'
+    ]" />
+  </div>
 </template>

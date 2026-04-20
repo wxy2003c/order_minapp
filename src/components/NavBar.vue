@@ -1,8 +1,8 @@
 <!--
  * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
  * @Date: 2026-04-17 13:55:30
- * @LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
- * @LastEditTime: 2026-04-17 14:14:34
+ * @LastEditors: wxy2003c 774078984@qq.com
+ * @LastEditTime: 2026-04-20 10:55:49
  * @FilePath: \vite-project\src\components\NavBar.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -19,10 +19,16 @@ const activeTabIndex = computed(() => {
     const index = tabs.findIndex(item => item.path === route.path)
     return index === -1 ? 0 : index
 })
+
+const showNavBar = computed(() => {
+    const hiddenRoutes = ['/home', '/product', '/cases', '/profile']
+    return hiddenRoutes.includes(route.path)
+})
+
 </script>
 
 <template>
-    <nav
+    <nav v-if="showNavBar"
         class="fixed bottom-3 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 overflow-hidden rounded-[99999px] border border-[color:var(--app-divider)] bg-tg-bottom-bar p-1 shadow-[var(--app-shadow)]">
         <div class="relative">
             <span
