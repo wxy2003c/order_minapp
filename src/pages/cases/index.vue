@@ -2,7 +2,7 @@
  * @Author: wxy2003c 774078984@qq.com
  * @Date: 2026-04-17 11:01:38
  * @LastEditors: wxy2003c 774078984@qq.com
- * @LastEditTime: 2026-04-20 13:51:19
+ * @LastEditTime: 2026-04-21 11:06:04
  * @FilePath: \vite-project\src\pages\cases\index.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -21,7 +21,7 @@ const caseList = [
 ]
 
 function handleGoDetail() {
-  router.push('/cases/details')
+  router.push('/CasesDetails')
 }
 </script>
 

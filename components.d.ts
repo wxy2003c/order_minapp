@@ -11,16 +11,18 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    CarSelectionPanel: typeof import('./src/components/CarSelectionPanel.vue')['default']
     HeaderFilter: typeof import('./src/components/HeaderFilter.vue')['default']
     NavBar: typeof import('./src/components/NavBar.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Swiper: typeof import('./src/components/Swiper.vue')['default']
+    TgBackButton: typeof import('./src/components/TgBackButton.vue')['default']
     TgButton: typeof import('./src/components/TgButton.vue')['default']
     TgCell: typeof import('./src/components/TgCell.vue')['default']
+    TgFilepond: typeof import('./src/components/TgFilepond.vue')['default']
     TgSection: typeof import('./src/components/TgSection.vue')['default']
     TgSelect: typeof import('./src/components/TgSelect.vue')['default']
     TgSwitch: typeof import('./src/components/TgSwitch.vue')['default']
-    TgUpload: typeof import('./src/components/TgUpload.vue')['default']
   }
 }

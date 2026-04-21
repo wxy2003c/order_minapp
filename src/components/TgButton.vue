@@ -30,7 +30,7 @@ const className = computed(() => [
   props.shape === 'default' && 'rounded-xl',
   props.shape === 'pill' && 'rounded-2',
 
-  props.block && 'w-full',
+  props.block && 'w-full !bg-[#333333] text-white',
 
   props.variant === 'primary'
   && 'bg-tg-accent text-tg-accent-text shadow-[0_10px_24px_color-mix(in_srgb,var(--app-accent)_28%,transparent)] hover:brightness-[1.03] active:brightness-[0.96]',

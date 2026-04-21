@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { Icon } from '@iconify/vue'
-import { TabsContent, TabsIndicator, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
+import {
+  TabsContent, TabsIndicator, TabsList, TabsRoot, TabsTrigger, DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogRoot,
+  DialogTitle
+} from 'reka-ui'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
 import TgSwitch from '@/components/TgSwitch.vue'
-import TgUpload from '@/components/TgUpload.vue'
+import TgFilepond from '@/components/TgFilepond.vue'
 
 type OrderTab = 'vehicle' | 'creative' | 'address' | 'amount'
 
@@ -13,6 +21,8 @@ interface SelectOption {
   value: string | number
   label: string
 }
+
+const openOutline = ref<boolean>(false)
 
 const activeTab = ref<OrderTab>('vehicle')
 const vehicleExpanded = ref(false)
@@ -45,7 +55,7 @@ const designModeOptions = [
   { id: 'custom', title: '创意设计', icon: 'mdi:palette-outline' },
 ]
 
-const structureOptions = ['单片', '双片', '三片','越野']
+const structureOptions = ['单片', '双片', '三片', '越野']
 
 const wheelColors = [
   { name: 'Black', hex: '#20212A' },
@@ -96,7 +106,8 @@ const vehicleForm = reactive({
 
 const creativeForm = reactive({
   designMode: 'creative',
-  structure: '单片',
+  /** 结构类型：默认不选，首次点选直接赋值，已选时切换走确认弹窗 */
+  structure: '' as string,
   selectedColor: 'Black',
   wheelShapeFile: null as File | null,
   wheelLipFile: null as File | null,
@@ -170,6 +181,35 @@ function buildWheelFields(prefix: 'front' | 'rear') {
 
 const frontWheelFields = buildWheelFields('front')
 const rearWheelFields = buildWheelFields('rear')
+
+const OutlineValue = ref<any>({})
+const types = ref<Number>(0)
+// 切换创作 / 结构类型
+const handelOutline = (values: any, type: Number) => {
+  if (type === 0) {
+    if (creativeForm.designMode === values?.id) return
+  }
+  if (type === 1) {
+    const next = typeof values === 'string' ? values : String(values?.id ?? '')
+    if (!creativeForm.structure) {
+      creativeForm.structure = next
+      return
+    }
+    if (creativeForm.structure === next) return
+  }
+  openOutline.value = true
+  OutlineValue.value = values
+  types.value = type
+}
+// 确认切换设计
+const handelSublitOutline = () => {
+  openOutline.value = false
+  if (types.value === 0) {
+    creativeForm.designMode = OutlineValue.value.id
+  } else {
+    creativeForm.structure = OutlineValue.value
+  }
+}
 </script>
 
 <template>
@@ -310,7 +350,7 @@ const rearWheelFields = buildWheelFields('rear')
             <button v-for="item in designModeOptions" :key="item.id" type="button"
               class="rounded-2xl border px-4 py-5 text-left transition"
               :class="creativeForm.designMode === item.id ? 'border-[#88AEE4] bg-[#EFF5FF] shadow-[inset_0_0_0_1px_rgba(136,174,228,0.25)]' : 'border-[#ECECEC] bg-white'"
-              @click="creativeForm.designMode = item.id">
+              @click="handelOutline(item, 0)">
               <Icon :icon="item.icon" width="22" height="22" class="text-[#6B7280]" />
               <div class="mt-4 text-4 font-700">{{ item.title }}</div>
             </button>
@@ -322,7 +362,7 @@ const rearWheelFields = buildWheelFields('rear')
               <button v-for="item in structureOptions" :key="item" type="button"
                 class="rounded-2xl border px-4 py-5 text-left text-4 font-700 transition"
                 :class="creativeForm.structure === item ? 'border-[#88AEE4] bg-[#EFF5FF] text-[#1F2937]' : 'border-[#ECECEC] bg-white text-[#4B5563]'"
-                @click="creativeForm.structure = item">
+                @click="handelOutline(item, 1)">
                 {{ item }}
               </button>
             </div>
@@ -336,13 +376,16 @@ const rearWheelFields = buildWheelFields('rear')
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-4 font-700">WL-M-053</div>
-                  <div class="mt-1 text-3 text-[#6B7280]">单片 | 1PC-053</div>
+                  <div class="mt-1 text-3 text-[#6B7280]">
+                    <template v-if="creativeForm.structure">{{ creativeForm.structure }} | 1PC-053</template>
+                    <template v-else>请选择结构类型</template>
+                  </div>
                   <div class="mt-1 text-3 text-[#9CA3AF]">前后轮配置</div>
-                  <div class="mt-3 flex gap-2">
+                  <div v-if="creativeForm.structure" class="mt-3 flex flex-wrap gap-2">
                     <span
                       class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">Y型</span>
                     <span
-                      class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">单片</span>
+                      class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">{{ creativeForm.structure }}</span>
                   </div>
                 </div>
               </div>
@@ -355,7 +398,8 @@ const rearWheelFields = buildWheelFields('rear')
             <div>
               <div class="text-4 font-700">轮毂颜色</div>
               <div class="mt-4 overflow-hidden rounded-3xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                <img src="@/assets/vue.svg" class="h-42 w-full object-contain opacity-80" alt="" v-if="creativeForm.structure!='越野'">
+                <img src="@/assets/vue.svg" class="h-42 w-full object-contain opacity-80" alt=""
+                  v-if="creativeForm.structure != '越野'">
                 <div class="mt-4 flex flex-wrap justify-around gap-3 text-3 text-[#6B7280]">
                   <button v-for="item in wheelColors" :key="item.name" type="button" class="border-b pb-1"
                     :class="creativeForm.selectedColor === item.name ? 'border-[#2A2C33] text-[#111827]' : 'border-transparent'"
@@ -380,7 +424,9 @@ const rearWheelFields = buildWheelFields('rear')
             <div class="space-y-4">
               <div>
                 <div class="mb-2 text-3.5 font-600">轮毂造型</div>
-                <TgUpload v-model="creativeForm.wheelShapeFile" aria-label="upload wheel shape" />
+                <div class="w-26 h-26">
+                  <TgFilepond v-model="creativeForm.wheelShapeFile" accept="image/*" aria-label="upload wheel shape" />
+                </div>
               </div>
 
               <div>
@@ -391,7 +437,9 @@ const rearWheelFields = buildWheelFields('rear')
 
               <div class="border-t border-[#F1F3F5] pt-4">
                 <div class="mb-2 text-3.5 font-600">轮毂唇边</div>
-                <TgUpload v-model="creativeForm.wheelLipFile" aria-label="upload wheel lip" />
+                <div class="w-26 h-26">
+                  <TgFilepond v-model="creativeForm.wheelLipFile" accept="image/*" aria-label="upload wheel lip" />
+                </div>
               </div>
 
               <div>
@@ -404,21 +452,23 @@ const rearWheelFields = buildWheelFields('rear')
 
           <div class="mt-4 flex flex-col gap-4">
             <div class="border-t border-[#F1F3F5] pt-4">
-            <div class="mb-2 text-3.5 font-600">中心盖</div>
-            <TgUpload v-model="creativeForm.centerCapFile" aria-label="upload center cap" />
-          </div>
+              <div class="mb-2 text-3.5 font-600">中心盖</div>
+              <div class="w-26 h-26">
+                <TgFilepond v-model="creativeForm.centerCapFile" accept="image/*" aria-label="upload center cap" />
+              </div>
+            </div>
 
-          <div>
-            <div class="mb-2 text-3.5 font-600">中心盖描述</div>
-            <input v-model="creativeForm.centerCapNote" type="text"
-              class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none">
-          </div>
+            <div>
+              <div class="mb-2 text-3.5 font-600">中心盖描述</div>
+              <input v-model="creativeForm.centerCapNote" type="text"
+                class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none">
+            </div>
 
-          <div>
-            <div class="mb-2 text-3.5 font-600">特殊要求 / 说明</div>
-            <textarea v-model="creativeForm.specialRequest" rows="4" placeholder="请输入特殊要求 / 说明"
-              class="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-3 text-3.5 outline-none placeholder:text-[#B6BBC5]" />
-          </div>
+            <div>
+              <div class="mb-2 text-3.5 font-600">特殊要求 / 说明</div>
+              <textarea v-model="creativeForm.specialRequest" rows="4" placeholder="请输入特殊要求 / 说明"
+                class="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-3 text-3.5 outline-none placeholder:text-[#B6BBC5]" />
+            </div>
           </div>
         </div>
       </TabsContent>
@@ -473,6 +523,42 @@ const rearWheelFields = buildWheelFields('rear')
         </div>
       </TabsContent>
     </TabsRoot>
+
+    <DialogRoot v-model:open="openOutline" :modal="false">
+      <DialogPortal>
+        <DialogOverlay class="bg-blackA9 data-[state=open]:animate-overlayShow fixed inset-0 z-30" />
+        <DialogContent
+          class="data-[state=open]:animate-contentShow fixed top-[50%] left-[50%] max-h-[85vh] w-[90vw] max-w-[450px] translate-x-[-50%] translate-y-[-50%] rounded-[6px] bg-white p-[25px] shadow-[hsl(206_22%_7%_/_35%)_0px_10px_38px_-10px,_hsl(206_22%_7%_/_20%)_0px_10px_20px_-15px] focus:outline-none z-[100]">
+          <DialogTitle class="text-mauve12 text-center m-0 text-[17px] font-semibold">
+            提示
+          </DialogTitle>
+          <DialogDescription class="text-mauve11 mt-[10px] mb-5 text-sm leading-normal">
+            {{
+              types === 0
+                ? '切换设计类型，将会清除当前已有设计，还需要继续吗？'
+                : '切换结构类型需要重新选择型号，还需要继续吗？'
+            }}
+          </DialogDescription>
+          <div class="mt-[25px] flex justify-between">
+            <DialogClose as-child>
+              <button
+                class="bg-[#000000] color-white text-green11 text-sm hover:bg-[#000000] focus:shadow-[#000000] inline-flex h-[35px] items-center justify-center rounded-lg px-[15px] font-semibold leading-none focus:shadow-[0_0_0_2px] focus:outline-none">
+                取消
+              </button>
+              <button @click="handelSublitOutline"
+                class="bg-[#3487FF] color-white text-green11 text-sm hover:bg-[#3487FF] focus:shadow-[#3487FF] inline-flex h-[35px] items-center justify-center rounded-lg px-[15px] font-semibold leading-none focus:shadow-[0_0_0_2px] focus:outline-none">
+                确认
+              </button>
+            </DialogClose>
+          </div>
+          <DialogClose
+            class="text-grass11 hover:bg-green4 focus:shadow-green7 absolute top-[10px] right-[10px] inline-flex h-[25px] w-[25px] appearance-none items-center justify-center rounded-full focus:shadow-[0_0_0_2px] focus:outline-none"
+            aria-label="Close">
+            <Icon icon="lucide:x" />
+          </DialogClose>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
 
     <div
       class="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-[#ECECEC] bg-white px-4 py-4">

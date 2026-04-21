@@ -11,6 +11,9 @@ importers:
       '@iconify/vue':
         specifier: ^5.0.0
         version: 5.0.0(vue@3.5.32(typescript@6.0.3))
+      '@pqina/pintura':
+        specifier: ^8.97.0
+        version: 8.97.0
       '@tma.js/sdk-vue':
         specifier: ^1.0.19
         version: 1.0.19(typescript@6.0.3)(vue@3.5.32(typescript@6.0.3))
@@ -20,12 +23,36 @@ importers:
       embla-carousel-vue:
         specifier: ^8.6.0
         version: 8.6.0(vue@3.5.32(typescript@6.0.3))
+      filepond:
+        specifier: ^4.32.11
+        version: 4.32.12
+      filepond-plugin-file-validate-type:
+        specifier: ^1.2.9
+        version: 1.2.9(filepond@4.32.12)
+      filepond-plugin-image-crop:
+        specifier: ^2.0.6
+        version: 2.0.6(filepond@4.32.12)
+      filepond-plugin-image-filter:
+        specifier: ^1.0.1
+        version: 1.0.1(filepond@4.32.12)
+      filepond-plugin-image-preview:
+        specifier: ^4.6.12
+        version: 4.6.12(filepond@4.32.12)
+      filepond-plugin-image-resize:
+        specifier: ^2.0.10
+        version: 2.0.10(filepond@4.32.12)
+      filepond-plugin-image-transform:
+        specifier: ^3.8.7
+        version: 3.8.7(filepond@4.32.12)
       reka-ui:
         specifier: ^2.9.6
         version: 2.9.6(vue@3.5.32(typescript@6.0.3))
       vue:
         specifier: ^3.5.32
         version: 3.5.32(typescript@6.0.3)
+      vue-filepond:
+        specifier: ^7.0.4
+        version: 7.0.4(filepond@4.32.12)(vue@3.5.32(typescript@6.0.3))
       vue-multiselect:
         specifier: ^3.5.0
         version: 3.5.0
@@ -294,6 +321,9 @@ packages:
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
+
+  '@pqina/pintura@8.97.0':
+    resolution: {integrity: sha512-EdwygmpS7ty3/Vc6z2Rjx3aCazsIIqFYT9hh9mFQuEGLi8jMEqA7DttLEXpV5Uxgyxpx1Tn+8NDGiVQZwv7Dow==}
 
   '@quansync/fs@1.0.0':
     resolution: {integrity: sha512-4TJ3DFtlf1L5LDMaM6CanJ/0lckGNtJcMjQ1NAV6zDmA0tEHKZtxNKin8EgPaVX1YzljbxckyT2tJrpQKAtngQ==}
@@ -864,6 +894,39 @@ packages:
       picomatch:
         optional: true
 
+  filepond-plugin-file-validate-type@1.2.9:
+    resolution: {integrity: sha512-Tzv07aNdZvjUXDRA3XL16QMEvh6llDrXlcZ6W0eTHQ+taHaVg/JKJTFs/AViO+6ZcpPCcQStbhYEL2HoS+vldw==}
+    peerDependencies:
+      filepond: '>=1.x <5.x'
+
+  filepond-plugin-image-crop@2.0.6:
+    resolution: {integrity: sha512-bSy/KND4EP/QtW8MxIj23qgSEPUVRrT8XdktJ+OU9y8xRjFjTG+qcuw1LsycARQYRtzi8cZrD3P4POOITfkywQ==}
+    peerDependencies:
+      filepond: '>=3.x <5.x'
+
+  filepond-plugin-image-filter@1.0.1:
+    resolution: {integrity: sha512-IFwJDENGxeIyJBoyXWoP/y4AnI41ar+tpAobawcF8DtnkFWSwdDcR441eNDVVLyEXFdfFwUxa8RJY90P5qSXfA==}
+    peerDependencies:
+      filepond: '>=3.x <5.x'
+
+  filepond-plugin-image-preview@4.6.12:
+    resolution: {integrity: sha512-Y8ETX5QVV0mbPB0586UH8AUmG9tZg8PuN5bdEAIlZVJFTct5ebViJ7+Am94/VhTPjLqZjBf1zmDq5JU6XRsZKw==}
+    peerDependencies:
+      filepond: '>=4.x <5.x'
+
+  filepond-plugin-image-resize@2.0.10:
+    resolution: {integrity: sha512-irX+J275u8Ph1KcciCeSQmxeFjbu0+co5XVCkiwdSNnz6KiqrCKN7RXTvEbdgSdDzyi5omr2oP1rKWps5L1RsQ==}
+    peerDependencies:
+      filepond: '>=3.x <5.x'
+
+  filepond-plugin-image-transform@3.8.7:
+    resolution: {integrity: sha512-vgKwyIDG2y5twanf7YpqZvxkaLudTjwd9vRcoq5sQDB8egUlX5/NA0bQ0823pocrm0fjbFeetICu44mkqeDkIA==}
+    peerDependencies:
+      filepond: '>=3.6.0 <5.x'
+
+  filepond@4.32.12:
+    resolution: {integrity: sha512-wro0/deLwua9CkL7HJygOlDaPo1c7Ov8kfzbZjH7m4hdi56gdHGDeRWnYa+qXnRm3Lty69gUGVFb3JZy/9vT8g==}
+
   follow-redirects@1.16.0:
     resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
     engines: {node: '>=4.0'}
@@ -1318,6 +1381,12 @@ packages:
       '@vue/composition-api':
         optional: true
 
+  vue-filepond@7.0.4:
+    resolution: {integrity: sha512-HvWlCG8qjvyykrpPTDjJ+JqsHTXt5/0zWMX9vu7kU3JXCUODPUkGi9prZcauOnIZ4MqyeSZ9M0sDVwdMATyt1g==}
+    peerDependencies:
+      filepond: '>=4.7.4 < 5.x'
+      vue: '>=3 < 4'
+
   vue-multiselect@3.5.0:
     resolution: {integrity: sha512-i758SEqWFcFshL1eAg0F3EFeFQ1mOCmh2mgnGCZv1XpHFVIAv8fxo8bQQ4ZnMoaPhMp8KI1A6gPBVHh3YzRg/Q==}
     engines: {node: '>= 14.18.1', npm: '>= 6.14.15'}
@@ -1538,6 +1607,8 @@ snapshots:
   '@oxc-project/types@0.124.0': {}
 
   '@polka/url@1.0.0-next.29': {}
+
+  '@pqina/pintura@8.97.0': {}
 
   '@quansync/fs@1.0.0':
     dependencies:
@@ -2136,6 +2207,32 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.4
 
+  filepond-plugin-file-validate-type@1.2.9(filepond@4.32.12):
+    dependencies:
+      filepond: 4.32.12
+
+  filepond-plugin-image-crop@2.0.6(filepond@4.32.12):
+    dependencies:
+      filepond: 4.32.12
+
+  filepond-plugin-image-filter@1.0.1(filepond@4.32.12):
+    dependencies:
+      filepond: 4.32.12
+
+  filepond-plugin-image-preview@4.6.12(filepond@4.32.12):
+    dependencies:
+      filepond: 4.32.12
+
+  filepond-plugin-image-resize@2.0.10(filepond@4.32.12):
+    dependencies:
+      filepond: 4.32.12
+
+  filepond-plugin-image-transform@3.8.7(filepond@4.32.12):
+    dependencies:
+      filepond: 4.32.12
+
+  filepond@4.32.12: {}
+
   follow-redirects@1.16.0: {}
 
   form-data@4.0.5:
@@ -2582,6 +2679,11 @@ snapshots:
 
   vue-demi@0.14.10(vue@3.5.32(typescript@6.0.3)):
     dependencies:
+      vue: 3.5.32(typescript@6.0.3)
+
+  vue-filepond@7.0.4(filepond@4.32.12)(vue@3.5.32(typescript@6.0.3)):
+    dependencies:
+      filepond: 4.32.12
       vue: 3.5.32(typescript@6.0.3)
 
   vue-multiselect@3.5.0: {}

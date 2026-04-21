@@ -7,15 +7,10 @@ import {
     PopoverRoot,
     PopoverTrigger,
 } from 'reka-ui'
+import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
-
-// 汽车分组类型（品牌 + 型号 + 年份）
-interface CarGroup {
-    brand: string
-    models: string[]
-    years: string[]
-}
+import { carGroups, getDefaultCarSelection } from '@/data/carSelection'
 
 // 颜色选项
 interface ColorOption {
@@ -69,50 +64,6 @@ const headerRef = ref<HTMLElement | null>(null)
 // 弹窗宽度（跟随头部容器）
 const panelWidth = ref(0)
 
-// 汽车品牌/型号/年份 数据源
-const carGroups: CarGroup[] = [
-    {
-        brand: '阿尔法·罗密欧',
-        models: ['Giulia 952', 'Giulia Veloce', 'Giulia Quadrifoglio', 'Giulia GTA', 'Giulia GTAm'],
-        years: ['1995-2005', '2005-2010', '2010-2015', '2015-2020', '2020-2025'],
-    },
-    {
-        brand: 'AITO',
-        models: ['问界 M5', '问界 M7', '问界 M9', '问界 新M7', '问界 M8'],
-        years: ['2018-2020', '2020-2022', '2022-2024', '2024-2026'],
-    },
-    {
-        brand: '宝马',
-        models: ['3 系 G20', '5 系 G60', 'X3 G45', 'X5 G05', 'M3 G80'],
-        years: ['2008-2012', '2012-2016', '2016-2020', '2020-2025'],
-    },
-    {
-        brand: '别克',
-        models: ['君威 GS', '君越', '昂科威', '昂科旗'],
-        years: ['2006-2010', '2010-2015', '2015-2020', '2020-2025'],
-    },
-    {
-        brand: '保时捷',
-        models: ['718 Cayman', '911 Carrera', 'Panamera', 'Macan'],
-        years: ['2000-2005', '2005-2010', '2010-2015', '2015-2025'],
-    },
-    {
-        brand: '奔驰',
-        models: ['C 级 W206', 'E 级 W214', 'GLC X254', 'AMG GT'],
-        years: ['2005-2010', '2010-2015', '2015-2020', '2020-2025'],
-    },
-    {
-        brand: '比亚迪',
-        models: ['汉 EV', '海豹 06', '唐 DM-i', '腾势 N7'],
-        years: ['2016-2019', '2019-2022', '2022-2025'],
-    },
-    {
-        brand: '标致',
-        models: ['408X', '508L', '3008', '5008'],
-        years: ['2008-2012', '2012-2016', '2016-2020', '2020-2025'],
-    },
-]
-
 // 结构选项
 const structureOptions = ['全部', '单片', '双片', '锻造', '旋压']
 // 爪型选项
@@ -134,11 +85,7 @@ const colors: ColorOption[] = [
 ]
 
 // 汽车选择初始值
-const initialCar = {
-    brand: carGroups[0].brand,
-    model: carGroups[0].models[0],
-    year: carGroups[0].years[0],
-}
+const initialCar = getDefaultCarSelection()
 
 // 筛选表单初始值
 const initialFilter = {
@@ -267,21 +214,6 @@ const activeTags = computed<ActiveTag[]>(() => {
 
     return tags
 })
-
-/**
- * 选择品牌
- * @param brand 品牌名称
- */
-function handleBrandSelect(brand: string) {
-    const target = carGroups.find(item => item.brand === brand)
-
-    if (!target) return
-
-    // 切换品牌 → 自动重置型号和年份为第一个
-    activeBrand.value = target.brand
-    selectedModel.value = target.models[0]
-    selectedYear.value = target.years[0]
-}
 
 /**
  * 重置汽车选择（品牌/型号/年份）
@@ -413,52 +345,12 @@ onBeforeUnmount(() => {
                     <PopoverContent side="bottom" align="start" :side-offset="10" :collision-padding="16"
                         :style="popoverPanelStyle"
                         class="z-50 overflow-hidden rounded-[20px] border border-[#d9d9dc] bg-white p-0 text-[#242730] shadow-[0_20px_50px_rgba(0,0,0,0.28)] outline-none">
-                        <div class="grid max-h-[24rem] grid-cols-3 overflow-hidden rounded-[20px]">
-                            <!-- 品牌 -->
-                            <div class="border-r border-[#ececf0]">
-                                <div class="border-b border-[#ececf0] px-5 py-4 text-3.5 font-600 text-[#6b7280]">
-                                    品牌
-                                </div>
-                                <div class="max-h-[20rem] overflow-y-auto py-2">
-                                    <button v-for="item in carGroups" :key="item.brand" type="button"
-                                        class="mx-2 mb-1 flex w-[calc(100%-1rem)] items-center rounded-xl px-3 py-3 text-left text-3.5 transition"
-                                        :class="activeBrand === item.brand ? 'bg-[#242730] text-white' : 'text-[#303441] hover:bg-[#f4f5f7]'"
-                                        @click="handleBrandSelect(item.brand)">
-                                        <span class="truncate">{{ item.brand }}</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- 型号 -->
-                            <div class="border-r border-[#ececf0]">
-                                <div class="border-b border-[#ececf0] px-5 py-4 text-3.5 font-600 text-[#6b7280]">
-                                    型号
-                                </div>
-                                <div class="max-h-[20rem] overflow-y-auto py-2">
-                                    <button v-for="item in activeCarGroup.models" :key="item" type="button"
-                                        class="mx-2 mb-1 flex w-[calc(100%-1rem)] items-center rounded-xl px-3 py-3 text-left text-3.5 transition"
-                                        :class="selectedModel === item ? 'bg-[#242730] text-white' : 'text-[#303441] hover:bg-[#f4f5f7]'"
-                                        @click="selectedModel = item">
-                                        <span class="truncate">{{ item }}</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- 年份 -->
-                            <div>
-                                <div class="border-b border-[#ececf0] px-5 py-4 text-3.5 font-600 text-[#6b7280]">
-                                    年份
-                                </div>
-                                <div class="max-h-[20rem] overflow-y-auto py-2">
-                                    <button v-for="item in activeCarGroup.years" :key="item" type="button"
-                                        class="mx-2 mb-1 flex w-[calc(100%-1rem)] items-center rounded-xl px-3 py-3 text-left text-3.5 transition"
-                                        :class="selectedYear === item ? 'bg-[#242730] text-white' : 'text-[#303441] hover:bg-[#f4f5f7]'"
-                                        @click="selectedYear = item">
-                                        <span class="truncate">{{ item }}</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <CarSelectionPanel
+                            v-model:brand="activeBrand"
+                            v-model:model="selectedModel"
+                            v-model:year="selectedYear"
+                            :groups="carGroups"
+                        />
                     </PopoverContent>
                 </PopoverPortal>
             </PopoverRoot>
