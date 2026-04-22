@@ -79,6 +79,14 @@ export function getTelegramWebApp(): TelegramWebApp | null {
   return tg
 }
 
+/** 取某一主题色（TMA 或回退表），供 Naive 等必须解析为实色的场景使用。 */
+export function pickTgColor(
+  themeParams: TelegramThemeParams | null | undefined,
+  key: TelegramThemeColorKey,
+): string {
+  return themeParams?.[key] ?? telegramThemeFallbacks[key]
+}
+
 // 把 Telegram 主题参数同步到全局 CSS 变量，供所有组件统一消费。
 export function applyTelegramThemeParams(
   themeParams?: TelegramThemeParams | null,

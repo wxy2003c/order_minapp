@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
-import { useRoute } from 'vue-router'
-import { orderStatusMeta, profileOrders, type OrderStatus } from '@/data/orders'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  orderStatusMeta,
+  profileOrders,
+  type OrderDetailActionKey,
+  type OrderStatus,
+} from '@/data/orders'
+import { getTelegramWebApp } from '@/utils/userTelegram'
 
+const router = useRouter()
 const route = useRoute()
 
 const materialGroups = [
@@ -43,6 +50,50 @@ const currentOrder = computed(() => {
 
 const currentStatus = computed<OrderStatus>(() => currentOrder.value.status)
 const statusMeta = computed(() => orderStatusMeta[currentStatus.value])
+
+const supportUrl = (import.meta.env.VITE_SUPPORT_URL as string | undefined)?.trim() || 'https://t.me/'
+
+function openSupport() {
+  const w = getTelegramWebApp()
+  try {
+    w?.openLink?.(supportUrl, { try_instant_view: false })
+  } catch {
+    window.open(supportUrl, '_blank', 'noopener,noreferrer')
+  }
+}
+
+function handleDetailAction(key: OrderDetailActionKey) {
+  const orderId = currentOrder.value.id
+  switch (key) {
+    case 'cancel_order':
+      if (window.confirm('确定要取消该订单吗？')) {
+        // 接入取消订单 API 后在此调用
+      }
+      return
+    case 'edit_order':
+      router.push({ path: '/CustomOrder', query: { orderId } })
+      return
+    case 'contact_support':
+      openSupport()
+      return
+    case 'confirm_receive':
+      // 接入确认收货 API 后在此调用
+      if (window.confirm('确认已收到货物？')) {
+        /* noop */
+      }
+      return
+    case 'review':
+      router.push('/Evaluation')
+      return
+    case 'reorder':
+      router.push('/CustomOrder')
+      return
+    default: {
+      const _exhaustive: never = key
+      return _exhaustive
+    }
+  }
+}
 </script>
 
 <template>
@@ -233,11 +284,17 @@ const statusMeta = computed(() => orderStatusMeta[currentStatus.value])
 
     <div
       class="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
-      <button type="button" class="h-12 w-full rounded-[4px] border text-4 font-700" :class="statusMeta.buttonVariant === 'primary'
-        ? 'border-[#2d2f36] bg-[#2d2f36] text-white'
-        : 'border-[#2d2f36] bg-white text-[#2d2f36]'">
-        {{ statusMeta.buttonLabel }}
-      </button>
+      <div class="flex gap-3">
+        <button
+          v-for="action in statusMeta.detailActions"
+          :key="action.key"
+          type="button"
+          class="h-12 flex-1 rounded-[4px] border text-4 font-700"
+          :class="action.variant === 'primary' ? 'tg-btn-primary' : 'tg-btn-outline-light'"
+          @click="handleDetailAction(action.key)">
+          {{ action.label }}
+        </button>
+      </div>
     </div>
   </div>
 </template>

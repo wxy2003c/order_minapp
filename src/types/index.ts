@@ -36,6 +36,9 @@ export interface TelegramInitDataUnsafe {
 export interface TelegramWebApp {
   ready(): void
   expand?(): void
+  /** 在 Telegram 内打开 http(s) 链接；非 TG 环境可回退为 window.open */
+  openLink?(url: string, options?: { try_instant_view?: boolean }): void
+  openTelegramLink?(url: string): void
   initData?: string
   initDataUnsafe?: TelegramInitDataUnsafe
   colorScheme?: 'light' | 'dark'

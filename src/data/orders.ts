@@ -4,8 +4,24 @@ export type OrderStatus =
   | '已取消'
   | '已锁单'
   | '生产中'
+  | '待发货'
   | '已发货'
   | '已完成'
+
+/** 订单详情页底栏操作 */
+export type OrderDetailActionKey =
+  | 'cancel_order'
+  | 'edit_order'
+  | 'contact_support'
+  | 'confirm_receive'
+  | 'review'
+  | 'reorder'
+
+export interface OrderDetailAction {
+  key: OrderDetailActionKey
+  label: string
+  variant: 'primary' | 'outline'
+}
 
 export interface OrderSummary {
   id: string
@@ -22,8 +38,8 @@ export interface OrderStatusMeta {
   label: OrderStatus
   icon: string
   statusClass: string
-  buttonLabel: string
-  buttonVariant: 'primary' | 'outline'
+  /** 订单详情底部：待确认=取消+修改，设计中/已锁单/生产/待发货=联系客服，已发货=确认收货+客服，已完成=评价+客服，已取消=重新定制 */
+  detailActions: OrderDetailAction[]
 }
 
 export const orderStatusMeta: Record<OrderStatus, OrderStatusMeta> = {
@@ -31,50 +47,68 @@ export const orderStatusMeta: Record<OrderStatus, OrderStatusMeta> = {
     label: '设计中',
     icon: 'solar:pen-bold',
     statusClass: 'text-[#f59e0b]',
-    buttonLabel: '继续设计',
-    buttonVariant: 'outline',
+    detailActions: [
+      { key: 'contact_support', label: '联系客服', variant: 'primary' },
+    ],
   },
   待确认: {
     label: '待确认',
     icon: 'solar:hourglass-bold',
     statusClass: 'text-[#94a3b8]',
-    buttonLabel: '查看订单',
-    buttonVariant: 'outline',
+    detailActions: [
+      { key: 'cancel_order', label: '取消订单', variant: 'outline' },
+      { key: 'edit_order', label: '修改订单', variant: 'primary' },
+    ],
   },
   已取消: {
     label: '已取消',
     icon: 'solar:close-circle-bold',
     statusClass: 'text-[#9ca3af]',
-    buttonLabel: '返回列表',
-    buttonVariant: 'outline',
+    detailActions: [
+      { key: 'reorder', label: '重新定制', variant: 'primary' },
+    ],
   },
   已锁单: {
     label: '已锁单',
     icon: 'solar:lock-keyhole-bold',
     statusClass: 'text-[#7c83ff]',
-    buttonLabel: '查看锁单',
-    buttonVariant: 'outline',
+    detailActions: [
+      { key: 'contact_support', label: '联系客服', variant: 'primary' },
+    ],
   },
   生产中: {
     label: '生产中',
     icon: 'solar:box-bold',
     statusClass: 'text-[#3b82f6]',
-    buttonLabel: '查看进度',
-    buttonVariant: 'outline',
+    detailActions: [
+      { key: 'contact_support', label: '联系客服', variant: 'primary' },
+    ],
+  },
+  待发货: {
+    label: '待发货',
+    icon: 'mdi:truck-delivery-outline',
+    statusClass: 'text-[#0ea5e9]',
+    detailActions: [
+      { key: 'contact_support', label: '联系客服', variant: 'primary' },
+    ],
   },
   已发货: {
     label: '已发货',
     icon: 'solar:delivery-bold',
     statusClass: 'text-[#14b8a6]',
-    buttonLabel: '查看物流',
-    buttonVariant: 'outline',
+    detailActions: [
+      { key: 'confirm_receive', label: '确认收货', variant: 'primary' },
+      { key: 'contact_support', label: '联系客服', variant: 'outline' },
+    ],
   },
   已完成: {
     label: '已完成',
     icon: 'solar:check-circle-bold',
     statusClass: 'text-[#6caeff]',
-    buttonLabel: '去评价',
-    buttonVariant: 'primary',
+    detailActions: [
+      { key: 'review', label: '评价', variant: 'primary' },
+      { key: 'contact_support', label: '联系客服', variant: 'outline' },
+    ],
   },
 }
 
@@ -108,6 +142,16 @@ export const profileOrders: OrderSummary[] = [
     customer: 'Mealcidal Deloi',
     customerId: '6182608402',
     time: '2026-03-31 09:12',
+  },
+  {
+    id: 'WL2026040961633b',
+    type: '单片',
+    status: '待发货',
+    title: 'Audi A5/F5[2016...2020]/DISESL 2.0Dti 14 188HP',
+    spec: '20x10J | 5x114.3 | ET35 | CB67.1',
+    customer: 'Mealcidal Deloi',
+    customerId: '6182608402',
+    time: '2026-04-20 10:00',
   },
   {
     id: 'WL2026040961634',

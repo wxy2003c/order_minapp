@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { Icon } from '@iconify/vue'
-import {
-    PopoverContent,
-    PopoverPortal,
-    PopoverRoot,
-    PopoverTrigger,
-} from 'reka-ui'
 import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
 import { carGroups, getDefaultCarSelection } from '@/data/carSelection'
-
+import { STYLE_MOOD_TAGS } from '@/constants/styleMoodTags'
+import { useProductBrowseStore } from '@/stores/productBrowse'
 // 颜色选项
 interface ColorOption {
     value: string
@@ -31,6 +27,7 @@ type ActiveTagKey =
     | 'brand'
     | 'model'
     | 'year'
+    | 'styleMood'
     | 'structure'
     | 'color'
     | 'modelCode'
@@ -50,6 +47,15 @@ interface PropsType {
     title: string
     ProductSelection?: boolean
     CaseSelection?: boolean
+    /** 路由带入时预填标题区「品牌 / 型号 / 年份」 */
+    initialBrand?: string
+    initialModel?: string
+    initialYear?: string
+    /**
+     * 非 Product 页：可由父级预填
+     * Product 页：车型与风格以 Pinia `useProductBrowseStore` 为准，忽略下列初始值
+     */
+    initialStyleTag?: string
 }
 
 // 定义 Props
@@ -89,21 +95,44 @@ const initialCar = getDefaultCarSelection()
 
 // 筛选表单初始值
 const initialFilter = {
-    structure: '全部',
+    structure: '',
     color: colors[0].value,
     modelCode: '',
     stripCount: '',
     clawType: '全部',
     rotateSupport: '全部',
+    styleMood: '',
     wlCode: '', // 新增 WL型号
 }
 
-// 选中的品牌
-const activeBrand = ref(initialCar.brand)
-// 选中的型号
-const selectedModel = ref(initialCar.model)
-// 选中的年份
-const selectedYear = ref(initialCar.year)
+// 非 Product 页：本地车型；产品页与 Pinia 共用
+const browseStore = useProductBrowseStore()
+const { brand: storeBrand, model: storeModel, year: storeYear, styleMood: storeStyleMood } = storeToRefs(browseStore)
+const localBrand = ref(initialCar.brand)
+const localModel = ref(initialCar.model)
+const localYear = ref(initialCar.year)
+
+const activeBrand = computed({
+    get: () => (props.ProductSelection ? storeBrand.value : localBrand.value),
+    set: (v) => {
+        if (props.ProductSelection) storeBrand.value = v
+        else localBrand.value = v
+    },
+})
+const selectedModel = computed({
+    get: () => (props.ProductSelection ? storeModel.value : localModel.value),
+    set: (v) => {
+        if (props.ProductSelection) storeModel.value = v
+        else localModel.value = v
+    },
+})
+const selectedYear = computed({
+    get: () => (props.ProductSelection ? storeYear.value : localYear.value),
+    set: (v) => {
+        if (props.ProductSelection) storeYear.value = v
+        else localYear.value = v
+    },
+})
 
 // 筛选表单响应式对象
 const filterForm = reactive({
@@ -113,28 +142,47 @@ const filterForm = reactive({
     stripCount: initialFilter.stripCount,
     clawType: initialFilter.clawType,
     rotateSupport: initialFilter.rotateSupport,
+    styleMood: initialFilter.styleMood,
     wlCode: initialFilter.wlCode, // 新增
 })
 
-// 当前选中品牌对应的车系
-const activeCarGroup = computed(
-    () => carGroups.find(item => item.brand === activeBrand.value) ?? carGroups[0],
-)
+/** 产品筛选里「风格标签」与 Pinia 同步；非产品页用 filterForm */
+const styleMoodField = computed({
+    get: () => (props.ProductSelection ? storeStyleMood.value : filterForm.styleMood),
+    set: (v) => {
+        if (props.ProductSelection) storeStyleMood.value = v
+        else filterForm.styleMood = v
+    },
+})
 
 // 当前选中的颜色
 const selectedColor = computed(
     () => colors.find(item => item.value === filterForm.color) ?? colors[0],
 )
 
-// 弹窗宽度样式（跟随头部宽度）
-const popoverPanelStyle = computed(() => (
-    panelWidth.value
-        ? {
-            width: `${panelWidth.value}px`,
-            maxWidth: `${panelWidth.value}px`,
-        }
-        : undefined
-))
+// 弹窗宽度样式（跟随头部宽度）；无宽度时给 {}，避免部分环境下 content-style=undefined 异常
+const popoverPanelStyle = computed((): Record<string, string> => {
+    if (!panelWidth.value)
+        return {}
+    return {
+        width: `${panelWidth.value}px`,
+        maxWidth: `${panelWidth.value}px`,
+    }
+})
+
+function toggleCarPopover() {
+    carPopoverOpen.value = !carPopoverOpen.value
+    filterPopoverOpen.value = false
+}
+
+function toggleFilterPopover() {
+    filterPopoverOpen.value = !filterPopoverOpen.value
+    carPopoverOpen.value = false
+}
+
+function closeCarPopover() {
+    carPopoverOpen.value = false
+}
 
 // 结构下拉选项
 const structureSelectOptions = computed<SelectOption[]>(() =>
@@ -166,62 +214,88 @@ const wlCodeSelectOptions = computed<SelectOption[]>(() =>
     wlCodeOptions.map(item => ({ label: item, value: item })),
 )
 
+const styleMoodOptions = [...STYLE_MOOD_TAGS]
+const styleMoodSelectOptions = computed<SelectOption[]>(() =>
+    styleMoodOptions.map(item => ({ label: item, value: item })),
+)
+
 // 激活的标签列表（展示已选条件）
 const activeTags = computed<ActiveTag[]>(() => {
     const tags: ActiveTag[] = []
-    const currentGroup = activeCarGroup.value
 
-    if (activeBrand.value !== initialCar.brand) {
-        tags.push({ key: 'brand', label: `品牌: ${activeBrand.value}` })
-    }
-
-    if (selectedModel.value !== currentGroup.models[0]) {
-        tags.push({ key: 'model', label: `型号: ${selectedModel.value}` })
-    }
-
-    if (selectedYear.value !== currentGroup.years[0]) {
-        tags.push({ key: 'year', label: `年份: ${selectedYear.value}` })
+    if (props.ProductSelection) {
+        if (activeBrand.value)
+            tags.push({ key: 'brand', label: ` ${activeBrand.value}` })
+        if (selectedModel.value)
+            tags.push({ key: 'model', label: ` ${selectedModel.value}` })
+        if (selectedYear.value)
+            tags.push({ key: 'year', label: ` ${selectedYear.value}` })
+    } else {
+        if (activeBrand.value !== initialCar.brand) {
+            tags.push({ key: 'brand', label: ` ${activeBrand.value}` })
+        }
+        if (selectedModel.value !== initialCar.model) {
+            tags.push({ key: 'model', label: ` ${selectedModel.value}` })
+        }
+        if (selectedYear.value !== initialCar.year) {
+            tags.push({ key: 'year', label: ` ${selectedYear.value}` })
+        }
     }
 
     if (filterForm.structure !== initialFilter.structure) {
-        tags.push({ key: 'structure', label: `结构: ${filterForm.structure}` })
+        tags.push({ key: 'structure', label: ` ${filterForm.structure}` })
     }
 
     if (filterForm.color !== initialFilter.color) {
-        tags.push({ key: 'color', label: `颜色: ${selectedColor.value.code} ${selectedColor.value.label}` })
+        tags.push({ key: 'color', label: `${selectedColor.value.code} ${selectedColor.value.label}` })
     }
 
     if (filterForm.modelCode) {
-        tags.push({ key: 'modelCode', label: `型号编号: ${filterForm.modelCode}` })
+        tags.push({ key: 'modelCode', label: ` ${filterForm.modelCode}` })
     }
 
     if (filterForm.stripCount) {
-        tags.push({ key: 'stripCount', label: `条幅数量: ${filterForm.stripCount}` })
+        tags.push({ key: 'stripCount', label: `${filterForm.stripCount}` })
+    }
+
+    if (props.ProductSelection && styleMoodField.value) {
+        tags.push({ key: 'styleMood', label: `${styleMoodField.value}` })
     }
 
     if (filterForm.clawType !== initialFilter.clawType) {
-        tags.push({ key: 'clawType', label: `爪型: ${filterForm.clawType}` })
+        tags.push({ key: 'clawType', label: `${filterForm.clawType}` })
     }
 
     if (filterForm.rotateSupport !== initialFilter.rotateSupport) {
-        tags.push({ key: 'rotateSupport', label: `左右旋: ${filterForm.rotateSupport}` })
+        tags.push({ key: 'rotateSupport', label: ` ${filterForm.rotateSupport}` })
     }
 
     // 新增 WL 标签
     if (filterForm.wlCode) {
-        tags.push({ key: 'wlCode', label: `WL型号: ${filterForm.wlCode}` })
+        tags.push({ key: 'wlCode', label: ` ${filterForm.wlCode}` })
     }
 
     return tags
+})
+
+/** 头部「车型」入口与首页一致：展示当前品牌 / 型号 / 年款(含配置链) */
+const carHeaderSummary = computed(() => {
+    if (!activeBrand.value && !selectedModel.value && !selectedYear.value)
+        return ''
+    return [activeBrand.value, selectedModel.value, selectedYear.value].filter(Boolean).join(' · ')
 })
 
 /**
  * 重置汽车选择（品牌/型号/年份）
  */
 function resetCarSelections() {
-    activeBrand.value = initialCar.brand
-    selectedModel.value = initialCar.model
-    selectedYear.value = initialCar.year
+    if (props.ProductSelection) {
+        browseStore.clearCarSelection()
+    } else {
+        localBrand.value = initialCar.brand
+        localModel.value = initialCar.model
+        localYear.value = initialCar.year
+    }
 }
 
 /**
@@ -234,6 +308,8 @@ function resetFilterSelections() {
     filterForm.stripCount = initialFilter.stripCount
     filterForm.clawType = initialFilter.clawType
     filterForm.rotateSupport = initialFilter.rotateSupport
+    if (props.ProductSelection) browseStore.clearStyleMood()
+    else filterForm.styleMood = initialFilter.styleMood
     filterForm.wlCode = initialFilter.wlCode
 }
 
@@ -269,10 +345,20 @@ function removeTag(key: ActiveTagKey) {
             resetCarSelections()
             break
         case 'model':
-            selectedModel.value = activeCarGroup.value.models[0]
+            if (props.ProductSelection) {
+                selectedModel.value = ''
+                selectedYear.value = ''
+            } else {
+                selectedModel.value = initialCar.model
+            }
             break
         case 'year':
-            selectedYear.value = activeCarGroup.value.years[0]
+            if (props.ProductSelection) selectedYear.value = ''
+            else selectedYear.value = initialCar.year
+            break
+        case 'styleMood':
+            if (props.ProductSelection) browseStore.clearStyleMood()
+            else filterForm.styleMood = initialFilter.styleMood
             break
         case 'structure':
             filterForm.structure = initialFilter.structure
@@ -307,7 +393,34 @@ function updatePanelWidth() {
 
 let resizeObserver: ResizeObserver | null = null
 
-// 挂载后：监听宽度变化
+/** 路由 query / 父组件 props 变化时同步到本地（含首次进入） */
+function applyInitialFromProps() {
+    if (props.ProductSelection) return
+    const b = props.initialBrand?.trim()
+    const m = props.initialModel?.trim()
+    const y = props.initialYear?.trim()
+    if (b)
+        localBrand.value = b
+    if (m)
+        localModel.value = m
+    if (y)
+        localYear.value = y
+
+    const s = props.initialStyleTag?.trim()
+    if (s)
+        filterForm.styleMood = s
+}
+
+watch(
+    () => [props.initialBrand, props.initialModel, props.initialYear, props.initialStyleTag] as const,
+    () => {
+        applyInitialFromProps()
+        void nextTick(() => updatePanelWidth())
+    },
+    { deep: true, immediate: true },
+)
+
+// 挂载后量头部宽度（首次 props 同步已由 watch immediate 处理）
 onMounted(async () => {
     await nextTick()
     updatePanelWidth()
@@ -331,150 +444,159 @@ onBeforeUnmount(() => {
     <div ref="headerRef" class="mt-4">
         <div class="flex items-center justify-between gap-3 border-b border-b-[#BBBBBB]">
             <!-- 汽车选择弹窗 -->
-            <PopoverRoot v-model:open="carPopoverOpen">
-                <PopoverTrigger as-child>
+            <NPopover v-model:show="carPopoverOpen" trigger="manual" :animated="false" display-directive="show"
+                placement="bottom-start" :show-arrow="false" :content-style="popoverPanelStyle"
+                arrow-wrapper-class="p-0">
+                <template #trigger>
                     <button type="button"
-                        class="flex w-50 items-center justify-between px-4 py-3 text-left text-4 font-600 text-white outline-none transition">
-                        <span class="truncate">{{ props.title }}</span>
-                        <Icon icon="solar:alt-arrow-down-outline" width="18" height="18" class="transition"
-                            :class="carPopoverOpen ? 'rotate-180' : ''" />
+                        class="flex min-w-0 w-50 max-w-[min(12.5rem,50vw)] items-center justify-between gap-2 px-4 py-3 text-left outline-none transition"
+                        @click.stop="toggleCarPopover">
+                        <div v-if="props.ProductSelection" class="min-w-0 flex-1">
+                            <div class="text-3 text-white/55">{{ props.title }}</div>
+                            <div
+                                class="mt-0.5 truncate text-3.25 text-white/90 font-600 w-full max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">
+                                {{ carHeaderSummary || '' }}
+                            </div>
+                        </div>
+                        <span v-else
+                            class="truncate text-4 font-600 text-white w-full max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">
+                            {{ props.title }}
+                        </span>
+                        <Icon icon="solar:alt-arrow-down-outline" width="18" height="18"
+                            class="shrink-0 transition text-white" :class="carPopoverOpen ? 'rotate-180' : ''" />
                     </button>
-                </PopoverTrigger>
-
-                <PopoverPortal>
-                    <PopoverContent side="bottom" align="start" :side-offset="10" :collision-padding="16"
-                        :style="popoverPanelStyle"
-                        class="z-50 overflow-hidden rounded-[20px] border border-[#d9d9dc] bg-white p-0 text-[#242730] shadow-[0_20px_50px_rgba(0,0,0,0.28)] outline-none">
-                        <CarSelectionPanel
-                            v-model:brand="activeBrand"
-                            v-model:model="selectedModel"
-                            v-model:year="selectedYear"
-                            :groups="carGroups"
-                        />
-                    </PopoverContent>
-                </PopoverPortal>
-            </PopoverRoot>
+                </template>
+                <div
+                    class="tg-light-surface z-50 overflow-hidden rounded-[20px] border border-[#d9d9dc] bg-white p-0 text-[#242730] shadow-[0_20px_50px_rgba(0,0,0,0.28)] outline-none">
+                    <CarSelectionPanel v-model:brand="activeBrand" v-model:model="selectedModel"
+                        v-model:year="selectedYear" :groups="carGroups" @complete="closeCarPopover" />
+                </div>
+            </NPopover>
 
             <!-- 筛选弹窗 -->
-            <PopoverRoot v-model:open="filterPopoverOpen">
-                <PopoverTrigger as-child>
+            <NPopover v-model:show="filterPopoverOpen" trigger="manual" :animated="false" display-directive="if"
+                placement="bottom-end" :show-arrow="false" :content-style="popoverPanelStyle">
+                <template #trigger>
                     <button type="button"
-                        class="flex w-28 items-center justify-between px-4 py-3 text-4 font-600 text-white outline-none transition">
+                        class="flex w-28 items-center justify-between px-4 py-3 text-4 font-600 text-white outline-none transition"
+                        @click.stop="toggleFilterPopover">
                         <span>筛选</span>
                         <Icon icon="hugeicons:filter-horizontal" width="18" height="18" />
                     </button>
-                </PopoverTrigger>
+                </template>
+                <div
+                    class="tg-light-surface z-50 flex max-h-[min(70vh,40rem)] flex-col overflow-hidden rounded-[20px] border border-[#d9d9dc] bg-white text-[#242730] shadow-[0_20px_50px_rgba(0,0,0,0.28)] outline-none">
+                    <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-2">
+                        <div class="space-y-5">
+                            <div class="text-5 font-700">
+                                筛选
+                            </div>
 
-                <PopoverPortal>
-                    <PopoverContent side="bottom" align="end" :side-offset="10" :collision-padding="16"
-                        :style="popoverPanelStyle"
-                        class="z-50 max-h-[calc(100vh-7rem)] overflow-hidden rounded-[20px] border border-[#d9d9dc] bg-white p-4 text-[#242730] shadow-[0_20px_50px_rgba(0,0,0,0.28)] outline-none">
-                        <div class="max-h-[calc(100vh-9rem)] overflow-y-auto pr-1">
-                            <div class="space-y-5">
-                                <div class="text-5 font-700">
-                                    筛选
+                            <!-- 结构 -->
+                            <div class="space-y-2">
+                                <div class="text-3.5 font-600">结构</div>
+                                <TgSelect v-model="filterForm.structure" :options="structureSelectOptions"
+                                    :searchable="false" placeholder="请选择结构" />
+                            </div>
+
+                            <!-- 颜色 -->
+                            <div class="space-y-3">
+                                <div class="text-3.5 font-600">颜色</div>
+                                <div class="relative">
+                                    <span
+                                        class="pointer-events-none absolute left-15 top-1/2 z-1 h-5 w-5 -translate-y-1/2 rounded-full border border-black/10"
+                                        :style="{ backgroundColor: selectedColor.hex }" />
+                                    <TgSelect v-model="filterForm.color" class="color-select"
+                                        :options="colorSelectOptions" :searchable="false" placeholder="请选择颜色" />
                                 </div>
 
-                                <!-- 结构 -->
-                                <div class="space-y-2">
-                                    <div class="text-3.5 font-600">结构</div>
-                                    <TgSelect v-model="filterForm.structure" :options="structureSelectOptions"
-                                        :searchable="false" placeholder="请选择结构" />
+                                <div class="text-center text-4 font-700">
+                                    {{ selectedColor.code }} {{ selectedColor.label }}
                                 </div>
 
-                                <!-- 颜色 -->
-                                <div class="space-y-3">
-                                    <div class="text-3.5 font-600">颜色</div>
-                                    <div class="relative">
-                                        <span
-                                            class="pointer-events-none absolute left-4 top-1/2 z-1 h-5 w-5 -translate-y-1/2 rounded-full border border-black/10"
-                                            :style="{ backgroundColor: selectedColor.hex }" />
-                                        <TgSelect v-model="filterForm.color" class="color-select"
-                                            :options="colorSelectOptions" :searchable="false" placeholder="请选择颜色" />
-                                    </div>
-
-                                    <div class="text-center text-4 font-700">
-                                        {{ selectedColor.code }} {{ selectedColor.label }}
-                                    </div>
-
-                                    <div class="flex items-center justify-between gap-3">
-                                        <button v-for="item in colors" :key="item.value" type="button"
-                                            class="relative h-12 w-12 rounded-full border transition"
-                                            :class="filterForm.color === item.value ? 'border-[#242730] shadow-[0_0_0_3px_white,0_0_0_4px_#242730]' : 'border-transparent'"
-                                            :style="{ backgroundColor: item.hex }"
-                                            @click="filterForm.color = item.value" />
-                                    </div>
-                                </div>
-
-                                <!-- 产品筛选 -->
-                                <template v-if="props.ProductSelection">
-                                    <div class="space-y-2">
-                                        <div class="text-3.5 font-600">型号编号</div>
-                                        <input v-model="filterForm.modelCode" type="text" placeholder="请输入型号编号"
-                                            class="h-12 w-full rounded-2xl border border-[#d5d7dd] bg-white px-4 text-3.5 outline-none transition placeholder:text-[#b2b5bd] focus:border-[#242730]" />
-                                    </div>
-
-                                    <div class="space-y-2">
-                                        <div class="text-3.5 font-600">条幅数量</div>
-                                        <TgSelect v-model="filterForm.stripCount" :options="stripCountOptions"
-                                            :searchable="false" placeholder="请选择条幅数量" />
-                                    </div>
-
-                                    <div class="space-y-2">
-                                        <div class="text-3.5 font-600">爪型</div>
-                                        <TgSelect v-model="filterForm.clawType" :options="clawSelectOptions"
-                                            :searchable="false" placeholder="请选择爪型" />
-                                    </div>
-
-                                    <div class="space-y-2">
-                                        <div class="text-3.5 font-600">是否支持左右旋</div>
-                                        <TgSelect v-model="filterForm.rotateSupport" :options="directionSelectOptions"
-                                            :searchable="false" placeholder="请选择" />
-                                    </div>
-                                </template>
-
-                                <!-- 案例筛选 → WL型号（已完成！） -->
-                                <template v-if="props.CaseSelection">
-                                    <div class="space-y-2">
-                                        <div class="text-3.5 font-600">WL型号</div>
-                                        <TgSelect v-model="filterForm.wlCode" :options="wlCodeSelectOptions"
-                                            :searchable="false" placeholder="请选择WL型号" />
-                                    </div>
-                                </template>
-
-                                <!-- 底部按钮 -->
-                                <div class="sticky bottom-0 flex gap-4 bg-white pt-2">
-                                    <button type="button"
-                                        class="h-12 flex-1 rounded-xl border border-[#242730] bg-white text-4 font-600 text-[#242730]"
-                                        @click="closeFilterPopover">
-                                        取消
-                                    </button>
-                                    <button type="button"
-                                        class="h-12 flex-1 rounded-xl bg-[#242730] text-4 font-700 text-white"
-                                        @click="applyFilters">
-                                        确定
-                                    </button>
+                                <div class="flex items-center justify-between gap-3">
+                                    <button v-for="item in colors" :key="item.value" type="button"
+                                        class="relative h-12 w-12 rounded-full border transition"
+                                        :class="filterForm.color === item.value ? 'border-[#242730] shadow-[0_0_0_3px_white,0_0_0_4px_#242730]' : 'border-transparent'"
+                                        :style="{ backgroundColor: item.hex }" @click="filterForm.color = item.value" />
                                 </div>
                             </div>
+
+                            <!-- 产品筛选 -->
+                            <template v-if="props.ProductSelection">
+                                <div class="space-y-2">
+                                    <div class="text-3.5 font-600">型号编号</div>
+                                    <input v-model="filterForm.modelCode" type="text" placeholder="请输入型号编号"
+                                        class="h-12 w-full rounded-2xl border border-[#d5d7dd] bg-white px-4 text-3.5 outline-none transition placeholder:text-[#b2b5bd] focus:border-[#242730]" />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <div class="text-3.5 font-600">条幅数量</div>
+                                    <TgSelect v-model="filterForm.stripCount" :options="stripCountOptions"
+                                        :searchable="false" placeholder="请选择条幅数量" />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <div class="text-3.5 font-600">爪型</div>
+                                    <TgSelect v-model="filterForm.clawType" :options="clawSelectOptions"
+                                        :searchable="false" placeholder="请选择爪型" />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <div class="text-3.5 font-600">是否支持左右旋</div>
+                                    <TgSelect v-model="filterForm.rotateSupport" :options="directionSelectOptions"
+                                        :searchable="false" placeholder="请选择" />
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="text-3.5 font-600">风格标签</div>
+                                    <TgSelect v-model="styleMoodField" :options="styleMoodSelectOptions"
+                                        :searchable="false" placeholder="请选择风格" />
+                                </div>
+                            </template>
+
+                            <!-- 案例筛选 → WL型号（已完成！） -->
+                            <template v-if="props.CaseSelection">
+                                <div class="space-y-2">
+                                    <div class="text-3.5 font-600">WL型号</div>
+                                    <TgSelect v-model="filterForm.wlCode" :options="wlCodeSelectOptions"
+                                        :searchable="false" placeholder="请选择WL型号" />
+                                </div>
+                            </template>
                         </div>
-                    </PopoverContent>
-                </PopoverPortal>
-            </PopoverRoot>
+                    </div>
+                    <!-- 底部固定：不参与中间区域滚动 -->
+                    <div
+                        class="shrink-0 border-t border-[#ececf0] bg-white px-4 pt-3 pb-4">
+                        <div class="flex gap-4">
+                            <button type="button"
+                                class="tg-btn-outline-light h-12 flex-1 rounded-xl border text-4 font-600"
+                                @click="closeFilterPopover">
+                                取消
+                            </button>
+                            <button type="button"
+                                class="tg-btn-primary h-12 flex-1 rounded-xl border text-4 font-700"
+                                @click="applyFilters">
+                                确定
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </NPopover>
         </div>
 
         <!-- 筛选标签 -->
         <div class="mt-4 flex items-start justify-between gap-3">
-            <div class="min-h-9 flex flex-1 flex-wrap gap-2">
+            <div class="min-h-9 flex flex-1 flex-wrap gap-2 tg-on-dark-surface">
                 <div v-if="activeTags.length === 0"
-                    class="flex items-center rounded-full bg-white/6 px-3 py-2 text-3 text-white/45">
+                    class="flex items-center rounded-full bg-white/6 px-3 py-2 text-3 !text-[#8b9cb0]">
                     暂无已筛选项
                 </div>
 
                 <button v-for="tag in activeTags" :key="tag.key" type="button"
-                    class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-3 text-white/85 transition hover:bg-white/14"
+                    class="inline-flex items-center gap-1.5 rounded-full !bg-white/12 px-3 py-2 text-3 !text-[#E4EBF4] !ring-1 !ring-white/10 transition hover:!bg-white/18"
                     @click="removeTag(tag.key)">
-                    <span>{{ tag.label }}</span>
-                    <Icon icon="mdi:close" width="14" height="14" />
+                    <span class="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">{{ tag.label }}</span>
+                    <Icon icon="mdi:close" width="14" height="14" class="shrink-0 !text-[#b0c0d2]" />
                 </button>
             </div>
 
@@ -485,8 +607,4 @@ onBeforeUnmount(() => {
     </div>
 </template>
 
-<style scoped>
-.color-select :deep(.multiselect__tags) {
-    padding-left: 3rem;
-}
-</style>
+<style></style>

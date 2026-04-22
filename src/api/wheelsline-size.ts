@@ -193,7 +193,14 @@ export async function fetchWheelSizeModifications(
   year: string,
   generation?: string
 ): Promise<WheelSizeOption[]> {
-  const raw = await httpApi('wheel-size/generations', {params: {'make': make, 'model': model, 'year': year, 'generation': generation || ''}});
+  const raw = await httpApi('wheel-size/modifications', {
+    params: {
+      make,
+      model,
+      year,
+      generation: generation || ''
+    }
+  });
   return normalizeModificationOptions(raw);
 }
 

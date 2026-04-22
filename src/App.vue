@@ -7,15 +7,28 @@
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
 <script setup lang="ts">
+import { computed } from 'vue'
+import { NConfigProvider, darkTheme, zhCN, dateZhCN, type GlobalTheme } from 'naive-ui'
 import TgBackButton from '@/components/TgBackButton.vue'
+import { useTelegramTheme } from '@/composables/useTelegramTheme'
+
+const { isDark, naiveThemeOverrides } = useTelegramTheme()
+const mergedTheme = computed<GlobalTheme | null>(() => (isDark.value ? darkTheme : null))
 </script>
 
 <template>
-  <main class="min-h-screen h-screen bg-tg-bg text-tg-text">
-    <div class="relative h-full w-full">
-      <TgBackButton />
-      <RouterView class="pb-24" />
-      <NavBar />
-    </div>
-  </main>
+  <NConfigProvider
+    :theme="mergedTheme"
+    :theme-overrides="naiveThemeOverrides"
+    :locale="zhCN"
+    :date-locale="dateZhCN"
+  >
+    <main class="min-h-screen h-screen bg-tg-bg text-tg-text">
+      <div class="relative h-full w-full">
+        <TgBackButton />
+        <RouterView class="pb-24" />
+        <NavBar />
+      </div>
+    </main>
+  </NConfigProvider>
 </template>

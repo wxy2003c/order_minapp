@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { Icon } from '@iconify/vue'
-import {
-  TabsContent, TabsIndicator, TabsList, TabsRoot, TabsTrigger, DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogOverlay,
-  DialogPortal,
-  DialogRoot,
-  DialogTitle
-} from 'reka-ui'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
 import TgSwitch from '@/components/TgSwitch.vue'
 import TgFilepond from '@/components/TgFilepond.vue'
+import { buildPreorderBodyFromCustomOrder, createPreorder } from '@/api/orders'
+import type { WheelSizeGenerationRow, WheelSizeOption } from '@/api/wheelsline-size'
+import {
+  fetchWheelSizeGenerations,
+  fetchWheelSizeMakes,
+  fetchWheelSizeModels,
+  fetchWheelSizeModifications,
+  isWheelSizeEnabled,
+  resolveWheelSizeYearOptions,
+} from '@/api/wheelsline-size'
 
 type OrderTab = 'vehicle' | 'creative' | 'address' | 'amount'
 
@@ -27,16 +28,47 @@ const openOutline = ref<boolean>(false)
 const activeTab = ref<OrderTab>('vehicle')
 const vehicleExpanded = ref(false)
 
-const brandOptions: SelectOption[] = [
+const wheelSizeEnabled = isWheelSizeEnabled()
+
+const staticBrandOptions: SelectOption[] = [
   { value: 'audi', label: 'Audi' },
   { value: 'bmw', label: 'BMW' },
   { value: 'benz', label: 'Benz' },
 ]
 
-const modelOptions: SelectOption[] = [
+const staticModelOptions: SelectOption[] = [
   { value: 'a5', label: 'A5(F5/2016-2020)/D9SSEL 2.0T 14 188HP' },
   { value: 'a4', label: 'A4(B9/2020-2024)/45 TFSI' },
 ]
+
+const wsBrandOptions = ref<SelectOption[]>([])
+const wsModelOptions = ref<SelectOption[]>([])
+const wsGenOptions = ref<SelectOption[]>([])
+const wsYearOptions = ref<SelectOption[]>([])
+const wsModOptions = ref<SelectOption[]>([])
+const wsGenerationsCache = ref<WheelSizeGenerationRow[]>([])
+/** 与 CarSelectionPanel 一致：仅当前请求层级显示 loading，避免锁死其它下拉 */
+const wsLoadingStage = ref<number | null>(null)
+const wsCascadeError = ref('')
+
+function wheelOptToSelect(o: WheelSizeOption): SelectOption {
+  return { value: o.id, label: o.label }
+}
+
+function generationRowsToSelectOptions(rows: WheelSizeGenerationRow[]): SelectOption[] {
+  return rows.map(g => ({
+    value: g.slug,
+    label: `${g.name} (${g.start}–${g.end})${g.platform ? ` · ${g.platform}` : ''}`,
+  }))
+}
+
+const preorderBrandOptions = computed<SelectOption[]>(() =>
+  wheelSizeEnabled ? wsBrandOptions.value : staticBrandOptions,
+)
+
+const preorderModelOptions = computed<SelectOption[]>(() =>
+  wheelSizeEnabled ? wsModelOptions.value : staticModelOptions,
+)
 
 const yesNoOptions: SelectOption[] = [
   { value: 'yes', label: '是' },
@@ -74,8 +106,12 @@ const tabItems = [
 const vehicleForm = reactive({
   customerName: 'Mexicidad Dukoi',
   customerId: '6182608402',
-  brand: 'audi',
-  model: 'a5',
+  brand: wheelSizeEnabled ? '' : 'audi',
+  model: wheelSizeEnabled ? '' : 'a5',
+  /** Wheel-Size：世代 slug、年份 id、配置 slug（仅 API 模式使用） */
+  wheelGeneration: '',
+  wheelYear: '',
+  wheelModification: '',
   forged: 'yes',
   mirrorPair: true,
   frontSize: '16',
@@ -129,6 +165,21 @@ const addressForm = reactive({
   remark: '',
 })
 
+const amountForm = reactive({
+  basePrice: '',
+  currency: 'CNY',
+})
+
+const currencyOptions: SelectOption[] = [
+  { value: 'CNY', label: 'CNY 人民币' },
+  { value: 'USD', label: 'USD 美元' },
+  { value: 'EUR', label: 'EUR 欧元' },
+]
+
+const orderSubmitting = ref(false)
+const orderSubmitError = ref('')
+const orderSubmitOk = ref(false)
+
 const countryOptions: SelectOption[] = [
   { value: 'russia', label: 'Russia' },
   { value: 'germany', label: 'Germany' },
@@ -144,6 +195,151 @@ const boltSeatOptions: SelectOption[] = [
   { value: '球座', label: '球座' },
   { value: '锥座', label: '锥座' },
 ]
+
+async function loadWheelMakes() {
+  wsLoadingStage.value = 0
+  wsCascadeError.value = ''
+  try {
+    const items = await fetchWheelSizeMakes()
+    wsBrandOptions.value = items.map(wheelOptToSelect)
+    if (!items.length) wsCascadeError.value = '暂无品牌数据'
+  } catch {
+    wsBrandOptions.value = []
+    wsCascadeError.value = '品牌加载失败'
+  } finally {
+    wsLoadingStage.value = null
+  }
+}
+
+async function loadWheelModels(make: string) {
+  wsModelOptions.value = []
+  if (!make) return
+  wsLoadingStage.value = 1
+  wsCascadeError.value = ''
+  try {
+    const items = await fetchWheelSizeModels(make)
+    wsModelOptions.value = items.map(wheelOptToSelect)
+    if (!items.length) wsCascadeError.value = '暂无车型数据'
+  } catch {
+    wsModelOptions.value = []
+    wsCascadeError.value = '车型加载失败'
+  } finally {
+    wsLoadingStage.value = null
+  }
+}
+
+async function loadWheelGenerations(make: string, model: string) {
+  wsGenOptions.value = []
+  wsGenerationsCache.value = []
+  if (!make || !model) return
+  wsLoadingStage.value = 2
+  wsCascadeError.value = ''
+  try {
+    const rows = await fetchWheelSizeGenerations(make, model)
+    wsGenerationsCache.value = rows
+    wsGenOptions.value = generationRowsToSelectOptions(rows)
+    if (!rows.length) wsCascadeError.value = '暂无世代数据'
+  } catch {
+    wsGenerationsCache.value = []
+    wsGenOptions.value = []
+    wsCascadeError.value = '世代加载失败'
+  } finally {
+    wsLoadingStage.value = null
+  }
+}
+
+async function loadWheelYears(make: string, model: string, genSlug: string) {
+  wsYearOptions.value = []
+  if (!make || !model || !genSlug) return
+  wsLoadingStage.value = 3
+  wsCascadeError.value = ''
+  try {
+    const gen = wsGenerationsCache.value.find(x => x.slug === genSlug)
+    const items = await resolveWheelSizeYearOptions(make, model, gen)
+    wsYearOptions.value = items.map(wheelOptToSelect)
+    if (!items.length) wsCascadeError.value = '暂无年份数据'
+  } catch {
+    wsYearOptions.value = []
+    wsCascadeError.value = '年份加载失败'
+  } finally {
+    wsLoadingStage.value = null
+  }
+}
+
+async function loadWheelMods(make: string, model: string, year: string, genSlug: string) {
+  wsModOptions.value = []
+  if (!make || !model || !year) return
+  wsLoadingStage.value = 4
+  wsCascadeError.value = ''
+  try {
+    const items = await fetchWheelSizeModifications(make, model, year, genSlug || undefined)
+    wsModOptions.value = items.map(wheelOptToSelect)
+    if (!items.length) wsCascadeError.value = '暂无配置数据'
+  } catch {
+    wsModOptions.value = []
+    wsCascadeError.value = '配置加载失败'
+  } finally {
+    wsLoadingStage.value = null
+  }
+}
+
+async function onWheelBrandChange(v: string | number) {
+  const make = String(v ?? '')
+  vehicleForm.brand = make
+  vehicleForm.model = ''
+  vehicleForm.wheelGeneration = ''
+  vehicleForm.wheelYear = ''
+  vehicleForm.wheelModification = ''
+  wsModelOptions.value = []
+  wsGenOptions.value = []
+  wsYearOptions.value = []
+  wsModOptions.value = []
+  wsGenerationsCache.value = []
+  if (!make) return
+  await loadWheelModels(make)
+}
+
+async function onWheelModelChange(v: string | number) {
+  const model = String(v ?? '')
+  vehicleForm.model = model
+  vehicleForm.wheelGeneration = ''
+  vehicleForm.wheelYear = ''
+  vehicleForm.wheelModification = ''
+  wsGenOptions.value = []
+  wsYearOptions.value = []
+  wsModOptions.value = []
+  wsGenerationsCache.value = []
+  if (!vehicleForm.brand || !model) return
+  await loadWheelGenerations(vehicleForm.brand, model)
+}
+
+async function onWheelGenerationChange(v: string | number) {
+  const slug = String(v ?? '')
+  vehicleForm.wheelGeneration = slug
+  vehicleForm.wheelYear = ''
+  vehicleForm.wheelModification = ''
+  wsYearOptions.value = []
+  wsModOptions.value = []
+  if (!vehicleForm.brand || !vehicleForm.model || !slug) return
+  await loadWheelYears(vehicleForm.brand, vehicleForm.model, slug)
+}
+
+async function onWheelYearChange(v: string | number) {
+  const y = String(v ?? '')
+  vehicleForm.wheelYear = y
+  vehicleForm.wheelModification = ''
+  wsModOptions.value = []
+  if (!vehicleForm.brand || !vehicleForm.model || !y) return
+  await loadWheelMods(vehicleForm.brand, vehicleForm.model, y, vehicleForm.wheelGeneration)
+}
+
+function onWheelModificationChange(v: string | number) {
+  vehicleForm.wheelModification = String(v ?? '')
+}
+
+onMounted(() => {
+  if (wheelSizeEnabled) void loadWheelMakes()
+})
 
 function goNextFromVehicle() {
   activeTab.value = 'creative'
@@ -183,9 +379,9 @@ const frontWheelFields = buildWheelFields('front')
 const rearWheelFields = buildWheelFields('rear')
 
 const OutlineValue = ref<any>({})
-const types = ref<Number>(0)
+const types = ref(0)
 // 切换创作 / 结构类型
-const handelOutline = (values: any, type: Number) => {
+const handelOutline = (values: any, type: number) => {
   if (type === 0) {
     if (creativeForm.designMode === values?.id) return
   }
@@ -210,23 +406,63 @@ const handelSublitOutline = () => {
     creativeForm.structure = OutlineValue.value
   }
 }
+
+async function submitPreorder() {
+  orderSubmitError.value = ''
+  orderSubmitOk.value = false
+  if (!String(amountForm.basePrice).trim()) {
+    orderSubmitError.value = '请填写总金额'
+    return
+  }
+  if (!String(amountForm.currency).trim()) {
+    orderSubmitError.value = '请选择币种'
+    return
+  }
+  orderSubmitting.value = true
+  try {
+    const body = buildPreorderBodyFromCustomOrder({
+      vehicle: { ...vehicleForm },
+      creative: { ...creativeForm },
+      address: { ...addressForm },
+      amount: { ...amountForm },
+      brandOptions: preorderBrandOptions.value,
+      modelOptions: preorderModelOptions.value,
+      countryOptions,
+      wheelGenOptions: wheelSizeEnabled ? wsGenOptions.value : undefined,
+      wheelYearOptions: wheelSizeEnabled ? wsYearOptions.value : undefined,
+      wheelModOptions: wheelSizeEnabled ? wsModOptions.value : undefined,
+    })
+    const res = await createPreorder(body)
+    if (!res?.order)
+      throw new Error('创建订单失败：后端返回数据异常')
+    orderSubmitOk.value = true
+  } catch (e) {
+    orderSubmitOk.value = false
+    orderSubmitError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    orderSubmitting.value = false
+  }
+}
 </script>
 
 <template>
   <div class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#FAFAFA] pb-32 text-[#1F2937]">
-    <TabsRoot v-model="activeTab" class="min-h-full">
+    <div class="min-h-full">
       <div class="sticky top-0 z-20 border-b border-[#ECECEC] bg-white px-4 pb-2 pt-4">
         <img src="@/assets/image/navLogo.png" class="h-8 w-34 object-contain" alt="">
-        <TabsList class="relative mt-3 grid grid-cols-4">
-          <TabsTrigger v-for="item in tabItems" :key="item.value" :value="item.value"
-            class="relative py-3 text-3.5 font-600 color-[#4B5563] outline-none data-[state=active]:color-[#111827]">
+        <div class="relative mt-3 grid grid-cols-4">
+          <button v-for="item in tabItems" :key="item.value" type="button" :class="[
+            'relative py-3 text-3.5 font-600 outline-none transition-colors',
+            activeTab === item.value ? 'text-[#111827]' : 'text-[#4B5563]',
+          ]" @click="activeTab = item.value">
             {{ item.label }}
-          </TabsTrigger>
-          <TabsIndicator class="absolute bottom-0 h-0.5 rounded-full bg-[#2A2C33] transition-all duration-200" />
-        </TabsList>
+            <span v-show="activeTab === item.value"
+              class="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-[#2A2C33]" />
+          </button>
+        </div>
       </div>
 
-      <TabsContent value="vehicle" class="outline-none">
+      <div v-show="activeTab === 'vehicle'" class="outline-none">
         <div class="space-y-4 px-4 py-4">
           <div class="space-y-3">
             <div>
@@ -251,14 +487,59 @@ const handelSublitOutline = () => {
           </div>
 
           <div class="space-y-3">
-            <div>
-              <div class="mb-2 text-3.5 font-600">品牌</div>
-              <TgSelect v-model="vehicleForm.brand" :options="brandOptions" :searchable="false" placeholder="Audi" />
-            </div>
-            <div>
-              <div class="mb-2 text-3.5 font-600">型号</div>
-              <TgSelect v-model="vehicleForm.model" :options="modelOptions" :searchable="false" placeholder="请选择型号" />
-            </div>
+            <template v-if="wheelSizeEnabled">
+              <div v-if="wsCascadeError"
+                class="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-3.25 text-[#B91C1C]">
+                {{ wsCascadeError }}
+              </div>
+              <div>
+                <div class="mb-2 text-3.5 font-600">品牌 <span class="text-[#EF4444]">*</span></div>
+                <TgSelect :key="`ws-make-${wsBrandOptions.length}`" :model-value="vehicleForm.brand"
+                  :options="wsBrandOptions" :searchable="true" :disabled="wsLoadingStage === 0"
+                  :placeholder="wsLoadingStage === 0 ? '加载中…' : '请选择品牌'" @update:model-value="onWheelBrandChange" />
+              </div>
+              <div>
+                <div class="mb-2 text-3.5 font-600">车型 <span class="text-[#EF4444]">*</span></div>
+                <TgSelect :key="`ws-model-${wsModelOptions.length}`" :model-value="vehicleForm.model"
+                  :options="wsModelOptions" :searchable="true" :disabled="!vehicleForm.brand || wsLoadingStage === 1"
+                  :placeholder="!vehicleForm.brand ? '请先选择品牌' : wsLoadingStage === 1 ? '加载中…' : '请选择车型'"
+                  @update:model-value="onWheelModelChange" />
+              </div>
+              <div>
+                <div class="mb-2 text-3.5 font-600">世代 <span class="text-[#EF4444]">*</span></div>
+                <TgSelect :key="`ws-gen-${wsGenOptions.length}`" :model-value="vehicleForm.wheelGeneration"
+                  :options="wsGenOptions" :searchable="true" :disabled="!vehicleForm.model || wsLoadingStage === 2"
+                  :placeholder="!vehicleForm.model ? '请先选择车型' : wsLoadingStage === 2 ? '加载中…' : '请选择世代'"
+                  @update:model-value="onWheelGenerationChange" />
+              </div>
+              <div>
+                <div class="mb-2 text-3.5 font-600">年份 <span class="text-[#EF4444]">*</span></div>
+                <TgSelect :key="`ws-year-${wsYearOptions.length}`" :model-value="vehicleForm.wheelYear"
+                  :options="wsYearOptions" :searchable="false"
+                  :disabled="!vehicleForm.wheelGeneration || wsLoadingStage === 3"
+                  :placeholder="!vehicleForm.wheelGeneration ? '请先选择世代' : wsLoadingStage === 3 ? '加载中…' : '请选择年份'"
+                  @update:model-value="onWheelYearChange" />
+              </div>
+              <div>
+                <div class="mb-2 text-3.5 font-600">配置 <span class="text-[#EF4444]">*</span></div>
+                <TgSelect :key="`ws-mod-${wsModOptions.length}`" :model-value="vehicleForm.wheelModification"
+                  :options="wsModOptions" :searchable="true" :disabled="!vehicleForm.wheelYear || wsLoadingStage === 4"
+                  :placeholder="!vehicleForm.wheelYear ? '请先选择年份' : wsLoadingStage === 4 ? '加载中…' : '请选择配置'"
+                  @update:model-value="onWheelModificationChange" />
+              </div>
+            </template>
+            <template v-else>
+              <div>
+                <div class="mb-2 text-3.5 font-600">品牌</div>
+                <TgSelect v-model="vehicleForm.brand" :options="staticBrandOptions" :searchable="false"
+                  placeholder="Audi" />
+              </div>
+              <div>
+                <div class="mb-2 text-3.5 font-600">型号</div>
+                <TgSelect v-model="vehicleForm.model" :options="staticModelOptions" :searchable="false"
+                  placeholder="请选择型号" />
+              </div>
+            </template>
             <div>
               <div class="mb-2 text-3.5 font-600">是否为原厂/锻车?</div>
               <TgSelect v-model="vehicleForm.forged" :options="yesNoOptions" :searchable="false" placeholder="是" />
@@ -342,9 +623,9 @@ const handelSublitOutline = () => {
             </div>
           </div>
         </div>
-      </TabsContent>
+      </div>
 
-      <TabsContent value="creative" class="outline-none">
+      <div v-show="activeTab === 'creative'" class="outline-none">
         <div class="space-y-4 px-4 py-4">
           <div class="grid grid-cols-2 gap-3">
             <button v-for="item in designModeOptions" :key="item.id" type="button"
@@ -385,7 +666,8 @@ const handelSublitOutline = () => {
                     <span
                       class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">Y型</span>
                     <span
-                      class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">{{ creativeForm.structure }}</span>
+                      class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">{{
+                      creativeForm.structure }}</span>
                   </div>
                 </div>
               </div>
@@ -471,9 +753,9 @@ const handelSublitOutline = () => {
             </div>
           </div>
         </div>
-      </TabsContent>
+      </div>
 
-      <TabsContent value="address" class="outline-none">
+      <div v-show="activeTab === 'address'" class="outline-none">
         <div class="space-y-3 px-4 py-4">
           <div>
             <div class="mb-2 text-3.5 font-600">姓名</div>
@@ -511,54 +793,62 @@ const handelSublitOutline = () => {
               class="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-3 text-3.5 outline-none placeholder:text-[#B6BBC5]" />
           </div>
         </div>
-      </TabsContent>
+      </div>
 
-      <TabsContent value="amount" class="outline-none">
-        <div class="px-4 py-10">
+      <div v-show="activeTab === 'amount'" class="outline-none">
+        <div class="space-y-4 px-4 py-6">
+          <div class="text-4 font-700">金额与提交</div>
+          <div class="text-3 text-[#9CA3AF]">填写总金额与币种后提交预下单；其它字段由前几步自动带入，未对接的字段会传空。</div>
           <div
-            class="rounded-3xl border border-dashed border-[#D1D5DB] bg-white px-5 py-12 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <div class="text-5 font-700">金额</div>
-            <div class="mt-2 text-3.5 text-[#9CA3AF]">这个界面先留空，后面再接价格与费用明细。</div>
+            class="space-y-3 rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div>
+              <div class="mb-2 text-3.5 font-600">总金额 <span class="text-[#EF4444]">*</span></div>
+              <input v-model="amountForm.basePrice" type="text" inputmode="decimal" placeholder="请输入数字"
+                class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
+            </div>
+            <div>
+              <div class="mb-2 text-3.5 font-600">币种 <span class="text-[#EF4444]">*</span></div>
+              <TgSelect v-model="amountForm.currency" :options="currencyOptions" :searchable="false"
+                placeholder="请选择币种" />
+            </div>
+          </div>
+          <div v-if="orderSubmitError"
+            class="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-3.5 text-[#B91C1C]">
+            {{ orderSubmitError }}
+          </div>
+          <div v-else-if="orderSubmitOk"
+            class="rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2 text-3.5 text-[#166534]">
+            预下单已提交成功。
           </div>
         </div>
-      </TabsContent>
-    </TabsRoot>
+      </div>
+    </div>
 
-    <DialogRoot v-model:open="openOutline" :modal="false">
-      <DialogPortal>
-        <DialogOverlay class="bg-blackA9 data-[state=open]:animate-overlayShow fixed inset-0 z-30" />
-        <DialogContent
-          class="data-[state=open]:animate-contentShow fixed top-[50%] left-[50%] max-h-[85vh] w-[90vw] max-w-[450px] translate-x-[-50%] translate-y-[-50%] rounded-[6px] bg-white p-[25px] shadow-[hsl(206_22%_7%_/_35%)_0px_10px_38px_-10px,_hsl(206_22%_7%_/_20%)_0px_10px_20px_-15px] focus:outline-none z-[100]">
-          <DialogTitle class="text-mauve12 text-center m-0 text-[17px] font-semibold">
-            提示
-          </DialogTitle>
-          <DialogDescription class="text-mauve11 mt-[10px] mb-5 text-sm leading-normal">
-            {{
-              types === 0
-                ? '切换设计类型，将会清除当前已有设计，还需要继续吗？'
-                : '切换结构类型需要重新选择型号，还需要继续吗？'
-            }}
-          </DialogDescription>
-          <div class="mt-[25px] flex justify-between">
-            <DialogClose as-child>
-              <button
-                class="bg-[#000000] color-white text-green11 text-sm hover:bg-[#000000] focus:shadow-[#000000] inline-flex h-[35px] items-center justify-center rounded-lg px-[15px] font-semibold leading-none focus:shadow-[0_0_0_2px] focus:outline-none">
-                取消
-              </button>
-              <button @click="handelSublitOutline"
-                class="bg-[#3487FF] color-white text-green11 text-sm hover:bg-[#3487FF] focus:shadow-[#3487FF] inline-flex h-[35px] items-center justify-center rounded-lg px-[15px] font-semibold leading-none focus:shadow-[0_0_0_2px] focus:outline-none">
-                确认
-              </button>
-            </DialogClose>
-          </div>
-          <DialogClose
-            class="text-grass11 hover:bg-green4 focus:shadow-green7 absolute top-[10px] right-[10px] inline-flex h-[25px] w-[25px] appearance-none items-center justify-center rounded-full focus:shadow-[0_0_0_2px] focus:outline-none"
-            aria-label="Close">
-            <Icon icon="lucide:x" />
-          </DialogClose>
-        </DialogContent>
-      </DialogPortal>
-    </DialogRoot>
+    <NModal v-model:show="openOutline" preset="card" :style="{ maxWidth: 'min(90vw, 450px)' }" :mask-closable="true"
+      :closable="true">
+      <template #header>
+        <div class="text-center text-[17px] font-semibold">
+          提示
+        </div>
+      </template>
+      <div class="text-sm text-[#4B5563] leading-normal">
+        {{
+          types === 0
+            ? '切换设计类型，将会清除当前已有设计，还需要继续吗？'
+            : '切换结构类型需要重新选择型号，还需要继续吗？'
+        }}
+      </div>
+      <template #footer>
+        <div class="mt-2 flex w-full justify-between gap-3">
+          <NButton class="!min-w-0 flex-1" @click="openOutline = false">
+            取消
+          </NButton>
+          <NButton class="!min-w-0 flex-1" @click="handelSublitOutline">
+            确认
+          </NButton>
+        </div>
+      </template>
+    </NModal>
 
     <div
       class="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-[#ECECEC] bg-white px-4 py-4">
@@ -586,9 +876,12 @@ const handelSublitOutline = () => {
         </TgButton>
       </div>
 
-      <div v-else>
+      <div v-else class="grid grid-cols-2 gap-3">
         <TgButton block variant="outline" @click="goBackToCreative">
           返回编辑
+        </TgButton>
+        <TgButton block variant="primary" :disabled="orderSubmitting" @click="submitPreorder">
+          {{ orderSubmitting ? '提交中…' : '提交订单' }}
         </TgButton>
       </div>
     </div>

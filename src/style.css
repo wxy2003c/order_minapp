@@ -25,6 +25,8 @@
   --app-bottom-bar: var(--tg-theme-bottom-bar-bg-color, var(--app-surface));
   --app-shadow:
     0 8px 24px color-mix(in srgb, var(--app-text) 10%, transparent);
+  /** 白底/浅底上的字色：勿用 --app-text（TG 暗色主题下常为浅色，会白底看不见） */
+  --app-on-light: #1a1d24;
 }
 
 :root[data-color-scheme='dark'] {
@@ -51,6 +53,25 @@ body {
   color: var(--app-text);
 }
 
+/**
+ * 选车 / 筛选等浅色弹层（常 teleport 到 body 下）
+ * TG 暗色下 body 字色为浅色，若仅设 bg-white 会继承浅色字 → 白底白字看不见
+ */
+.tg-light-surface {
+  isolation: isolate;
+  color: #1a1d24;
+  color-scheme: only light;
+}
+
+.tg-light-surface :where(button, input, textarea, select) {
+  font: inherit;
+}
+
+/** 深色页上一块区域：显式字色，避免在 TG 下与主题继承打架（仅作容器，具体按钮见组件 class） */
+.tg-on-dark-surface {
+  color: #d6e0f0;
+}
+
 button,
 input,
 textarea,
@@ -61,4 +82,29 @@ select {
 .tg-tab-active {
   color: var(--app-accent-text);
   background: var(--app-accent);
+}
+
+/**
+ * 主/次按钮：勿用 #242730/#2d2f36 等炭黑实色
+ * Telegram iOS/Android WebView 常把该层背景“洗成”白底，若仍用 text-white 会完全看不见。
+ * 用 TG 主题 button 色可稳定对比；!important 防止主题继承盖掉。
+ */
+.tg-btn-primary {
+  isolation: isolate;
+  color: var(--app-accent-text) !important;
+  background-color: var(--app-accent) !important;
+  border-color: var(--app-accent) !important;
+}
+
+.tg-btn-outline-light {
+  isolation: isolate;
+  color: var(--app-on-light) !important;
+  background-color: #ffffff !important;
+  border-color: var(--app-accent) !important;
+}
+
+.n-popover-shared {
+  padding: 0 !important;
+  margin-top: 0 !important;
+  background-color: transparent !important;
 }

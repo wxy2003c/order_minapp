@@ -150,7 +150,7 @@ const extraInfos = [
     <div
       class="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-[#ECE8DE] bg-white px-4 py-4">
       <button type="button"
-        class="h-12 w-full rounded-xl bg-[#2A2C33] text-4 font-700 text-white shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+        class="tg-btn-primary h-12 w-full rounded-xl border text-4 font-700 shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
         立即咨询
       </button>
     </div>
