@@ -4,12 +4,51 @@ import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import { STYLE_MOOD_TAGS } from '@/constants/styleMoodTags'
 import { useProductBrowseStore } from '@/stores/productBrowse'
 import { Icon } from '@iconify/vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { carGroups } from '@/data/carSelection'
+import { t } from '@/i18n/uiI18n'
+import {
+  getPhoneAuthModalDismissedThisSession,
+  getStoredTelegramContact,
+  getTelegramWebApp,
+  setPhoneAuthModalDismissedThisSession,
+  setStoredTelegramContact,
+} from '@/utils/userTelegram'
 
 const router = useRouter()
 const browse = useProductBrowseStore()
+
+const phoneAuthModalOpen = ref(false)
+
+/** 用户关闭弹层（遮罩/X）且未授权：本会话内不再自动弹出；Mini App `close` 事件会清标记，下次从聊天进入可再提示 */
+watch(phoneAuthModalOpen, (open) => {
+  if (open) {
+    return
+  }
+  if (getStoredTelegramContact()) {
+    return
+  }
+  setPhoneAuthModalDismissedThisSession()
+})
+
+function getUserPhone() {
+  const w = getTelegramWebApp()
+  if (!w?.requestContact) {
+    window.alert(t('phoneAuth.notSupported'))
+    return
+  }
+  w.requestContact((success, contact) => {
+    if (!success) {
+      window.alert(t('phoneAuth.reject'))
+      return
+    }
+    const raw
+      = typeof contact === 'string' ? contact : JSON.stringify(contact ?? null)
+    setStoredTelegramContact(raw)
+    phoneAuthModalOpen.value = false
+  })
+}
 
 /** 首页「草稿」：仅选车/点风格，不写入 Pinia；点 Go 再写入并进产品页 */
 const carBrand = ref('')
@@ -22,8 +61,10 @@ function selectStyleTag(tag: string) {
 }
 
 const carSelectionSummary = computed(() => {
-  if (!carBrand.value && !carModel.value && !carYear.value) return '未选择'
-  return [carBrand.value, carModel.value, carYear.value].filter(Boolean).join(' · ') || '未选择'
+  if (!carBrand.value && !carModel.value && !carYear.value) {
+    return t('home.notSelected')
+  }
+  return [carBrand.value, carModel.value, carYear.value].filter(Boolean).join(' · ') || t('home.notSelected')
 })
 
 /** 与 HeaderFilter 汽车弹层一致：Popover + CarSelectionPanel */
@@ -56,9 +97,20 @@ let resizeObserver: ResizeObserver | null = null
 onMounted(async () => {
   await nextTick()
   updatePanelWidth()
-  if (!carEntryRef.value || typeof ResizeObserver === 'undefined') return
-  resizeObserver = new ResizeObserver(() => updatePanelWidth())
-  resizeObserver.observe(carEntryRef.value)
+  if (carEntryRef.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => updatePanelWidth())
+    resizeObserver.observe(carEntryRef.value)
+  }
+
+  const w = getTelegramWebApp()
+  if (
+    w
+    && typeof w.requestContact === 'function'
+    && !getStoredTelegramContact()
+    && !getPhoneAuthModalDismissedThisSession()
+  ) {
+    phoneAuthModalOpen.value = true
+  }
 })
 
 onBeforeUnmount(() => {
@@ -88,7 +140,7 @@ function goToProduct() {
               class="flex h-full flex-items-center min-h-12 w-full items-center justify-between gap-2 border border-white/20 rounded-2xl bg-white/5 px-4 py-2.5 text-left text-3.5 text-white/95 outline-none transition active:bg-white/10"
               @click.stop="toggleCarPopover">
               <div class="min-w-0 flex-1">
-                <div class="text-3 text-white/50">选择车辆</div>
+                <div class="text-3 text-white/50">{{ t('home.selectCar') }}</div>
                 <div class="mt-0.5 truncate text-2.75 text-white/70 max-w-50 overflow-hidden text-ellipsis whitespace-nowrap">
                   {{ carSelectionSummary }}
                 </div>
@@ -105,7 +157,7 @@ function goToProduct() {
         </NPopover>
       </div>
       <TgButton type="button" variant="white" shape="pill" @click="goToProduct">
-        <span>Go</span>
+        <span>{{ t('common.go') }}</span>
       </TgButton>
     </div>
 
@@ -122,9 +174,9 @@ function goToProduct() {
 
     <div class="mt-5">
       <div class="flex flex-items-center">
-        <div class="flex-1 text-3 color-[#BCCAE4]">产品推荐</div>
+        <div class="flex-1 text-3 color-[#BCCAE4]">{{ t('home.productRec') }}</div>
         <div class="flex flex-items-center">
-          <span class="text-3 color-[#BCCAE4]">全部</span>
+          <span class="text-3 color-[#BCCAE4]">{{ t('common.all') }}</span>
           <Icon icon="cuida:caret-right-outline" width="18" height="18" color="#BCCAE4" />
         </div>
       </div>
@@ -137,16 +189,16 @@ function goToProduct() {
     </div>
     <div class="mt-5">
       <div class="flex flex-items-center">
-        <div class="flex-1 text-3 color-[#BCCAE4]">客户案例</div>
+        <div class="flex-1 text-3 color-[#BCCAE4]">{{ t('home.customerCases') }}</div>
         <div class="flex flex-items-center">
-          <span class="text-3 color-[#BCCAE4]">全部</span>
+          <span class="text-3 color-[#BCCAE4]">{{ t('common.all') }}</span>
           <Icon icon="cuida:caret-right-outline" width="18" height="18" color="#BCCAE4" />
         </div>
       </div>
       <div class="mt-4 flex flex-col gap-3">
         <img src="@/assets/vite.svg" class="h-42 w-full" alt="">
         <div class="mt-3 text-4 color-[#BCCAE4]">BMW M340D G21</div>
-        <div class="mt-2 text-3 color-[#BCCAE4]">单片 • 19x8.5J • ET22 • WL-M-055</div>
+        <div class="mt-2 text-3 color-[#BCCAE4]">{{ t('home.carSummaryPlaceholder') }}</div>
       </div>
     </div>
 
@@ -155,5 +207,27 @@ function goToProduct() {
       @click="router.push('/CustomOrder')">
       +
     </div>
+
+    <NModal
+      v-model:show="phoneAuthModalOpen"
+      preset="card"
+      :style="{ maxWidth: 'min(90vw, 400px)' }"
+      :mask-closable="true"
+      :closable="true"
+    >
+      <template #header>
+        <div class="w-full text-center text-4 font-600 text-[#1F2937]">
+          {{ t('phoneAuth.title') }}
+        </div>
+      </template>
+      <p class="text-3.5 leading-relaxed text-[#4B5563]">
+        {{ t('phoneAuth.body') }}
+      </p>
+      <template #footer>
+        <TgButton block type="button" @click="getUserPhone">
+          {{ t('phoneAuth.action') }}
+        </TgButton>
+      </template>
+    </NModal>
   </div>
 </template>

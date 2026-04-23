@@ -8,40 +8,44 @@ import {
   type OrderDetailActionKey,
   type OrderStatus,
 } from '@/data/orders'
+import TgButton from '@/components/TgButton.vue'
 import { getTelegramWebApp } from '@/utils/userTelegram'
+import { t } from '@/i18n/uiI18n'
 
 const router = useRouter()
 const route = useRoute()
 
-const materialGroups = [
-  { title: '正式图', count: 3 },
-  { title: '正式图', count: 3 },
-  { title: '正式图', count: 3 },
-]
+const materialGroups = computed(() => [
+  { titleKey: 'orderDetails.materialTitle', count: 3 },
+  { titleKey: 'orderDetails.materialTitle', count: 3 },
+  { titleKey: 'orderDetails.materialTitle', count: 3 },
+])
 
 const wheelColors = [
-  { name: '曜黑', code: 'WL049', hex: '#252631' },
-  { name: '薄荷绿', code: 'WL058', hex: '#94e3a6' },
-  { name: '银灰', code: 'WL028M', hex: '#b6b7af' },
+  { code: 'WL049', hex: '#252631' },
+  { code: 'WL058', hex: '#94e3a6' },
+  { code: 'WL028M', hex: '#b6b7af' },
 ]
 
-const detailNotes = [
-  '这里填写客制化设计要求与图纸需求内容这里填写客制化设计要求与图纸需求内容',
-  '这里填写唇边客制化设计要求与图纸需求内容这里填写客制化设计要求与图纸需求内容',
-  '这里填写底盖客制化设计要求与图纸需求内容这里填写底盖客制化设计要求与图纸需求内容',
-]
+const detailNoteKeys = ['orderDetails.mockNote1', 'orderDetails.mockNote2', 'orderDetails.mockNote3'] as const
 
 const addressLines = [
   '1. Indesina Svetlota Str, 99, St Petersburg Industrial Park',
   '173001, Russian Federation',
 ]
 
-const amountRows = [
-  { label: '设计定金', value: '100.00' },
-  { label: '生产金', value: '790.00' },
-  { label: '尾款', value: '730.00' },
-  { label: '其他', value: '0.00' },
-]
+const amountRows = computed(() => [
+  { labelKey: 'orderDetails.designDeposit', value: '100.00' },
+  { labelKey: 'orderDetails.production', value: '790.00' },
+  { labelKey: 'orderDetails.finalPayment', value: '730.00' },
+  { labelKey: 'orderDetails.other', value: '0.00' },
+])
+
+function wheelColorName(code: string): string {
+  const k = `orderDetails.colorName_${code}` as const
+  const s = t(k)
+  return s === k ? code : s
+}
 
 const currentOrder = computed(() => {
   const orderId = typeof route.query.id === 'string' ? route.query.id : ''
@@ -50,6 +54,10 @@ const currentOrder = computed(() => {
 
 const currentStatus = computed<OrderStatus>(() => currentOrder.value.status)
 const statusMeta = computed(() => orderStatusMeta[currentStatus.value])
+
+const showFactorySection = computed(() =>
+  !['designing', 'pending_confirm', 'cancelled'].includes(currentOrder.value.status),
+)
 
 const supportUrl = (import.meta.env.VITE_SUPPORT_URL as string | undefined)?.trim() || 'https://t.me/'
 
@@ -66,8 +74,8 @@ function handleDetailAction(key: OrderDetailActionKey) {
   const orderId = currentOrder.value.id
   switch (key) {
     case 'cancel_order':
-      if (window.confirm('确定要取消该订单吗？')) {
-        // 接入取消订单 API 后在此调用
+      if (window.confirm(t('orderDetails.confirmCancel'))) {
+        /* 接入取消订单 API */
       }
       return
     case 'edit_order':
@@ -77,9 +85,8 @@ function handleDetailAction(key: OrderDetailActionKey) {
       openSupport()
       return
     case 'confirm_receive':
-      // 接入确认收货 API 后在此调用
-      if (window.confirm('确认已收到货物？')) {
-        /* noop */
+      if (window.confirm(t('orderDetails.confirmReceive'))) {
+        /* 接入确认收货 API */
       }
       return
     case 'review':
@@ -106,7 +113,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
       <div class="mt-4 flex items-center justify-between gap-3 border-b border-[#f0f1f4] pb-3">
         <div class="flex items-center gap-2 text-3.5">
           <Icon :icon="statusMeta.icon" width="15" height="15" :class="statusMeta.statusClass" color="#528FFF"/>
-          <span :class="statusMeta.statusClass" class="color-[#528FFF]">{{ statusMeta.label }}</span>
+          <span :class="statusMeta.statusClass" class="color-[#528FFF]">{{ t(statusMeta.labelKey) }}</span>
         </div>
         <div class="text-3 text-[#BBBBBB] flex flex-items-center gap-2">
           <Icon icon="lucide:copy" width="14" height="14" /> <span>{{ currentOrder.id }}</span>
@@ -120,17 +127,17 @@ function handleDetailAction(key: OrderDetailActionKey) {
       </div>
     </div>
 
-    <section class="mt-3 bg-white px-4 py-4" v-if="currentOrder.status != '设计中' && currentOrder.status != '待确认' && currentOrder.status!='已取消'">
+    <section v-if="showFactorySection" class="mt-3 bg-white px-4 py-4">
       <div class="text-4 font-700">
-        工厂设计图纸
+        {{ t('orderDetails.factoryDrawings') }}
       </div>
       <div class="mt-3 space-y-4">
-        <div v-for="group in materialGroups" :key="group.title">
+        <div v-for="(group, gi) in materialGroups" :key="gi">
           <div class="mb-2 text-3 text-[#9ea3ad]">
-            {{ group.title }}
+            {{ t(group.titleKey) }}
           </div>
           <div class="flex gap-3">
-            <div v-for="index in group.count" :key="`${group.title}-${index}`"
+            <div v-for="index in group.count" :key="`${group.titleKey}-${index}`"
               class="flex items-center justify-center rounded-[4px] bg-[#121318] w-12.5 h-12.5">
               <Icon icon="mdi:wheel" width="20" height="20" class="text-white" />
             </div>
@@ -153,7 +160,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
 
       <div class="mt-4 border-b border-[#f0f1f4] pb-4">
         <div class="text-4 font-700">
-          车型信息
+          {{ t('orderDetails.vehicleInfo') }}
         </div>
         <div class="mt-3 text-4.5 font-700">
           Audi
@@ -164,7 +171,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
         <div class="mt-3 grid grid-cols-3 gap-3 border-t border-[#f3f4f6] pt-3 text-center">
           <div>
             <div class="text-3 text-[#a3a7b0]">
-              变速箱
+              {{ t('orderDetails.transmission') }}
             </div>
             <div class="mt-1 text-3.5 font-600">
               MT
@@ -172,7 +179,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
           </div>
           <div>
             <div class="text-3 text-[#a3a7b0]">
-              尺寸(吋)
+              {{ t('orderDetails.sizeIn') }}
             </div>
             <div class="mt-1 text-3.5 font-600">
               19
@@ -180,7 +187,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
           </div>
           <div>
             <div class="text-3 text-[#a3a7b0]">
-              数量
+              {{ t('orderDetails.quantity') }}
             </div>
             <div class="mt-1 text-3.5 font-600">
               2
@@ -191,12 +198,12 @@ function handleDetailAction(key: OrderDetailActionKey) {
 
       <div class="pt-4">
         <div class="text-4 font-700">
-          型号库设计
+          {{ t('orderDetails.designLib') }}
         </div>
         <div class="mt-4 flex flex-col gap-4">
           <div class="pb-3.5 border-b border-b-[#BBBBBB] flex items-center justify-between text-3.5">
-            <div class="color-[#BBBBBB]">结构类型</div>
-            <div class="color-[#333333]">{{ currentOrder.type }}</div>
+            <div class="color-[#BBBBBB]">{{ t('orderDetails.structureType') }}</div>
+            <div class="color-[#333333]">{{ t(`orderStructure.${currentOrder.structureKey}`) }}</div>
           </div>
           <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-[4px] bg-[#111216]">
             <Icon icon="mdi:wheel" width="20" height="20" class="text-white" />
@@ -205,7 +212,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
 
         <div class="mt-4">
           <div class="text-3 text-[#a4a8b1]">
-            轮毂颜色
+            {{ t('orderDetails.wheelColor') }}
           </div>
           <div class="mt-3 flex gap-3">
             <div v-for="item in wheelColors" :key="item.code" class="w-12 text-center">
@@ -215,26 +222,37 @@ function handleDetailAction(key: OrderDetailActionKey) {
               </div>
             </div>
           </div>
-          <div class="text-3.5 color-[#BBBBBB] mt-3.5">轮毂颜色描述</div>
+          <div class="text-3.5 color-[#BBBBBB] mt-3.5">{{ t('orderDetails.colorDesc') }}</div>
           <div class="mt-3 space-y-1 text-3.2 leading-5 text-[#333333]">
-            <div v-for="item in wheelColors" :key="item.name">
-              色板: {{ item.code }} {{ item.name }}
+            <div v-for="item in wheelColors" :key="`t-${item.code}`">
+              {{ t('orderDetails.swatch') }}: {{ item.code }} {{ wheelColorName(item.code) }}
             </div>
           </div>
         </div>
 
         <div class="mt-4 space-y-4">
-          <div v-for="(note, index) in detailNotes" :key="index">
+          <div v-for="(noteKey, index) in detailNoteKeys" :key="noteKey">
             <div class="mb-2 text-3 text-[#a4a8b1]">
-              {{ index === 0 ? '中心盖' : index === 1 ? '正面刻字' : '特殊要求/说明' }}
+              {{
+                index === 0
+                  ? t('orderDetails.centerCap')
+                  : index === 1
+                    ? t('orderDetails.frontEngrave')
+                    : t('orderDetails.specialNote')
+              }}
             </div>
-            <div v-if="index !== 2" >
+            <div v-if="index !== 2">
               <div class="mb-2 h-10 w-10 rounded-[2px] bg-[#d8d8d8]" />
-              <div class="text-3.5 color-[#BBBBBB] mt-3.5">{{ index === 0 ? '中心盖描述' : index === 1 ?
-                '正面刻字描述' : '特殊要求/说明描述' }}</div>
+              <div class="text-3.5 color-[#BBBBBB] mt-3.5">{{
+                index === 0
+                  ? t('orderDetails.capDesc')
+                  : index === 1
+                    ? t('orderDetails.engraveDesc')
+                    : t('orderDetails.noteDesc')
+              }}</div>
             </div>
             <p class="text-3.2 leading-5.3 text-[#333333] mt-3.5">
-              {{ note }}
+              {{ t(noteKey) }}
             </p>
           </div>
         </div>
@@ -243,7 +261,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
 
     <section class="mt-3 bg-white px-4 py-4">
       <div class="text-4 font-700">
-        收货地址
+        {{ t('orderDetails.shippingAddr') }}
       </div>
       <div class="mt-3 text-3.5 font-600">
         Dani Pro
@@ -257,26 +275,26 @@ function handleDetailAction(key: OrderDetailActionKey) {
         </div>
       </div>
       <div class="mt-4 flex items-center justify-between gap-3 text-3.5">
-        <span class="text-[#a4a8b1]">优惠码</span>
+        <span class="text-[#a4a8b1]">{{ t('orderDetails.coupon') }}</span>
         <span class="font-600">GH09089</span>
       </div>
       <div class="mt-3 flex items-center justify-between gap-3 text-3.5">
-        <span class="text-[#a4a8b1]">备注</span>
-        <span class="font-600 text-right">这里是备注设计备注</span>
+        <span class="text-[#a4a8b1]">{{ t('orderDetails.remark') }}</span>
+        <span class="font-600 text-right">{{ t('orderDetails.mockNote1') }}</span>
       </div>
     </section>
 
     <section class="mt-3 bg-white px-4 py-4">
       <div class="text-4 font-700">
-        账单
+        {{ t('orderDetails.bill') }}
       </div>
       <div class="mt-4 space-y-3 text-3.5">
-        <div v-for="item in amountRows" :key="item.label" class="flex items-center justify-between gap-3">
-          <span class="text-[#8f949d]">{{ item.label }}</span>
+        <div v-for="item in amountRows" :key="item.labelKey" class="flex items-center justify-between gap-3">
+          <span class="text-[#8f949d]">{{ t(item.labelKey) }}</span>
           <span>{{ item.value }}</span>
         </div>
         <div class="flex items-center justify-between gap-3 border-t border-[#f0f1f4] pt-3 text-4 font-700">
-          <span>总金额</span>
+          <span>{{ t('orderDetails.total') }}</span>
           <span class="text-[#da3342]">1,680.00 USD</span>
         </div>
       </div>
@@ -285,15 +303,18 @@ function handleDetailAction(key: OrderDetailActionKey) {
     <div
       class="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
       <div class="flex gap-3">
-        <button
+        <TgButton
           v-for="action in statusMeta.detailActions"
           :key="action.key"
           type="button"
-          class="h-12 flex-1 rounded-[4px] border text-4 font-700"
-          :class="action.variant === 'primary' ? 'tg-btn-primary' : 'tg-btn-outline-light'"
+          :variant="action.variant === 'primary' ? 'primary' : 'outline'"
+          :class="[
+            '!h-12 !min-h-0 flex-1 !rounded-[4px] !text-4 !font-700',
+            action.variant === 'outline' && '!bg-white !text-[color:var(--app-on-light)]',
+          ]"
           @click="handleDetailAction(action.key)">
-          {{ action.label }}
-        </button>
+          {{ t(action.labelKey) }}
+        </TgButton>
       </div>
     </div>
   </div>

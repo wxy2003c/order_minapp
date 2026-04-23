@@ -2,8 +2,11 @@ import { init } from '@tma.js/sdk-vue'
 import { computed, onMounted, onUnmounted, readonly, ref } from 'vue'
 import type { TelegramUser } from '@/types'
 import { buildTelegramNaiveThemeOverrides } from '@/naive/telegramTheme'
+import { applyLanguageFromTelegram } from '@/i18n/uiI18n'
 import {
   applyTelegramThemeParams,
+  clearPhoneAuthModalDismissedThisSession,
+  getTelegramUserLanguageCode,
   getTelegramWebApp,
   resolveTelegramColorScheme,
 } from '@/utils/userTelegram'
@@ -27,6 +30,31 @@ export function useTelegramTheme() {
       = tg?.colorScheme ?? resolveTelegramColorScheme(tg?.themeParams)
 
     document.documentElement.dataset.colorScheme = colorScheme.value
+    const code = getTelegramUserLanguageCode()
+    if (typeof code === 'string' && code.trim()) {
+      applyLanguageFromTelegram(code)
+    }
+  }
+
+  function onTelegramThemeChanged() {
+    syncTelegramTheme()
+  }
+
+  const onTelegramMiniAppClose = () => {
+    // 重进聊天再打开时恢复可提示手机号；避免 session 未析构时一直不再弹
+    clearPhoneAuthModalDismissedThisSession()
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('Mini app close event (WebApp onEvent close)')
+    }
+  }
+
+  const onTelegramBackButtonClick = () => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('Telegram BackButton clicked, closing Mini App')
+    }
+    getTelegramWebApp()?.close?.()
   }
 
   onMounted(() => {
@@ -48,11 +76,22 @@ export function useTelegramTheme() {
     }
 
     tg.expand?.()
-    tg.onEvent?.('themeChanged', syncTelegramTheme)
+    tg.onEvent?.('themeChanged', onTelegramThemeChanged)
+    tg.onEvent?.('close', onTelegramMiniAppClose)
+
+    const bb = tg.BackButton
+    if (bb) {
+      bb.show?.()
+      bb.onClick?.(onTelegramBackButtonClick)
+    }
   })
 
   onUnmounted(() => {
-    getTelegramWebApp()?.offEvent?.('themeChanged', syncTelegramTheme)
+    const tgw = getTelegramWebApp()
+    tgw?.offEvent?.('themeChanged', onTelegramThemeChanged)
+    tgw?.offEvent?.('close', onTelegramMiniAppClose)
+    tgw?.BackButton?.offClick?.(onTelegramBackButtonClick)
+    tgw?.BackButton?.hide?.()
   })
 
   const isDark = computed(() => colorScheme.value === 'dark')

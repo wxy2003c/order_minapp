@@ -8,6 +8,7 @@
 -->
 <script setup lang="ts">
 import HeaderFilter from '@/components/HeaderFilter.vue'
+import { t } from '@/i18n/uiI18n'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -28,7 +29,7 @@ function handleGoDetail() {
 <template>
   <div class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#202126] p-4 text-white">
     <img src="@/assets/image/navLogo.png" class="h-14 w-65" alt="">
-    <HeaderFilter title="汽车品牌 " CaseSelection/>
+    <HeaderFilter :title="t('headerFilter.titleCase')" CaseSelection />
     <div class="mt-6 flex flex-col gap-3">
       <button
         v-for="item in caseList"

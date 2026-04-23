@@ -14,7 +14,6 @@ declare module 'vue' {
     CarSelectionPanel: typeof import('./src/components/CarSelectionPanel.vue')['default']
     HeaderFilter: typeof import('./src/components/HeaderFilter.vue')['default']
     NavBar: typeof import('./src/components/NavBar.vue')['default']
-    NButton: typeof import('naive-ui')['NButton']
     NModal: typeof import('naive-ui')['NModal']
     NPopover: typeof import('naive-ui')['NPopover']
     RouterLink: typeof import('vue-router')['RouterLink']

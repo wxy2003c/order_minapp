@@ -86,21 +86,56 @@ select {
 
 /**
  * 主/次按钮：勿用 #242730/#2d2f36 等炭黑实色
- * Telegram iOS/Android WebView 常把该层背景“洗成”白底，若仍用 text-white 会完全看不见。
- * 用 TG 主题 button 色可稳定对比；!important 防止主题继承盖掉。
+ * Telegram iOS/Android WebView 上「纯色实底」常合成成透明，但 1px 实线描边仍正常（镂空/描边可辨）。
+ * 用 TG 主题色 + 与底色相同的 linear-gradient 叠层 + 独立合成层 (isolate / translateZ) 兜底实底；
+ * !important 防主题/继承盖掉。TgButton 实心主/白/危亦复用下述类。
  */
 .tg-btn-primary {
   isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   color: var(--app-accent-text) !important;
   background-color: var(--app-accent) !important;
-  border-color: var(--app-accent) !important;
+  background-image: linear-gradient(0deg, var(--app-accent), var(--app-accent)) !important;
+  border: 1px solid var(--app-accent) !important;
+}
+
+.tg-btn-primary:hover {
+  filter: brightness(1.05);
 }
 
 .tg-btn-outline-light {
   isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   color: var(--app-on-light) !important;
-  background-color: #ffffff !important;
-  border-color: var(--app-accent) !important;
+  background-color: #fff !important;
+  background-image: linear-gradient(0deg, #fff, #fff) !important;
+  border: 1px solid var(--app-accent) !important;
+}
+
+.tg-btn-white {
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  color: var(--app-on-light) !important;
+  background-color: #fff !important;
+  background-image: linear-gradient(0deg, #fff, #fff) !important;
+  border: 1px solid #fff !important;
+}
+
+.tg-btn-danger {
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  color: #fff !important;
+  background-color: var(--app-danger) !important;
+  background-image: linear-gradient(0deg, var(--app-danger), var(--app-danger)) !important;
+  border: 1px solid var(--app-danger) !important;
 }
 
 .n-popover-shared {

@@ -7,6 +7,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import HeaderFilter from '@/components/HeaderFilter.vue'
+import { t } from '@/i18n/uiI18n'
 
 const router = useRouter()
 
@@ -18,7 +19,7 @@ function goProductDetails() {
 <template>
   <div class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#202126] p-4 text-white">
     <img src="@/assets/image/navLogo.png" class="h-14 w-65" alt="">
-    <HeaderFilter title="车型" ProductSelection />
+    <HeaderFilter :title="t('headerFilter.titleProduct')" ProductSelection />
     <div class="mt-6 flex flex-col gap-3">
       <div class="cursor-pointer" @click="goProductDetails">
         <img src="@/assets/vue.svg" class="h-43 w-full rounded-1.5 object-center" alt="">

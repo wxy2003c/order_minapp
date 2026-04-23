@@ -79,6 +79,15 @@ export function getTelegramWebApp(): TelegramWebApp | null {
   return tg
 }
 
+/**
+ * 多语言**唯一**可靠来源：Telegram 在 `WebApp.initDataUnsafe.user` 上提供的
+ * BCP-47 `language_code`（如 `zh-hans`、`en`、`ru`）。不要从 `document.lang` 或其它 DOM 读语言。
+ * @see https://core.telegram.org/bots/webapps#webappuser
+ */
+export function getTelegramUserLanguageCode(): string | undefined {
+  return getTelegramWebApp()?.initDataUnsafe?.user?.language_code
+}
+
 /** 取某一主题色（TMA 或回退表），供 Naive 等必须解析为实色的场景使用。 */
 export function pickTgColor(
   themeParams: TelegramThemeParams | null | undefined,
@@ -124,4 +133,58 @@ export function resolveTelegramColorScheme(
   const brightness = (r * 299 + g * 587 + b * 114) / 1000
 
   return brightness < 140 ? 'dark' : 'light'
+}
+
+/** 本地已授权保存的 `requestContact` 返回数据（供下单等使用；明文由后端从 Bot 侧解密） */
+export const TG_PHONE_CONTACT_STORAGE_KEY = 'tg_webapp_request_contact_result'
+
+export function getStoredTelegramContact(): string | null {
+  if (typeof localStorage === 'undefined') {
+    return null
+  }
+  return localStorage.getItem(TG_PHONE_CONTACT_STORAGE_KEY)
+}
+
+export function setStoredTelegramContact(raw: string): void {
+  if (typeof localStorage === 'undefined') {
+    return
+  }
+  localStorage.setItem(TG_PHONE_CONTACT_STORAGE_KEY, raw)
+}
+
+/** 本浏览会话内用户主动关闭了「手机号授权」弹层（未授权）则置位；重进 Mini App 新会话或 `onEvent('close')` 后清除 */
+const PHONE_AUTH_MODAL_DISMISSED_SESSION_KEY = 'tg_phone_auth_modal_dismissed'
+
+export function getPhoneAuthModalDismissedThisSession(): boolean {
+  if (typeof sessionStorage === 'undefined') {
+    return false
+  }
+  try {
+    return sessionStorage.getItem(PHONE_AUTH_MODAL_DISMISSED_SESSION_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setPhoneAuthModalDismissedThisSession(): void {
+  if (typeof sessionStorage === 'undefined') {
+    return
+  }
+  try {
+    sessionStorage.setItem(PHONE_AUTH_MODAL_DISMISSED_SESSION_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Mini App 即将关闭时调用，使下次从聊天重新打开时仍可再提示授权 */
+export function clearPhoneAuthModalDismissedThisSession(): void {
+  if (typeof sessionStorage === 'undefined') {
+    return
+  }
+  try {
+    sessionStorage.removeItem(PHONE_AUTH_MODAL_DISMISSED_SESSION_KEY)
+  } catch {
+    /* ignore */
+  }
 }

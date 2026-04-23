@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NButton } from 'naive-ui'
 
 const props = withDefaults(
   defineProps<{
@@ -19,62 +18,39 @@ const props = withDefaults(
   },
 )
 
-const nBtnType = computed(() => {
+const baseClass =
+  'box-border inline-flex min-h-11 select-none items-center justify-center border px-5 py-2.5 font-500 text-3.5 leading-snug transition isolate [transform:translate3d(0,0,0)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--app-bg)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45'
+
+const blockClass = computed(() => (props.block ? 'w-full' : ''))
+
+const shapeClass = computed(() => (props.shape === 'pill' ? 'rounded-2' : 'rounded-xl'))
+
+const variantClass = computed(() => {
   switch (props.variant) {
-    case 'primary':
-      return 'primary' as const
-    case 'danger':
-      return 'error' as const
-    case 'outline':
     case 'white':
+      return 'tg-btn-white shadow-[0_10px_24px_rgba(0,0,0,0.08)]'
+    case 'primary':
+      return 'tg-btn-primary'
+    case 'outline':
+      return 'border-[color:var(--app-accent)] bg-transparent text-[color:var(--app-text)] hover:bg-[color:var(--app-accent-soft)]'
     case 'ghost':
+      return 'border-transparent bg-transparent text-[color:var(--app-text)] hover:bg-[color:var(--app-accent-soft)]'
+    case 'danger':
+      return 'tg-btn-danger hover:opacity-90'
     default:
-      return 'default' as const
+      return 'tg-btn-primary'
   }
 })
 
-const secondary = computed(() => props.variant === 'outline')
-
-const quaternary = computed(() => props.variant === 'ghost')
-
-/** TG 暗色下 --app-text 为浅色：白底按钮必须用深色字；各变体显式字色避免与主题继承冲突 */
-const customClass = computed(() => {
-  const parts: string[] = [props.shape === 'pill' ? 'rounded-2' : 'rounded-xl']
-  switch (props.variant) {
-    case 'white':
-      parts.push(
-        '!bg-white !text-[color:var(--app-on-light)] shadow-[0_10px_24px_rgba(0,0,0,0.08)]',
-      )
-      break
-    case 'primary':
-      parts.push('!text-[color:var(--app-accent-text)]')
-      break
-    case 'outline':
-      parts.push('!text-[color:var(--app-text)]')
-      break
-    case 'ghost':
-      parts.push('!text-[color:var(--app-text)]')
-      break
-    case 'danger':
-      parts.push('!text-white')
-      break
-    default:
-      break
-  }
-  return parts.join(' ')
-})
+const buttonClass = computed(() =>
+  [baseClass, blockClass.value, shapeClass.value, variantClass.value]
+    .filter(Boolean)
+    .join(' '),
+)
 </script>
 
 <template>
-  <NButton
-    :attr-type="type"
-    :type="nBtnType"
-    :secondary="secondary"
-    :quaternary="quaternary"
-    :block="block"
-    :disabled="disabled"
-    :class="customClass"
-  >
+  <button :type="type" :disabled="disabled" :class="buttonClass">
     <slot />
-  </NButton>
+  </button>
 </template>

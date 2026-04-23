@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import { carGroups, getDefaultCarSelection } from '@/data/carSelection'
 import { orderStatusMeta, profileOrders } from '@/data/orders'
+import { t } from '@/i18n/uiI18n'
 
 const router = useRouter()
 const initialCar = getDefaultCarSelection()
@@ -57,7 +58,7 @@ function openOrderDetails(orderId: string) {
         <div
           class="flex items-center gap-3 rounded-[16px] bg-[#6d6d70] px-4 py-5 text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
           <div class="min-w-22 text-5 font-700">
-            My car
+            {{ t('profile.myCar') }}
           </div>
           <div class="min-w-0 flex-1 text-center text-4.5 font-600">
             <span class="block truncate">{{ currentCarText }}</span>
@@ -82,11 +83,11 @@ function openOrderDetails(orderId: string) {
           @click="openOrderDetails(order.id)">
           <div class="flex items-center justify-between gap-3 text-3.5">
             <div class="flex min-w-0 items-center gap-3">
-              <span class="shrink-0 font-600">{{ order.type }}</span>
+              <span class="shrink-0 font-600">{{ t(`orderStructure.${order.structureKey}`) }}</span>
               <span class="truncate text-[#5f636d]">{{ order.id }}</span>
             </div>
             <span class="rounded-full bg-[#f3f4f7] px-3 py-1" :class="orderStatusMeta[order.status].statusClass">
-              {{ order.status }}
+              {{ t(`orderStatus.${order.status}`) }}
             </span>
           </div>
 

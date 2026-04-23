@@ -11,6 +11,7 @@ import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isNavBarTabRoute } from '@/constants/navBarRoutes'
+import { t } from '@/i18n/uiI18n'
 
 const route = useRoute()
 const router = useRouter()
@@ -30,7 +31,7 @@ function goBack() {
     v-if="visible"
     type="button"
     class="fixed left-3 top-3 z-[38] flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--app-divider)] bg-[rgb(0,0,0,.4)] text-[#1F2937] shadow-[var(--app-shadow)] backdrop-blur-sm transition active:scale-95"
-    aria-label="返回"
+    :aria-label="t('backButton.aria')"
     @click="goBack"
   >
     <Icon icon="mdi:arrow-left" width="22" height="22" color="#ffffff"/>

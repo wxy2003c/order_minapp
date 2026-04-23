@@ -33,9 +33,24 @@ export interface TelegramInitDataUnsafe {
   user?: TelegramUser
 }
 
+export interface TelegramBackButton {
+  isVisible: boolean
+  show(): void
+  hide(): void
+  onClick(callback: () => void): void
+  offClick?(callback: () => void): void
+}
+
 export interface TelegramWebApp {
   ready(): void
   expand?(): void
+  /** 关闭 Mini App 客户端 */
+  close?(): void
+  /**
+   * 向用户请求通讯录/手机号相关授权（由客户端调起，返回加密数据，需由机器人后端按 Telegram 规则解密）
+   * @see https://core.telegram.org/bots/webapps#initializing-mini-apps
+   */
+  requestContact?(callback: (success: boolean, contact: unknown) => void): void
   /** 在 Telegram 内打开 http(s) 链接；非 TG 环境可回退为 window.open */
   openLink?(url: string, options?: { try_instant_view?: boolean }): void
   openTelegramLink?(url: string): void
@@ -43,8 +58,10 @@ export interface TelegramWebApp {
   initDataUnsafe?: TelegramInitDataUnsafe
   colorScheme?: 'light' | 'dark'
   themeParams?: TelegramThemeParams
-  onEvent?(eventType: 'themeChanged', callback: () => void): void
-  offEvent?(eventType: 'themeChanged', callback: () => void): void
+  /** 原生左上角返回，与站内 Router 的返回按钮是两套 UI */
+  BackButton?: TelegramBackButton
+  onEvent?(eventType: 'themeChanged' | 'close', callback: () => void): void
+  offEvent?(eventType: 'themeChanged' | 'close', callback: () => void): void
 }
 
 export interface Telegram {

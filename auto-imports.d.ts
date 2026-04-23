@@ -7,7 +7,9 @@
 export {}
 declare global {
   const EffectScope: typeof import('vue').EffectScope
+  const TG_PHONE_CONTACT_STORAGE_KEY: typeof import('./src/utils/userTelegram').TG_PHONE_CONTACT_STORAGE_KEY
   const applyTelegramThemeParams: typeof import('./src/utils/userTelegram').applyTelegramThemeParams
+  const clearPhoneAuthModalDismissedThisSession: typeof import('./src/utils/userTelegram').clearPhoneAuthModalDismissedThisSession
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
   const customRef: typeof import('vue').customRef
@@ -18,7 +20,10 @@ declare global {
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
   const getOrdersApiLang: typeof import('./src/utils/http').getOrdersApiLang
+  const getPhoneAuthModalDismissedThisSession: typeof import('./src/utils/userTelegram').getPhoneAuthModalDismissedThisSession
+  const getStoredTelegramContact: typeof import('./src/utils/userTelegram').getStoredTelegramContact
   const getTelegram: typeof import('./src/utils/userTelegram').getTelegram
+  const getTelegramUserLanguageCode: typeof import('./src/utils/userTelegram').getTelegramUserLanguageCode
   const getTelegramViewportHeight: typeof import('./src/utils/userTelegram').getTelegramViewportHeight
   const getTelegramWebApp: typeof import('./src/utils/userTelegram').getTelegramWebApp
   const h: typeof import('vue').h
@@ -54,6 +59,8 @@ declare global {
   const ref: typeof import('vue').ref
   const resolveComponent: typeof import('vue').resolveComponent
   const resolveTelegramColorScheme: typeof import('./src/utils/userTelegram').resolveTelegramColorScheme
+  const setPhoneAuthModalDismissedThisSession: typeof import('./src/utils/userTelegram').setPhoneAuthModalDismissedThisSession
+  const setStoredTelegramContact: typeof import('./src/utils/userTelegram').setStoredTelegramContact
   const setupRem: typeof import('./src/utils/rem').setupRem
   const shallowReactive: typeof import('vue').shallowReactive
   const shallowReadonly: typeof import('vue').shallowReadonly
@@ -94,7 +101,9 @@ declare module 'vue' {
   interface GlobalComponents {}
   interface ComponentCustomProperties {
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
+    readonly TG_PHONE_CONTACT_STORAGE_KEY: UnwrapRef<typeof import('./src/utils/userTelegram')['TG_PHONE_CONTACT_STORAGE_KEY']>
     readonly applyTelegramThemeParams: UnwrapRef<typeof import('./src/utils/userTelegram')['applyTelegramThemeParams']>
+    readonly clearPhoneAuthModalDismissedThisSession: UnwrapRef<typeof import('./src/utils/userTelegram')['clearPhoneAuthModalDismissedThisSession']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly createApp: UnwrapRef<typeof import('vue')['createApp']>
     readonly customRef: UnwrapRef<typeof import('vue')['customRef']>
@@ -104,7 +113,9 @@ declare module 'vue' {
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
     readonly getCurrentWatcher: UnwrapRef<typeof import('vue')['getCurrentWatcher']>
-    readonly getOrdersApiLang: UnwrapRef<typeof import('./src/utils/http')['getOrdersApiLang']>
+    readonly getPhoneAuthModalDismissedThisSession: UnwrapRef<typeof import('./src/utils/userTelegram')['getPhoneAuthModalDismissedThisSession']>
+    readonly getStoredTelegramContact: UnwrapRef<typeof import('./src/utils/userTelegram')['getStoredTelegramContact']>
+    readonly getTelegramUserLanguageCode: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramUserLanguageCode']>
     readonly getTelegramWebApp: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramWebApp']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
     readonly http: UnwrapRef<typeof import('./src/utils/http')['default']>
@@ -139,6 +150,8 @@ declare module 'vue' {
     readonly ref: UnwrapRef<typeof import('vue')['ref']>
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>
     readonly resolveTelegramColorScheme: UnwrapRef<typeof import('./src/utils/userTelegram')['resolveTelegramColorScheme']>
+    readonly setPhoneAuthModalDismissedThisSession: UnwrapRef<typeof import('./src/utils/userTelegram')['setPhoneAuthModalDismissedThisSession']>
+    readonly setStoredTelegramContact: UnwrapRef<typeof import('./src/utils/userTelegram')['setStoredTelegramContact']>
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
     readonly shallowReadonly: UnwrapRef<typeof import('vue')['shallowReadonly']>
     readonly shallowRef: UnwrapRef<typeof import('vue')['shallowRef']>

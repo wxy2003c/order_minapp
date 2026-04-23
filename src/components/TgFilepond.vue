@@ -18,6 +18,8 @@ import FilePondPluginImageTransform from 'filepond-plugin-image-transform'
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview'
 import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.css'
 import type { PinturaEditorDefaultOptions } from '@pqina/pintura'
+import { uploadImage, type UploadedImageRef } from '@/api/upload'
+import { t } from '@/i18n/uiI18n'
 
 /**
  * Vite + CJS/ESM：`import * as VueFilePondModule from 'vue-filepond'` 后取真正的工厂函数。
@@ -51,6 +53,8 @@ const FilePond = resolveVueFilePondFactory()(
 ) as import('vue').Component
 
 const model = defineModel<File | null>({ default: null })
+/** 服务端返回的可访问 URL；需 `upload-form-fields` 时才会写入 */
+const uploadedUrl = defineModel<string>('uploadedUrl', { default: '' })
 
 const props = withDefaults(
   defineProps<{
@@ -91,9 +95,16 @@ const props = withDefaults(
     usePinturaEditor?: boolean
     /** 传入 `openDefaultEditor` 的额外选项（会与 `getEditorDefaults()` 合并） */
     pinturaEditorOptions?: Partial<PinturaEditorDefaultOptions> & Record<string, unknown>
+    /**
+     * 若传入（含空对象 `{}`），在选图 / 变换或 Pintura 编辑得到最终 `File` 后自动 `POST /upload/image`。
+     * 键值由业务自定（如 `scene`），不固定；不传则不请求后端。
+     */
+    uploadFormFields?: Record<string, string>
+    /** 上传时文件字段名，默认 `file` */
+    uploadFileFieldName?: string
   }>(),
   {
-    ariaLabel: '上传文件',
+    ariaLabel: undefined,
     accept: 'image/*',
     size: 'md',
     customClass: '',
@@ -113,8 +124,15 @@ const props = withDefaults(
     imageFilterColorMatrix: null,
     usePinturaEditor: true,
     pinturaEditorOptions: undefined,
+    uploadFormFields: undefined,
+    uploadFileFieldName: 'file',
   },
 )
+
+const emit = defineEmits<{
+  uploaded: [ref: UploadedImageRef]
+  uploadError: [err: unknown]
+}>()
 
 defineSlots<{
   placeholder?: () => unknown
@@ -139,6 +157,13 @@ const lightboxEl = useTemplateRef<HTMLElement>('lightbox')
 
 const lightboxOpen = ref(false)
 const pinturaBusy = ref(false)
+
+/** 已配置 `upload-form-fields`：先上传，成功后再用服务端 URL 做预览，不先闪本地 blob */
+const serverUploadEnabled = computed(
+  () => props.uploadFormFields !== undefined,
+)
+const uploading = ref(false)
+const uploadFailed = ref(false)
 
 watch(lightboxOpen, async (open) => {
   if (!open) return
@@ -173,6 +198,15 @@ const isImageFile = computed(
   () => !!model.value && model.value.type.startsWith('image/'),
 )
 
+/** 缩略 / lightbox：服务端模式用 `uploadedUrl`，否则用本地 blob URL */
+const displayImageSrc = computed(() => {
+  if (serverUploadEnabled.value)
+    return (uploadedUrl.value || '').trim()
+  if (isImageFile.value && previewUrl.value)
+    return previewUrl.value
+  return ''
+})
+
 const isVideoFile = computed(
   () => !!model.value && model.value.type.startsWith('video/'),
 )
@@ -205,10 +239,73 @@ watch(
   model,
   (file) => {
     revokePreview()
+    if (serverUploadEnabled.value)
+      return
     if (file && file.type.startsWith('image/'))
       previewUrl.value = URL.createObjectURL(file)
   },
   { immediate: true },
+)
+
+let serverUploadDebounce: ReturnType<typeof setTimeout> | null = null
+let serverUploadRequestId = 0
+
+/** 有 `uploadFormFields` 时：选图 / 变换 / 编辑得到最终 File 后请求后端，编辑会再次走 watch 重传 */
+watch(
+  model,
+  (file) => {
+    if (props.uploadFormFields === undefined)
+      return
+    if (serverUploadDebounce) {
+      clearTimeout(serverUploadDebounce)
+      serverUploadDebounce = null
+    }
+    serverUploadRequestId += 1
+    const id = serverUploadRequestId
+    if (!file) {
+      uploadedUrl.value = ''
+      uploading.value = false
+      uploadFailed.value = false
+      return
+    }
+    uploadFailed.value = false
+    uploadedUrl.value = ''
+    uploading.value = true
+    serverUploadDebounce = setTimeout(() => {
+      serverUploadDebounce = null
+      const current = model.value
+      if (!current || id !== serverUploadRequestId) {
+        uploading.value = false
+        return
+      }
+      void (async () => {
+        try {
+          const ref = await uploadImage(current, {
+            formFields: props.uploadFormFields ?? {},
+            fileFieldName: props.uploadFileFieldName,
+          })
+          if (id !== serverUploadRequestId)
+            return
+          if (!String(ref.url ?? '').trim()) {
+            throw new Error('UPLOAD_NO_URL')
+          }
+          uploadedUrl.value = ref.url
+          uploadFailed.value = false
+          emit('uploaded', ref)
+        } catch (e) {
+          if (id !== serverUploadRequestId)
+            return
+          uploadedUrl.value = ''
+          uploadFailed.value = true
+          emit('uploadError', e)
+        }
+        finally {
+          if (id === serverUploadRequestId)
+            uploading.value = false
+        }
+      })()
+    }, 200)
+  },
 )
 
 function fileMatchesAcceptedTypes(file: File, patterns: string[]): boolean {
@@ -311,6 +408,8 @@ function onPrepareFile(first: unknown, second?: unknown) {
 }
 
 function openBrowse() {
+  if (uploading.value)
+    return
   const pond = pondRef.value
   if (pond && typeof pond.browse === 'function') {
     pond.browse()
@@ -323,12 +422,16 @@ function openBrowse() {
 
 function clearFile() {
   lightboxOpen.value = false
+  uploading.value = false
+  uploadFailed.value = false
   model.value = null
   pondRef.value?.removeFiles?.()
 }
 
 function onShellClick() {
-  if (props.lightbox && isImageFile.value && previewUrl.value) {
+  if (uploading.value)
+    return
+  if (props.lightbox && isImageFile.value && displayImageSrc.value) {
     lightboxOpen.value = true
     return
   }
@@ -340,6 +443,8 @@ function closeLightbox() {
 }
 
 async function onPinturaEdit() {
+  if (uploading.value)
+    return
   const f = model.value
   if (!f || !f.type.startsWith('image/') || pinturaBusy.value) return
 
@@ -361,6 +466,10 @@ async function onPinturaEdit() {
 }
 
 onBeforeUnmount(() => {
+  if (serverUploadDebounce) {
+    clearTimeout(serverUploadDebounce)
+    serverUploadDebounce = null
+  }
   revokePreview()
 })
 </script>
@@ -371,23 +480,41 @@ onBeforeUnmount(() => {
     <div class="relative inline-flex h-full w-full">
       <button
         type="button"
-        :aria-label="ariaLabel"
+        :aria-label="ariaLabel ?? t('filepond.defaultAria')"
         :class="wrapperClass"
         @click="onShellClick"
       >
         <img
-          v-if="isImageFile && previewUrl"
-          :src="previewUrl"
+          v-if="isImageFile && displayImageSrc"
+          :src="displayImageSrc"
           alt=""
           class="h-full w-full cursor-zoom-in object-cover"
         >
+
+        <div
+          v-else-if="serverUploadEnabled && isImageFile && model && !uploadFailed && !displayImageSrc"
+          class="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#e0e2e7] px-2 text-[#4b5563]"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Icon icon="svg-spinners:ring-resize" class="h-8 w-8 shrink-0 text-[#6b7280]" />
+          <span class="text-xs">{{ t('filepond.uploading') }}</span>
+        </div>
+
+        <div
+          v-else-if="serverUploadEnabled && isImageFile && model && uploadFailed"
+          class="flex h-full w-full flex-col items-center justify-center gap-1 bg-[#fee2e2] px-2 text-center text-[#b91c1c]"
+        >
+          <Icon icon="mdi:cloud-alert-outline" class="h-7 w-7 shrink-0" width="28" height="28" />
+          <span class="px-1 text-3 leading-tight">{{ t('filepond.uploadFailed') }}</span>
+        </div>
 
         <div
           v-else-if="model && isVideoFile"
           class="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#e8eaef] px-2 text-[#4b5563]"
         >
           <Icon icon="mdi:file-video-outline" width="32" height="32" />
-          <span class="line-clamp-2 text-center text-xs">已选择视频</span>
+          <span class="line-clamp-2 text-center text-xs">{{ t('filepond.videoPicked') }}</span>
         </div>
 
         <div
@@ -395,7 +522,7 @@ onBeforeUnmount(() => {
           class="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#e8eaef] px-2 text-[#4b5563]"
         >
           <Icon icon="mdi:file-outline" width="32" height="32" />
-          <span class="line-clamp-2 text-center text-xs">已选择文件</span>
+          <span class="line-clamp-2 text-center text-xs">{{ t('filepond.filePicked') }}</span>
         </div>
 
         <template v-else>
@@ -415,32 +542,32 @@ onBeforeUnmount(() => {
       </button>
 
       <button
-        v-if="model && imageToolkitActive && usePinturaEditor && isImageFile"
+        v-if="model && imageToolkitActive && usePinturaEditor && isImageFile && !uploading"
         type="button"
         class="absolute bottom-2 left-2 rounded-lg bg-black/55 px-2 py-1 text-xs font-semibold text-white backdrop-blur-[2px] transition hover:bg-black/70 disabled:opacity-40"
         :disabled="pinturaBusy"
         @click.stop="onPinturaEdit"
       >
-        编辑
+        {{ t('filepond.edit') }}
       </button>
 
       <button
-        v-if="model"
+        v-if="model && !uploading"
         type="button"
         class="absolute bottom-2 right-2 rounded-lg bg-black/55 px-2 py-1 text-xs font-semibold text-white backdrop-blur-[2px] transition hover:bg-black/70"
         @click.stop="openBrowse"
       >
-        更换
+        {{ t('filepond.replace') }}
       </button>
     </div>
 
     <Teleport to="body">
       <div
-        v-if="lightboxOpen && previewUrl && isImageFile"
+        v-if="lightboxOpen && displayImageSrc && isImageFile"
         ref="lightbox"
         role="dialog"
         aria-modal="true"
-        aria-label="图片预览"
+        :aria-label="t('filepond.previewAria')"
         tabindex="-1"
         class="fixed inset-0 z-[300] flex items-center justify-center bg-black/88 p-4 outline-none"
         @click.self="closeLightbox"
@@ -449,13 +576,13 @@ onBeforeUnmount(() => {
         <button
           type="button"
           class="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/25"
-          aria-label="关闭预览"
+          :aria-label="t('filepond.closePreviewAria')"
           @click="closeLightbox"
         >
           <Icon icon="mdi:close" width="22" height="22" />
         </button>
         <img
-          :src="previewUrl"
+          :src="displayImageSrc"
           alt=""
           class="max-h-[100dvh] max-w-full object-contain shadow-2xl"
           @click.stop

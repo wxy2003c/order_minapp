@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { t } from '@/i18n/uiI18n'
 import { Icon } from '@iconify/vue'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
@@ -49,7 +50,8 @@ const wsModOptions = ref<SelectOption[]>([])
 const wsGenerationsCache = ref<WheelSizeGenerationRow[]>([])
 /** 与 CarSelectionPanel 一致：仅当前请求层级显示 loading，避免锁死其它下拉 */
 const wsLoadingStage = ref<number | null>(null)
-const wsCascadeError = ref('')
+/** i18n key under `ws.*` */
+const wsErrorKey = ref<string | null>(null)
 
 function wheelOptToSelect(o: WheelSizeOption): SelectOption {
   return { value: o.id, label: o.label }
@@ -70,24 +72,35 @@ const preorderModelOptions = computed<SelectOption[]>(() =>
   wheelSizeEnabled ? wsModelOptions.value : staticModelOptions,
 )
 
-const yesNoOptions: SelectOption[] = [
-  { value: 'yes', label: '是' },
-  { value: 'no', label: '否' },
-]
+const yesNoOptions = computed<SelectOption[]>(() => [
+  { value: 'yes', label: t('common.yes') },
+  { value: 'no', label: t('common.no') },
+])
 
-const sizeOptions: SelectOption[] = [
-  { value: '16', label: '16英寸' },
-  { value: '18', label: '18英寸' },
-  { value: '19', label: '19英寸' },
-  { value: '20', label: '20英寸' },
-]
+const sizeOptions = computed<SelectOption[]>(() => [
+  { value: '16', label: t('wheel.inch16') },
+  { value: '18', label: t('wheel.inch18') },
+  { value: '19', label: t('wheel.inch19') },
+  { value: '20', label: t('wheel.inch20') },
+])
 
-const designModeOptions = [
-  { id: 'creative', title: '型号库设计', icon: 'mdi:shape-outline' },
-  { id: 'custom', title: '创意设计', icon: 'mdi:palette-outline' },
-]
+const designModeOptions = computed(() => [
+  { id: 'creative' as const, title: t('customOrder.designModeCreative'), icon: 'mdi:shape-outline' },
+  { id: 'custom' as const, title: t('customOrder.designModeCustom'), icon: 'mdi:palette-outline' },
+])
 
-const structureOptions = ['单片', '双片', '三片', '越野']
+const structureValues = ['单片', '双片', '三片', '越野'] as const
+
+function structureLabel(v: string): string {
+  const map: Record<string, string> = {
+    单片: 'customOrder.structureSingle',
+    双片: 'customOrder.structureDual',
+    三片: 'customOrder.structureTriple',
+    越野: 'customOrder.structureOffroad',
+  }
+  const k = map[v]
+  return k ? t(k) : v
+}
 
 const wheelColors = [
   { name: 'Black', hex: '#20212A' },
@@ -96,12 +109,12 @@ const wheelColors = [
   { name: 'Grey & Gunmet', hex: '#585A64' },
 ]
 
-const tabItems = [
-  { label: '车辆', value: 'vehicle' as const },
-  { label: '创作', value: 'creative' as const },
-  { label: '地址', value: 'address' as const },
-  { label: '金额', value: 'amount' as const },
-]
+const tabItems = computed(() => [
+  { label: t('customOrder.tabs.vehicle'), value: 'vehicle' as const },
+  { label: t('customOrder.tabs.creative'), value: 'creative' as const },
+  { label: t('customOrder.tabs.address'), value: 'address' as const },
+  { label: t('customOrder.tabs.amount'), value: 'amount' as const },
+])
 
 const vehicleForm = reactive({
   customerName: 'Mexicidad Dukoi',
@@ -112,28 +125,28 @@ const vehicleForm = reactive({
   wheelGeneration: '',
   wheelYear: '',
   wheelModification: '',
-  forged: 'yes',
+  forged: '',
   mirrorPair: true,
-  frontSize: '16',
-  frontQuantity: '2',
-  frontWidth: '10',
-  frontEt: '30',
-  frontPcdLeft: '5',
-  frontPcdRight: '112',
-  frontCb: '66.5',
+  frontSize: '',
+  frontQuantity: '',
+  frontWidth: '',
+  frontEt: '',
+  frontPcdLeft: '',
+  frontPcdRight: '',
+  frontCb: '',
   frontPaint: '',
-  frontHole: '旋口',
-  frontBoltSeat: '球座',
-  rearSize: '16',
-  rearQuantity: '2',
-  rearWidth: '10',
-  rearEt: '30',
-  rearPcdLeft: '5',
-  rearPcdRight: '112',
-  rearCb: '66.5',
+  frontHole: '',
+  frontBoltSeat: '',
+  rearSize: '',
+  rearQuantity: '',
+  rearWidth: '',
+  rearEt: '',
+  rearPcdLeft: '',
+  rearPcdRight: '',
+  rearCb: '',
   rearPaint: '',
-  rearHole: '旋口',
-  rearBoltSeat: '球座',
+  rearHole: '',
+  rearBoltSeat: '',
   vin: '',
   plate: '',
   axleWeight: '',
@@ -148,6 +161,9 @@ const creativeForm = reactive({
   wheelShapeFile: null as File | null,
   wheelLipFile: null as File | null,
   centerCapFile: null as File | null,
+  wheelShapeUrl: '',
+  wheelLipUrl: '',
+  centerCapUrl: '',
   wheelShapeNote: '',
   wheelColorNote: '',
   centerCapNote: '',
@@ -170,11 +186,11 @@ const amountForm = reactive({
   currency: 'CNY',
 })
 
-const currencyOptions: SelectOption[] = [
-  { value: 'CNY', label: 'CNY 人民币' },
-  { value: 'USD', label: 'USD 美元' },
-  { value: 'EUR', label: 'EUR 欧元' },
-]
+const currencyOptions = computed<SelectOption[]>(() => [
+  { value: 'CNY', label: t('customOrder.cny') },
+  { value: 'USD', label: t('customOrder.usd') },
+  { value: 'EUR', label: t('customOrder.eur') },
+])
 
 const orderSubmitting = ref(false)
 const orderSubmitError = ref('')
@@ -186,26 +202,26 @@ const countryOptions: SelectOption[] = [
   { value: 'uae', label: 'UAE' },
 ]
 
-const holeOptions: SelectOption[] = [
-  { value: '旋口', label: '旋口' },
-  { value: '直孔', label: '直孔' },
-]
+const holeOptions = computed<SelectOption[]>(() => [
+  { value: '旋口', label: t('wheel.holeHelicoil') },
+  { value: '直孔', label: t('wheel.holeStraight') },
+])
 
-const boltSeatOptions: SelectOption[] = [
-  { value: '球座', label: '球座' },
-  { value: '锥座', label: '锥座' },
-]
+const boltSeatOptions = computed<SelectOption[]>(() => [
+  { value: '球座', label: t('wheel.seatBall') },
+  { value: '锥座', label: t('wheel.seatConical') },
+])
 
 async function loadWheelMakes() {
   wsLoadingStage.value = 0
-  wsCascadeError.value = ''
+  wsErrorKey.value = null
   try {
     const items = await fetchWheelSizeMakes()
     wsBrandOptions.value = items.map(wheelOptToSelect)
-    if (!items.length) wsCascadeError.value = '暂无品牌数据'
+    if (!items.length) wsErrorKey.value = 'ws.emptyBrands'
   } catch {
     wsBrandOptions.value = []
-    wsCascadeError.value = '品牌加载失败'
+    wsErrorKey.value = 'ws.brandsFailed'
   } finally {
     wsLoadingStage.value = null
   }
@@ -215,14 +231,14 @@ async function loadWheelModels(make: string) {
   wsModelOptions.value = []
   if (!make) return
   wsLoadingStage.value = 1
-  wsCascadeError.value = ''
+  wsErrorKey.value = null
   try {
     const items = await fetchWheelSizeModels(make)
     wsModelOptions.value = items.map(wheelOptToSelect)
-    if (!items.length) wsCascadeError.value = '暂无车型数据'
+    if (!items.length) wsErrorKey.value = 'ws.emptyModels'
   } catch {
     wsModelOptions.value = []
-    wsCascadeError.value = '车型加载失败'
+    wsErrorKey.value = 'ws.modelsFailed'
   } finally {
     wsLoadingStage.value = null
   }
@@ -233,16 +249,16 @@ async function loadWheelGenerations(make: string, model: string) {
   wsGenerationsCache.value = []
   if (!make || !model) return
   wsLoadingStage.value = 2
-  wsCascadeError.value = ''
+  wsErrorKey.value = null
   try {
     const rows = await fetchWheelSizeGenerations(make, model)
     wsGenerationsCache.value = rows
     wsGenOptions.value = generationRowsToSelectOptions(rows)
-    if (!rows.length) wsCascadeError.value = '暂无世代数据'
+    if (!rows.length) wsErrorKey.value = 'ws.emptyGenerations'
   } catch {
     wsGenerationsCache.value = []
     wsGenOptions.value = []
-    wsCascadeError.value = '世代加载失败'
+    wsErrorKey.value = 'ws.generationsFailed'
   } finally {
     wsLoadingStage.value = null
   }
@@ -252,15 +268,15 @@ async function loadWheelYears(make: string, model: string, genSlug: string) {
   wsYearOptions.value = []
   if (!make || !model || !genSlug) return
   wsLoadingStage.value = 3
-  wsCascadeError.value = ''
+  wsErrorKey.value = null
   try {
     const gen = wsGenerationsCache.value.find(x => x.slug === genSlug)
     const items = await resolveWheelSizeYearOptions(make, model, gen)
     wsYearOptions.value = items.map(wheelOptToSelect)
-    if (!items.length) wsCascadeError.value = '暂无年份数据'
+    if (!items.length) wsErrorKey.value = 'ws.emptyYears'
   } catch {
     wsYearOptions.value = []
-    wsCascadeError.value = '年份加载失败'
+    wsErrorKey.value = 'ws.yearsFailed'
   } finally {
     wsLoadingStage.value = null
   }
@@ -270,14 +286,14 @@ async function loadWheelMods(make: string, model: string, year: string, genSlug:
   wsModOptions.value = []
   if (!make || !model || !year) return
   wsLoadingStage.value = 4
-  wsCascadeError.value = ''
+  wsErrorKey.value = null
   try {
     const items = await fetchWheelSizeModifications(make, model, year, genSlug || undefined)
     wsModOptions.value = items.map(wheelOptToSelect)
-    if (!items.length) wsCascadeError.value = '暂无配置数据'
+    if (!items.length) wsErrorKey.value = 'ws.emptyMods'
   } catch {
     wsModOptions.value = []
-    wsCascadeError.value = '配置加载失败'
+    wsErrorKey.value = 'ws.modsFailed'
   } finally {
     wsLoadingStage.value = null
   }
@@ -361,22 +377,22 @@ function goToAmount() {
   activeTab.value = 'amount'
 }
 
-function buildWheelFields(prefix: 'front' | 'rear') {
+function buildWheelFieldsList(prefix: 'front' | 'rear') {
   return [
-    { key: `${prefix}Size`, label: '尺寸 (吋)', type: 'select', options: sizeOptions, placeholder: '16英寸' },
-    { key: `${prefix}Quantity`, label: '数量', type: 'input', placeholder: '2' },
-    { key: `${prefix}Width`, label: '宽度 (J)', type: 'input', placeholder: '10' },
-    { key: `${prefix}Et`, label: 'ET(MM)', type: 'input', placeholder: '30' },
-    { key: `${prefix}Pcd`, label: 'PCD', type: 'pcd' },
-    { key: `${prefix}Cb`, label: 'CB(MM)', type: 'input', placeholder: '66.5' },
-    { key: `${prefix}BoltSeat`, label: '螺丝垫圈', type: 'select', options: boltSeatOptions, placeholder: '球座' },
-    { key: `${prefix}Hole`, label: '孔型', type: 'select', options: holeOptions, placeholder: '旋口' },
-    { key: `${prefix}Paint`, label: '表面处理', type: 'input', placeholder: '请告知表面工艺' },
+    { key: `${prefix}Size`, label: t('customOrder.sizeIn'), type: 'select' as const, options: sizeOptions.value, placeholder: t('common.pleaseSelect') },
+    { key: `${prefix}Quantity`, label: t('customOrder.qty'), type: 'input' as const, placeholder: t('common.pleaseEnter') },
+    { key: `${prefix}Width`, label: t('customOrder.widthJ'), type: 'input' as const, placeholder: t('common.pleaseEnter') },
+    { key: `${prefix}Et`, label: t('customOrder.etMm'), type: 'input' as const, placeholder: t('common.pleaseEnter') },
+    { key: `${prefix}Pcd`, label: t('customOrder.pcd'), type: 'pcd' as const },
+    { key: `${prefix}Cb`, label: t('customOrder.cbMm'), type: 'input' as const, placeholder: t('common.pleaseEnter') },
+    { key: `${prefix}BoltSeat`, label: t('customOrder.bolt'), type: 'select' as const, options: boltSeatOptions.value, placeholder: t('common.pleaseSelect') },
+    { key: `${prefix}Hole`, label: t('customOrder.hole'), type: 'select' as const, options: holeOptions.value, placeholder: t('common.pleaseSelect') },
+    { key: `${prefix}Paint`, label: t('customOrder.finish'), type: 'input' as const, placeholder: t('customOrder.finishPh') },
   ] as const
 }
 
-const frontWheelFields = buildWheelFields('front')
-const rearWheelFields = buildWheelFields('rear')
+const frontWheelFields = computed(() => buildWheelFieldsList('front'))
+const rearWheelFields = computed(() => buildWheelFieldsList('rear'))
 
 const OutlineValue = ref<any>({})
 const types = ref(0)
@@ -411,15 +427,22 @@ async function submitPreorder() {
   orderSubmitError.value = ''
   orderSubmitOk.value = false
   if (!String(amountForm.basePrice).trim()) {
-    orderSubmitError.value = '请填写总金额'
+    orderSubmitError.value = t('customOrder.errTotal')
     return
   }
   if (!String(amountForm.currency).trim()) {
-    orderSubmitError.value = '请选择币种'
+    orderSubmitError.value = t('customOrder.errCurrency')
     return
   }
   orderSubmitting.value = true
   try {
+    if (creativeForm.wheelShapeFile && !String(creativeForm.wheelShapeUrl).trim())
+      throw new Error(t('customOrder.errWheelUpload'))
+    if (creativeForm.wheelLipFile && !String(creativeForm.wheelLipUrl).trim())
+      throw new Error(t('customOrder.errLipUpload'))
+    if (creativeForm.centerCapFile && !String(creativeForm.centerCapUrl).trim())
+      throw new Error(t('customOrder.errCapUpload'))
+
     const body = buildPreorderBodyFromCustomOrder({
       vehicle: { ...vehicleForm },
       creative: { ...creativeForm },
@@ -434,7 +457,7 @@ async function submitPreorder() {
     })
     const res = await createPreorder(body)
     if (!res?.order)
-      throw new Error('创建订单失败：后端返回数据异常')
+      throw new Error(t('customOrder.errCreate'))
     orderSubmitOk.value = true
   } catch (e) {
     orderSubmitOk.value = false
@@ -466,12 +489,12 @@ async function submitPreorder() {
         <div class="space-y-4 px-4 py-4">
           <div class="space-y-3">
             <div>
-              <div class="mb-2 text-3.5 font-600">客户昵称</div>
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.customerName') }}</div>
               <input v-model="vehicleForm.customerName" type="text"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
             </div>
             <div>
-              <div class="mb-2 text-3.5 font-600">客户ID</div>
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.customerId') }}</div>
               <input v-model="vehicleForm.customerId" type="text"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
             </div>
@@ -482,84 +505,84 @@ async function submitPreorder() {
           </div>
 
           <div>
-            <div class="text-4 font-700">选择车辆</div>
-            <div class="mt-1 text-3 text-[#9CA3AF]">数据来源第三方，我们会根据您的设计需求进行调整</div>
+            <div class="text-4 font-700">{{ t('customOrder.selectVehicle') }}</div>
+            <div class="mt-1 text-3 text-[#9CA3AF]">{{ t('customOrder.vehicleHint') }}</div>
           </div>
 
           <div class="space-y-3">
             <template v-if="wheelSizeEnabled">
-              <div v-if="wsCascadeError"
+              <div v-if="wsErrorKey"
                 class="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-3.25 text-[#B91C1C]">
-                {{ wsCascadeError }}
+                {{ t(wsErrorKey) }}
               </div>
               <div>
-                <div class="mb-2 text-3.5 font-600">品牌 <span class="text-[#EF4444]">*</span></div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.brand') }} <span class="text-[#EF4444]">*</span></div>
                 <TgSelect :key="`ws-make-${wsBrandOptions.length}`" :model-value="vehicleForm.brand"
                   :options="wsBrandOptions" :searchable="true" :disabled="wsLoadingStage === 0"
-                  :placeholder="wsLoadingStage === 0 ? '加载中…' : '请选择品牌'" @update:model-value="onWheelBrandChange" />
+                  :placeholder="wsLoadingStage === 0 ? t('common.loading') : t('customOrder.phSelectBrand')" @update:model-value="onWheelBrandChange" />
               </div>
               <div>
-                <div class="mb-2 text-3.5 font-600">车型 <span class="text-[#EF4444]">*</span></div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.model') }} <span class="text-[#EF4444]">*</span></div>
                 <TgSelect :key="`ws-model-${wsModelOptions.length}`" :model-value="vehicleForm.model"
                   :options="wsModelOptions" :searchable="true" :disabled="!vehicleForm.brand || wsLoadingStage === 1"
-                  :placeholder="!vehicleForm.brand ? '请先选择品牌' : wsLoadingStage === 1 ? '加载中…' : '请选择车型'"
+                  :placeholder="!vehicleForm.brand ? t('common.selectBrandFirst') : wsLoadingStage === 1 ? t('common.loading') : t('customOrder.phSelectModel')"
                   @update:model-value="onWheelModelChange" />
               </div>
               <div>
-                <div class="mb-2 text-3.5 font-600">世代 <span class="text-[#EF4444]">*</span></div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.generation') }} <span class="text-[#EF4444]">*</span></div>
                 <TgSelect :key="`ws-gen-${wsGenOptions.length}`" :model-value="vehicleForm.wheelGeneration"
                   :options="wsGenOptions" :searchable="true" :disabled="!vehicleForm.model || wsLoadingStage === 2"
-                  :placeholder="!vehicleForm.model ? '请先选择车型' : wsLoadingStage === 2 ? '加载中…' : '请选择世代'"
+                  :placeholder="!vehicleForm.model ? t('common.selectModelFirst') : wsLoadingStage === 2 ? t('common.loading') : t('customOrder.phSelectGen')"
                   @update:model-value="onWheelGenerationChange" />
               </div>
               <div>
-                <div class="mb-2 text-3.5 font-600">年份 <span class="text-[#EF4444]">*</span></div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.year') }} <span class="text-[#EF4444]">*</span></div>
                 <TgSelect :key="`ws-year-${wsYearOptions.length}`" :model-value="vehicleForm.wheelYear"
                   :options="wsYearOptions" :searchable="false"
                   :disabled="!vehicleForm.wheelGeneration || wsLoadingStage === 3"
-                  :placeholder="!vehicleForm.wheelGeneration ? '请先选择世代' : wsLoadingStage === 3 ? '加载中…' : '请选择年份'"
+                  :placeholder="!vehicleForm.wheelGeneration ? t('common.selectGenFirst') : wsLoadingStage === 3 ? t('common.loading') : t('customOrder.phSelectYear')"
                   @update:model-value="onWheelYearChange" />
               </div>
               <div>
-                <div class="mb-2 text-3.5 font-600">配置 <span class="text-[#EF4444]">*</span></div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.modification') }} <span class="text-[#EF4444]">*</span></div>
                 <TgSelect :key="`ws-mod-${wsModOptions.length}`" :model-value="vehicleForm.wheelModification"
                   :options="wsModOptions" :searchable="true" :disabled="!vehicleForm.wheelYear || wsLoadingStage === 4"
-                  :placeholder="!vehicleForm.wheelYear ? '请先选择年份' : wsLoadingStage === 4 ? '加载中…' : '请选择配置'"
+                  :placeholder="!vehicleForm.wheelYear ? t('common.selectYearFirst') : wsLoadingStage === 4 ? t('common.loading') : t('customOrder.phSelectMod')"
                   @update:model-value="onWheelModificationChange" />
               </div>
             </template>
             <template v-else>
               <div>
-                <div class="mb-2 text-3.5 font-600">品牌</div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.brand') }}</div>
                 <TgSelect v-model="vehicleForm.brand" :options="staticBrandOptions" :searchable="false"
                   placeholder="Audi" />
               </div>
               <div>
-                <div class="mb-2 text-3.5 font-600">型号</div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.model') }}</div>
                 <TgSelect v-model="vehicleForm.model" :options="staticModelOptions" :searchable="false"
-                  placeholder="请选择型号" />
+                  :placeholder="t('customOrder.phSelectModelStatic')" />
               </div>
             </template>
             <div>
-              <div class="mb-2 text-3.5 font-600">是否为原厂/锻车?</div>
-              <TgSelect v-model="vehicleForm.forged" :options="yesNoOptions" :searchable="false" placeholder="是" />
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.forged') }}</div>
+              <TgSelect v-model="vehicleForm.forged" :options="yesNoOptions" :searchable="false" :placeholder="t('customOrder.forgedPh')" />
             </div>
           </div>
 
           <div v-if="vehicleExpanded" class="space-y-3">
             <div>
-              <div class="mb-2 text-3.5 font-600">VIN(选填)</div>
-              <input v-model="vehicleForm.vin" type="text" placeholder="请输入VIN"
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.vin') }}</div>
+              <input v-model="vehicleForm.vin" type="text" :placeholder="t('common.pleaseEnter')"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
             </div>
             <div>
-              <div class="mb-2 text-3.5 font-600">底盘号(选填)</div>
-              <input v-model="vehicleForm.plate" type="text" placeholder="请输入配型号"
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.chassis') }}</div>
+              <input v-model="vehicleForm.plate" type="text" :placeholder="t('customOrder.platePlaceholder')"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
             </div>
             <div>
-              <div class="mb-2 text-3.5 font-600">卡钳(选填)</div>
-              <input v-model="vehicleForm.rimThickness" type="text" placeholder="请输入卡钳"
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.caliper') }}</div>
+              <input v-model="vehicleForm.rimThickness" type="text" :placeholder="t('customOrder.caliperPh')"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
             </div>
           </div>
@@ -568,22 +591,22 @@ async function submitPreorder() {
             @click="vehicleExpanded = !vehicleExpanded">
             <Icon :icon="vehicleExpanded ? 'mdi:chevron-up' : 'mdi:chevron-down'" color="#3487FF" width="16"
               height="16" />
-            <span>{{ vehicleExpanded ? '收起' : '展开' }}</span>
+            <span>{{ vehicleExpanded ? t('common.collapse') : t('common.expand') }}</span>
           </button>
 
 
           <div class="flex items-center gap-2">
             <TgSwitch v-model="vehicleForm.mirrorPair" aria-label="toggle same wheel config" />
-            <div class="text-3.5 font-600">前后轮保持一致</div>
+            <div class="text-3.5 font-600">{{ t('customOrder.sameFrontRear') }}</div>
           </div>
 
           <div class="space-y-3">
-            <div class="text-4 font-700">前轮配置</div>
+            <div class="text-4 font-700">{{ t('customOrder.front') }}</div>
             <div v-for="field in frontWheelFields" :key="field.key">
               <div class="mb-2 text-3.5 font-600">{{ field.label }}</div>
 
               <TgSelect v-if="field.type === 'select'"
-                v-model="vehicleForm[field.key as keyof typeof vehicleForm] as string" :options="field.options"
+                v-model="(vehicleForm as unknown as Record<string, string | number>)[field.key]" :options="field.options"
                 :searchable="false" :placeholder="field.placeholder" />
 
               <div v-else-if="field.type === 'pcd'" class="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -594,19 +617,19 @@ async function submitPreorder() {
                   class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none">
               </div>
 
-              <input v-else v-model="vehicleForm[field.key as keyof typeof vehicleForm] as string" type="text"
+              <input v-else v-model="vehicleForm[field.key as keyof typeof vehicleForm]" type="text"
                 :placeholder="field.placeholder"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
             </div>
           </div>
 
           <div v-if="!vehicleForm.mirrorPair" class="space-y-3">
-            <div class="border-t border-dashed border-[#E5E7EB] pt-4 text-4 font-700">后轮配置</div>
+            <div class="border-t border-dashed border-[#E5E7EB] pt-4 text-4 font-700">{{ t('customOrder.rear') }}</div>
             <div v-for="field in rearWheelFields" :key="field.key">
               <div class="mb-2 text-3.5 font-600">{{ field.label }}</div>
 
               <TgSelect v-if="field.type === 'select'"
-                v-model="vehicleForm[field.key as keyof typeof vehicleForm] as string" :options="field.options"
+                v-model="(vehicleForm as unknown as Record<string, string | number>)[field.key]" :options="field.options"
                 :searchable="false" :placeholder="field.placeholder" />
 
               <div v-else-if="field.type === 'pcd'" class="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -617,7 +640,7 @@ async function submitPreorder() {
                   class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none">
               </div>
 
-              <input v-else v-model="vehicleForm[field.key as keyof typeof vehicleForm] as string" type="text"
+              <input v-else v-model="vehicleForm[field.key as keyof typeof vehicleForm] " type="text"
                 :placeholder="field.placeholder"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
             </div>
@@ -638,13 +661,13 @@ async function submitPreorder() {
           </div>
 
           <div>
-            <div class="mb-3 text-4 font-700">结构类型</div>
+            <div class="mb-3 text-4 font-700">{{ t('customOrder.structure') }}</div>
             <div class="grid grid-cols-2 gap-3">
-              <button v-for="item in structureOptions" :key="item" type="button"
+              <button v-for="item in structureValues" :key="item" type="button"
                 class="rounded-2xl border px-4 py-5 text-left text-4 font-700 transition"
                 :class="creativeForm.structure === item ? 'border-[#88AEE4] bg-[#EFF5FF] text-[#1F2937]' : 'border-[#ECECEC] bg-white text-[#4B5563]'"
                 @click="handelOutline(item, 1)">
-                {{ item }}
+                {{ structureLabel(item) }}
               </button>
             </div>
           </div>
@@ -658,27 +681,27 @@ async function submitPreorder() {
                 <div class="min-w-0 flex-1">
                   <div class="text-4 font-700">WL-M-053</div>
                   <div class="mt-1 text-3 text-[#6B7280]">
-                    <template v-if="creativeForm.structure">{{ creativeForm.structure }} | 1PC-053</template>
-                    <template v-else>请选择结构类型</template>
+                    <template v-if="creativeForm.structure">{{ structureLabel(creativeForm.structure) }} | 1PC-053</template>
+                    <template v-else>{{ t('customOrder.structurePh') }}</template>
                   </div>
-                  <div class="mt-1 text-3 text-[#9CA3AF]">前后轮配置</div>
+                  <div class="mt-1 text-3 text-[#9CA3AF]">{{ t('customOrder.frontRearConfig') }}</div>
                   <div v-if="creativeForm.structure" class="mt-3 flex flex-wrap gap-2">
                     <span
-                      class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">Y型</span>
+                      class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">{{ t('customOrder.yType') }}</span>
                     <span
                       class="inline-flex items-center rounded-full bg-[#EFF5FF] px-2.5 py-1 text-3 font-600 text-[#4478C8]">{{
-                      creativeForm.structure }}</span>
+                      structureLabel(creativeForm.structure) }}</span>
                   </div>
                 </div>
               </div>
               <button type="button" class="mt-3 inline-flex items-center gap-1 text-3.5 font-600 text-[#6B7280]">
                 <Icon icon="mdi:refresh" width="16" height="16" />
-                <span>重新选择</span>
+                <span>{{ t('customOrder.reselect') }}</span>
               </button>
             </div>
 
             <div>
-              <div class="text-4 font-700">轮毂颜色</div>
+              <div class="text-4 font-700">{{ t('customOrder.wheelColor') }}</div>
               <div class="mt-4 overflow-hidden rounded-3xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                 <img src="@/assets/vue.svg" class="h-42 w-full object-contain opacity-80" alt=""
                   v-if="creativeForm.structure != '越野'">
@@ -690,7 +713,7 @@ async function submitPreorder() {
                   </button>
                 </div>
                 <div class="mt-4 text-center text-4 font-700">
-                  WL049 曜黑
+                  {{ t('customOrder.sampleName') }}
                 </div>
                 <div class="mt-4 flex items-center justify-center gap-3">
                   <button v-for="item in wheelColors" :key="`${item.name}-dot`" type="button"
@@ -705,27 +728,37 @@ async function submitPreorder() {
           <template v-else>
             <div class="space-y-4">
               <div>
-                <div class="mb-2 text-3.5 font-600">轮毂造型</div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.wheelShape') }}</div>
                 <div class="w-26 h-26">
-                  <TgFilepond v-model="creativeForm.wheelShapeFile" accept="image/*" aria-label="upload wheel shape" />
+                  <TgFilepond
+                    v-model="creativeForm.wheelShapeFile"
+                    v-model:uploaded-url="creativeForm.wheelShapeUrl"
+                    :upload-form-fields="{ scene: 'orders' }"
+                    accept="image/*"
+                    aria-label="upload wheel shape" />
                 </div>
               </div>
 
               <div>
-                <div class="mb-2 text-3.5 font-600">轮毂造型描述</div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.wheelShapeDesc') }}</div>
                 <input v-model="creativeForm.wheelShapeNote" type="text"
                   class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none">
               </div>
 
               <div class="border-t border-[#F1F3F5] pt-4">
-                <div class="mb-2 text-3.5 font-600">轮毂唇边</div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.wheelLip') }}</div>
                 <div class="w-26 h-26">
-                  <TgFilepond v-model="creativeForm.wheelLipFile" accept="image/*" aria-label="upload wheel lip" />
+                  <TgFilepond
+                    v-model="creativeForm.wheelLipFile"
+                    v-model:uploaded-url="creativeForm.wheelLipUrl"
+                    :upload-form-fields="{ scene: 'orders' }"
+                    accept="image/*"
+                    aria-label="upload wheel lip" />
                 </div>
               </div>
 
               <div>
-                <div class="mb-2 text-3.5 font-600">轮毂颜色描述</div>
+                <div class="mb-2 text-3.5 font-600">{{ t('customOrder.wheelColorDesc') }}</div>
                 <input v-model="creativeForm.wheelColorNote" type="text"
                   class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none">
               </div>
@@ -734,21 +767,26 @@ async function submitPreorder() {
 
           <div class="mt-4 flex flex-col gap-4">
             <div class="border-t border-[#F1F3F5] pt-4">
-              <div class="mb-2 text-3.5 font-600">中心盖</div>
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.centerCap') }}</div>
               <div class="w-26 h-26">
-                <TgFilepond v-model="creativeForm.centerCapFile" accept="image/*" aria-label="upload center cap" />
+                <TgFilepond
+                    v-model="creativeForm.centerCapFile"
+                    v-model:uploaded-url="creativeForm.centerCapUrl"
+                    :upload-form-fields="{ scene: 'orders' }"
+                    accept="image/*"
+                    aria-label="upload center cap" />
               </div>
             </div>
 
             <div>
-              <div class="mb-2 text-3.5 font-600">中心盖描述</div>
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.centerCapDesc') }}</div>
               <input v-model="creativeForm.centerCapNote" type="text"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none">
             </div>
 
             <div>
-              <div class="mb-2 text-3.5 font-600">特殊要求 / 说明</div>
-              <textarea v-model="creativeForm.specialRequest" rows="4" placeholder="请输入特殊要求 / 说明"
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.special') }}</div>
+              <textarea v-model="creativeForm.specialRequest" rows="4" :placeholder="t('customOrder.specialPh')"
                 class="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-3 text-3.5 outline-none placeholder:text-[#B6BBC5]" />
             </div>
           </div>
@@ -758,38 +796,38 @@ async function submitPreorder() {
       <div v-show="activeTab === 'address'" class="outline-none">
         <div class="space-y-3 px-4 py-4">
           <div>
-            <div class="mb-2 text-3.5 font-600">姓名</div>
-            <input v-model="addressForm.name" type="text" placeholder="请输入"
+            <div class="mb-2 text-3.5 font-600">{{ t('customOrder.name') }}</div>
+            <input v-model="addressForm.name" type="text" :placeholder="t('common.pleaseEnter')"
               class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
           </div>
           <div>
-            <div class="mb-2 text-3.5 font-600">手机</div>
-            <input v-model="addressForm.phone" type="text" placeholder="请输入"
+            <div class="mb-2 text-3.5 font-600">{{ t('customOrder.phone') }}</div>
+            <input v-model="addressForm.phone" type="text" :placeholder="t('common.pleaseEnter')"
               class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
           </div>
           <div>
-            <div class="mb-2 text-3.5 font-600">邮箱</div>
-            <input v-model="addressForm.email" type="text" placeholder="请输入"
+            <div class="mb-2 text-3.5 font-600">{{ t('customOrder.email') }}</div>
+            <input v-model="addressForm.email" type="text" :placeholder="t('common.pleaseEnter')"
               class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
           </div>
           <div>
-            <div class="mb-2 text-3.5 font-600">国家</div>
+            <div class="mb-2 text-3.5 font-600">{{ t('customOrder.country') }}</div>
             <TgSelect v-model="addressForm.country" :options="countryOptions" :searchable="false"
               placeholder="Russia" />
           </div>
           <div>
-            <div class="mb-2 text-3.5 font-600">收货地址</div>
-            <textarea v-model="addressForm.address" rows="4" placeholder="请输入"
+            <div class="mb-2 text-3.5 font-600">{{ t('customOrder.shipAddr') }}</div>
+            <textarea v-model="addressForm.address" rows="4" :placeholder="t('common.pleaseEnter')"
               class="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-3 text-3.5 outline-none placeholder:text-[#B6BBC5]" />
           </div>
           <div>
-            <div class="mb-2 text-3.5 font-600">优惠码（选填）</div>
-            <input v-model="addressForm.coupon" type="text" placeholder="请输入"
+            <div class="mb-2 text-3.5 font-600">{{ t('customOrder.coupon') }}</div>
+            <input v-model="addressForm.coupon" type="text" :placeholder="t('common.pleaseEnter')"
               class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
           </div>
           <div>
-            <div class="mb-2 text-3.5 font-600">备注（选填）</div>
-            <textarea v-model="addressForm.remark" rows="4" placeholder="请输入"
+            <div class="mb-2 text-3.5 font-600">{{ t('customOrder.remark') }}</div>
+            <textarea v-model="addressForm.remark" rows="4" :placeholder="t('common.pleaseEnter')"
               class="w-full rounded-xl border border-[#E5E7EB] bg-white px-3 py-3 text-3.5 outline-none placeholder:text-[#B6BBC5]" />
           </div>
         </div>
@@ -797,19 +835,19 @@ async function submitPreorder() {
 
       <div v-show="activeTab === 'amount'" class="outline-none">
         <div class="space-y-4 px-4 py-6">
-          <div class="text-4 font-700">金额与提交</div>
-          <div class="text-3 text-[#9CA3AF]">填写总金额与币种后提交预下单；其它字段由前几步自动带入，未对接的字段会传空。</div>
+          <div class="text-4 font-700">{{ t('customOrder.amountTitle') }}</div>
+          <div class="text-3 text-[#9CA3AF]">{{ t('customOrder.amountHint') }}</div>
           <div
             class="space-y-3 rounded-3xl border border-[#E5E7EB] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div>
-              <div class="mb-2 text-3.5 font-600">总金额 <span class="text-[#EF4444]">*</span></div>
-              <input v-model="amountForm.basePrice" type="text" inputmode="decimal" placeholder="请输入数字"
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.total') }} <span class="text-[#EF4444]">*</span></div>
+              <input v-model="amountForm.basePrice" type="text" inputmode="decimal" :placeholder="t('customOrder.numberPh')"
                 class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
             </div>
             <div>
-              <div class="mb-2 text-3.5 font-600">币种 <span class="text-[#EF4444]">*</span></div>
+              <div class="mb-2 text-3.5 font-600">{{ t('customOrder.currency') }} <span class="text-[#EF4444]">*</span></div>
               <TgSelect v-model="amountForm.currency" :options="currencyOptions" :searchable="false"
-                placeholder="请选择币种" />
+                :placeholder="t('common.pleaseSelect')" />
             </div>
           </div>
           <div v-if="orderSubmitError"
@@ -818,7 +856,7 @@ async function submitPreorder() {
           </div>
           <div v-else-if="orderSubmitOk"
             class="rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2 text-3.5 text-[#166534]">
-            预下单已提交成功。
+            {{ t('customOrder.preorderOk') }}
           </div>
         </div>
       </div>
@@ -828,24 +866,24 @@ async function submitPreorder() {
       :closable="true">
       <template #header>
         <div class="text-center text-[17px] font-semibold">
-          提示
+          {{ t('common.tip') }}
         </div>
       </template>
       <div class="text-sm text-[#4B5563] leading-normal">
         {{
           types === 0
-            ? '切换设计类型，将会清除当前已有设计，还需要继续吗？'
-            : '切换结构类型需要重新选择型号，还需要继续吗？'
+            ? t('customOrder.outlineDesign')
+            : t('customOrder.outlineStructure')
         }}
       </div>
       <template #footer>
         <div class="mt-2 flex w-full justify-between gap-3">
-          <NButton class="!min-w-0 flex-1" @click="openOutline = false">
-            取消
-          </NButton>
-          <NButton class="!min-w-0 flex-1" @click="handelSublitOutline">
-            确认
-          </NButton>
+          <TgButton class="!min-w-0 flex-1" variant="outline" type="button" @click="openOutline = false">
+            {{ t('common.cancel') }}
+          </TgButton>
+          <TgButton class="!min-w-0 flex-1" type="button" @click="handelSublitOutline">
+            {{ t('common.confirm') }}
+          </TgButton>
         </div>
       </template>
     </NModal>
@@ -853,35 +891,35 @@ async function submitPreorder() {
     <div
       class="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-[#ECECEC] bg-white px-4 py-4">
       <div v-if="activeTab === 'vehicle'">
-        <TgButton block variant="primary" @click="goNextFromVehicle">
-          创作
+        <TgButton block  @click="goNextFromVehicle">
+          {{ t('customOrder.footVehicle') }}
         </TgButton>
       </div>
 
       <div v-else-if="activeTab === 'creative'" class="grid grid-cols-2 gap-3">
         <TgButton block variant="outline" @click="goBackToVehicle">
-          车辆
+          {{ t('customOrder.footCreative1') }}
         </TgButton>
         <TgButton block variant="primary" @click="goFromCreativeToAddress">
-          地址
+          {{ t('customOrder.footCreative2') }}
         </TgButton>
       </div>
 
       <div v-else-if="activeTab === 'address'" class="grid grid-cols-2 gap-3">
         <TgButton block variant="outline" @click="goBackToCreative">
-          创作
+          {{ t('customOrder.footAddr1') }}
         </TgButton>
         <TgButton block variant="primary" @click="goToAmount">
-          金额
+          {{ t('customOrder.footAddr2') }}
         </TgButton>
       </div>
 
       <div v-else class="grid grid-cols-2 gap-3">
         <TgButton block variant="outline" @click="goBackToCreative">
-          返回编辑
+          {{ t('customOrder.backEdit') }}
         </TgButton>
         <TgButton block variant="primary" :disabled="orderSubmitting" @click="submitPreorder">
-          {{ orderSubmitting ? '提交中…' : '提交订单' }}
+          {{ orderSubmitting ? t('common.submitting') : t('customOrder.submit') }}
         </TgButton>
       </div>
     </div>

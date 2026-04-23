@@ -6,8 +6,9 @@ import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
 import { carGroups, getDefaultCarSelection } from '@/data/carSelection'
-import { STYLE_MOOD_TAGS } from '@/constants/styleMoodTags'
+import { STYLE_MOOD_TAGS, type StyleMoodTag } from '@/constants/styleMoodTags'
 import { useProductBrowseStore } from '@/stores/productBrowse'
+import { t } from '@/i18n/uiI18n'
 // 颜色选项
 interface ColorOption {
     value: string
@@ -70,25 +71,62 @@ const headerRef = ref<HTMLElement | null>(null)
 // 弹窗宽度（跟随头部容器）
 const panelWidth = ref(0)
 
-// 结构选项
-const structureOptions = ['全部', '单片', '双片', '锻造', '旋压']
-// 爪型选项
-const clawOptions = ['全部', '五爪', '十辐', 'Y 字', '网状']
-// 左右旋选项
-const directionOptions = ['全部', '支持', '不支持']
 // 条幅数量
 const stripOptions = ['18', '20', '22', '24']
 // WL型号选项（你要的！）
 const wlCodeOptions = ['WL001', 'WL002', 'WL003', 'WL004', 'WL005', 'WL006']
 
-// 颜色选项
-const colors: ColorOption[] = [
-    { value: '曜黑', label: '曜黑', code: 'WL049', hex: '#090909' },
-    { value: '亮黑', label: '亮黑', code: 'WL050', hex: '#1f1f1f' },
-    { value: '枪灰', label: '枪灰', code: 'WL051', hex: '#43454d' },
-    { value: '银钻', label: '银钻', code: 'WL052', hex: '#8b919d' },
-    { value: '钛灰', label: '钛灰', code: 'WL053', hex: '#60646f' },
+const structureValueList = ['全部', '单片', '双片', '锻造', '旋压'] as const
+function structureFilterLabel(v: string): string {
+    const m: Record<string, string> = {
+        全部: 'headerFilter.all',
+        单片: 'orderStructure.one_piece',
+        双片: 'orderStructure.two_piece',
+        锻造: 'headerFilter.forged',
+        旋压: 'headerFilter.flowFormed',
+    }
+    const k = m[v]
+    return k ? t(k) : v
+}
+
+const clawValueList = ['全部', '五爪', '十辐', 'Y 字', '网状'] as const
+function clawFilterLabel(v: string): string {
+    const m: Record<string, string> = {
+        全部: 'headerFilter.all',
+        五爪: 'headerFilter.clawFive',
+        十辐: 'headerFilter.clawTen',
+        'Y 字': 'headerFilter.clawY',
+        网状: 'headerFilter.clawMesh',
+    }
+    const k = m[v]
+    return k ? t(k) : v
+}
+
+const directionValueList = ['全部', '支持', '不支持'] as const
+function directionFilterLabel(v: string): string {
+    const m: Record<string, string> = {
+        全部: 'headerFilter.all',
+        支持: 'headerFilter.dirYes',
+        不支持: 'headerFilter.dirNo',
+    }
+    const k = m[v]
+    return k ? t(k) : v
+}
+
+const colorData: Omit<ColorOption, 'label'>[] = [
+    { value: '曜黑', code: 'WL049', hex: '#090909' },
+    { value: '亮黑', code: 'WL050', hex: '#1f1f1f' },
+    { value: '枪灰', code: 'WL051', hex: '#43454d' },
+    { value: '银钻', code: 'WL052', hex: '#8b919d' },
+    { value: '钛灰', code: 'WL053', hex: '#60646f' },
 ]
+
+const colors = computed<ColorOption[]>(() =>
+    colorData.map(c => ({
+        ...c,
+        label: t(`orderDetails.colorName_${c.code}` as 'orderDetails.colorName_WL049'),
+    })),
+)
 
 // 汽车选择初始值
 const initialCar = getDefaultCarSelection()
@@ -96,7 +134,7 @@ const initialCar = getDefaultCarSelection()
 // 筛选表单初始值
 const initialFilter = {
     structure: '',
-    color: colors[0].value,
+    color: colorData[0]!.value,
     modelCode: '',
     stripCount: '',
     clawType: '全部',
@@ -157,7 +195,7 @@ const styleMoodField = computed({
 
 // 当前选中的颜色
 const selectedColor = computed(
-    () => colors.find(item => item.value === filterForm.color) ?? colors[0],
+    () => colors.value.find(item => item.value === filterForm.color) ?? colors.value[0]!,
 )
 
 // 弹窗宽度样式（跟随头部宽度）；无宽度时给 {}，避免部分环境下 content-style=undefined 异常
@@ -186,12 +224,12 @@ function closeCarPopover() {
 
 // 结构下拉选项
 const structureSelectOptions = computed<SelectOption[]>(() =>
-    structureOptions.map(item => ({ label: item, value: item })),
+    structureValueList.map(v => ({ label: structureFilterLabel(v), value: v })),
 )
 
 // 颜色下拉选项
 const colorSelectOptions = computed<SelectOption[]>(() =>
-    colors.map(item => ({ label: item.label, value: item.value })),
+    colors.value.map(item => ({ label: item.label, value: item.value })),
 )
 
 // 条幅数量下拉选项
@@ -201,12 +239,12 @@ const stripCountOptions = computed<SelectOption[]>(() =>
 
 // 爪型下拉选项
 const clawSelectOptions = computed<SelectOption[]>(() =>
-    clawOptions.map(item => ({ label: item, value: item })),
+    clawValueList.map(v => ({ label: clawFilterLabel(v), value: v })),
 )
 
 // 左右旋下拉选项
 const directionSelectOptions = computed<SelectOption[]>(() =>
-    directionOptions.map(item => ({ label: item, value: item })),
+    directionValueList.map(v => ({ label: directionFilterLabel(v), value: v })),
 )
 
 // WL型号下拉选项（新增）
@@ -214,9 +252,22 @@ const wlCodeSelectOptions = computed<SelectOption[]>(() =>
     wlCodeOptions.map(item => ({ label: item, value: item })),
 )
 
-const styleMoodOptions = [...STYLE_MOOD_TAGS]
+const styleMoodI18nKey: Record<StyleMoodTag, string> = {
+  运动: 'styleMoodTags.sport',
+  性能赛道: 'styleMoodTags.performance',
+  'OEM风格': 'styleMoodTags.oem',
+  豪华商务: 'styleMoodTags.luxury',
+  越野: 'styleMoodTags.offroad',
+  复古: 'styleMoodTags.retro',
+}
+
+function styleMoodLabel(v: string): string {
+  const k = styleMoodI18nKey[v as StyleMoodTag]
+  return k ? t(k) : v
+}
+
 const styleMoodSelectOptions = computed<SelectOption[]>(() =>
-    styleMoodOptions.map(item => ({ label: item, value: item })),
+  STYLE_MOOD_TAGS.map(item => ({ label: styleMoodLabel(item), value: item })),
 )
 
 // 激活的标签列表（展示已选条件）
@@ -243,7 +294,7 @@ const activeTags = computed<ActiveTag[]>(() => {
     }
 
     if (filterForm.structure !== initialFilter.structure) {
-        tags.push({ key: 'structure', label: ` ${filterForm.structure}` })
+        tags.push({ key: 'structure', label: ` ${structureFilterLabel(filterForm.structure)}` })
     }
 
     if (filterForm.color !== initialFilter.color) {
@@ -259,15 +310,15 @@ const activeTags = computed<ActiveTag[]>(() => {
     }
 
     if (props.ProductSelection && styleMoodField.value) {
-        tags.push({ key: 'styleMood', label: `${styleMoodField.value}` })
+        tags.push({ key: 'styleMood', label: ` ${styleMoodLabel(styleMoodField.value)}` })
     }
 
     if (filterForm.clawType !== initialFilter.clawType) {
-        tags.push({ key: 'clawType', label: `${filterForm.clawType}` })
+        tags.push({ key: 'clawType', label: `${clawFilterLabel(filterForm.clawType)}` })
     }
 
     if (filterForm.rotateSupport !== initialFilter.rotateSupport) {
-        tags.push({ key: 'rotateSupport', label: ` ${filterForm.rotateSupport}` })
+        tags.push({ key: 'rotateSupport', label: ` ${directionFilterLabel(filterForm.rotateSupport)}` })
     }
 
     // 新增 WL 标签
@@ -480,7 +531,7 @@ onBeforeUnmount(() => {
                     <button type="button"
                         class="flex w-28 items-center justify-between px-4 py-3 text-4 font-600 text-white outline-none transition"
                         @click.stop="toggleFilterPopover">
-                        <span>筛选</span>
+                        <span>{{ t('headerFilter.filter') }}</span>
                         <Icon icon="hugeicons:filter-horizontal" width="18" height="18" />
                     </button>
                 </template>
@@ -489,25 +540,25 @@ onBeforeUnmount(() => {
                     <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-2">
                         <div class="space-y-5">
                             <div class="text-5 font-700">
-                                筛选
+                                {{ t('headerFilter.filter') }}
                             </div>
 
                             <!-- 结构 -->
                             <div class="space-y-2">
-                                <div class="text-3.5 font-600">结构</div>
+                                <div class="text-3.5 font-600">{{ t('headerFilter.structure') }}</div>
                                 <TgSelect v-model="filterForm.structure" :options="structureSelectOptions"
-                                    :searchable="false" placeholder="请选择结构" />
+                                    :searchable="false" :placeholder="t('headerFilter.phStructure')" />
                             </div>
 
                             <!-- 颜色 -->
                             <div class="space-y-3">
-                                <div class="text-3.5 font-600">颜色</div>
+                                <div class="text-3.5 font-600">{{ t('headerFilter.color') }}</div>
                                 <div class="relative">
                                     <span
                                         class="pointer-events-none absolute left-15 top-1/2 z-1 h-5 w-5 -translate-y-1/2 rounded-full border border-black/10"
                                         :style="{ backgroundColor: selectedColor.hex }" />
                                     <TgSelect v-model="filterForm.color" class="color-select"
-                                        :options="colorSelectOptions" :searchable="false" placeholder="请选择颜色" />
+                                        :options="colorSelectOptions" :searchable="false" :placeholder="t('headerFilter.phColor')" />
                                 </div>
 
                                 <div class="text-center text-4 font-700">
@@ -525,41 +576,40 @@ onBeforeUnmount(() => {
                             <!-- 产品筛选 -->
                             <template v-if="props.ProductSelection">
                                 <div class="space-y-2">
-                                    <div class="text-3.5 font-600">型号编号</div>
-                                    <input v-model="filterForm.modelCode" type="text" placeholder="请输入型号编号"
+                                    <div class="text-3.5 font-600">{{ t('headerFilter.modelCode') }}</div>
+                                    <input v-model="filterForm.modelCode" type="text" :placeholder="t('headerFilter.phModelCode')"
                                         class="h-12 w-full rounded-2xl border border-[#d5d7dd] bg-white px-4 text-3.5 outline-none transition placeholder:text-[#b2b5bd] focus:border-[#242730]" />
                                 </div>
 
                                 <div class="space-y-2">
-                                    <div class="text-3.5 font-600">条幅数量</div>
+                                    <div class="text-3.5 font-600">{{ t('headerFilter.stripCount') }}</div>
                                     <TgSelect v-model="filterForm.stripCount" :options="stripCountOptions"
-                                        :searchable="false" placeholder="请选择条幅数量" />
+                                        :searchable="false" :placeholder="t('headerFilter.phStripCount')" />
                                 </div>
 
                                 <div class="space-y-2">
-                                    <div class="text-3.5 font-600">爪型</div>
+                                    <div class="text-3.5 font-600">{{ t('headerFilter.claw') }}</div>
                                     <TgSelect v-model="filterForm.clawType" :options="clawSelectOptions"
-                                        :searchable="false" placeholder="请选择爪型" />
+                                        :searchable="false" :placeholder="t('headerFilter.phClaw')" />
                                 </div>
 
                                 <div class="space-y-2">
-                                    <div class="text-3.5 font-600">是否支持左右旋</div>
+                                    <div class="text-3.5 font-600">{{ t('headerFilter.rotateSupport') }}</div>
                                     <TgSelect v-model="filterForm.rotateSupport" :options="directionSelectOptions"
-                                        :searchable="false" placeholder="请选择" />
+                                        :searchable="false" :placeholder="t('headerFilter.phRotate')" />
                                 </div>
                                 <div class="space-y-2">
-                                    <div class="text-3.5 font-600">风格标签</div>
+                                    <div class="text-3.5 font-600">{{ t('headerFilter.styleMood') }}</div>
                                     <TgSelect v-model="styleMoodField" :options="styleMoodSelectOptions"
-                                        :searchable="false" placeholder="请选择风格" />
+                                        :searchable="false" :placeholder="t('headerFilter.phStyleMood')" />
                                 </div>
                             </template>
 
-                            <!-- 案例筛选 → WL型号（已完成！） -->
                             <template v-if="props.CaseSelection">
                                 <div class="space-y-2">
-                                    <div class="text-3.5 font-600">WL型号</div>
+                                    <div class="text-3.5 font-600">{{ t('headerFilter.wlCode') }}</div>
                                     <TgSelect v-model="filterForm.wlCode" :options="wlCodeSelectOptions"
-                                        :searchable="false" placeholder="请选择WL型号" />
+                                        :searchable="false" :placeholder="t('headerFilter.phWlCode')" />
                                 </div>
                             </template>
                         </div>
@@ -571,12 +621,12 @@ onBeforeUnmount(() => {
                             <button type="button"
                                 class="tg-btn-outline-light h-12 flex-1 rounded-xl border text-4 font-600"
                                 @click="closeFilterPopover">
-                                取消
+                                {{ t('common.cancel') }}
                             </button>
                             <button type="button"
                                 class="tg-btn-primary h-12 flex-1 rounded-xl border text-4 font-700"
                                 @click="applyFilters">
-                                确定
+                                {{ t('common.confirm') }}
                             </button>
                         </div>
                     </div>
@@ -589,7 +639,7 @@ onBeforeUnmount(() => {
             <div class="min-h-9 flex flex-1 flex-wrap gap-2 tg-on-dark-surface">
                 <div v-if="activeTags.length === 0"
                     class="flex items-center rounded-full bg-white/6 px-3 py-2 text-3 !text-[#8b9cb0]">
-                    暂无已筛选项
+                    {{ t('headerFilter.noActiveFilters') }}
                 </div>
 
                 <button v-for="tag in activeTags" :key="tag.key" type="button"
@@ -601,7 +651,7 @@ onBeforeUnmount(() => {
             </div>
 
             <TgButton type="button" variant="outline" shape="pill" @click="clearAllSelections">
-                <span class="color-[#4F5869]">清空筛选</span>
+                <span class="color-[#4F5869]">{{ t('headerFilter.clearFilters') }}</span>
             </TgButton>
         </div>
     </div>

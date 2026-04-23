@@ -10,6 +10,7 @@ import {
   resolveWheelSizeYearOptions,
 } from '@/api/wheelsline-size'
 import type { CarGroup } from '@/data/carSelection'
+import { t } from '@/i18n/uiI18n'
 
 /** 与示例一致：品牌 → 车型 → 世代 → 年份 → 配置，逐级解锁；数据均来自 Wheel-Size API */
 interface Props {
@@ -33,18 +34,21 @@ const emit = defineEmits<{
 
 const useApi = computed(() => isWheelSizeEnabled())
 
-const apiSteps = [
-  { key: 'make', title: '品牌' },
-  { key: 'model', title: '车型' },
-  { key: 'generation', title: '世代' },
-  { key: 'year', title: '年份' },
-  { key: 'modification', title: '配置' },
-] as const
+const API_STEP_COUNT = 5
+
+const apiSteps = computed(() => [
+  { key: 'make' as const, title: t('carSelection.brands') },
+  { key: 'model' as const, title: t('carSelection.models') },
+  { key: 'generation' as const, title: t('carSelection.generations') },
+  { key: 'year' as const, title: t('carSelection.years') },
+  { key: 'modification' as const, title: t('carSelection.modifications') },
+])
 
 const apiActiveStep = ref(0)
 /** 与示例各下拉「加载中」一致：仅当前正在请求的层级显示 loading，避免回退到品牌时整块被锁 */
 const loadingStage = ref<number | null>(null)
-const apiError = ref('')
+/** i18n key: `ws.*` or `carSelection.*` */
+const apiErrorKey = ref<string | null>(null)
 /** 品牌列表是否已完成至少一次拉取（用于重试/空态提示） */
 const makesFetched = ref(false)
 
@@ -170,14 +174,14 @@ function apiStepUnlocked(idx: number) {
 
 async function loadMakes() {
   loadingStage.value = 0
-  apiError.value = ''
+  apiErrorKey.value = null
   try {
     const items = await fetchWheelSizeMakes()
     makeOptions.value = items
-    if (!items.length) apiError.value = '暂无品牌数据'
+    if (!items.length) apiErrorKey.value = 'ws.emptyBrands'
   } catch {
     makeOptions.value = []
-    apiError.value = '品牌加载失败'
+    apiErrorKey.value = 'ws.brandsFailed'
   } finally {
     makesFetched.value = true
     loadingStage.value = null
@@ -188,13 +192,13 @@ async function loadModels(make: string) {
   modelOptions.value = []
   if (!make) return
   loadingStage.value = 1
-  apiError.value = ''
+  apiErrorKey.value = null
   try {
     modelOptions.value = await fetchWheelSizeModels(make)
-    if (!modelOptions.value.length) apiError.value = '暂无车型数据'
+    if (!modelOptions.value.length) apiErrorKey.value = 'ws.emptyModels'
   } catch {
     modelOptions.value = []
-    apiError.value = '车型加载失败'
+    apiErrorKey.value = 'ws.modelsFailed'
   } finally {
     loadingStage.value = null
   }
@@ -205,16 +209,16 @@ async function loadGenerations(make: string, model: string) {
   generationsCache.value = []
   if (!make || !model) return
   loadingStage.value = 2
-  apiError.value = ''
+  apiErrorKey.value = null
   try {
     const rows = await fetchWheelSizeGenerations(make, model)
     generationsCache.value = rows
     genUiOptions.value = generationRowsToOptions(rows)
-    if (!genUiOptions.value.length) apiError.value = '暂无世代数据'
+    if (!genUiOptions.value.length) apiErrorKey.value = 'ws.emptyGenerations'
   } catch {
     generationsCache.value = []
     genUiOptions.value = []
-    apiError.value = '世代加载失败'
+    apiErrorKey.value = 'ws.generationsFailed'
   } finally {
     loadingStage.value = null
   }
@@ -224,15 +228,15 @@ async function loadYears(make: string, model: string, slug: string) {
   yearOptions.value = []
   if (!make || !model || !slug) return
   loadingStage.value = 3
-  apiError.value = ''
+  apiErrorKey.value = null
   try {
     const gen = generationsCache.value.find(x => x.slug === slug)
     const items = await resolveWheelSizeYearOptions(make, model, gen)
     yearOptions.value = items
-    if (!yearOptions.value.length) apiError.value = '暂无年份数据'
+    if (!yearOptions.value.length) apiErrorKey.value = 'ws.emptyYears'
   } catch {
     yearOptions.value = []
-    apiError.value = '年份加载失败'
+    apiErrorKey.value = 'ws.yearsFailed'
   } finally {
     loadingStage.value = null
   }
@@ -242,13 +246,13 @@ async function loadMods(make: string, model: string, year: string, gslug: string
   modOptions.value = []
   if (!make || !model || !year) return
   loadingStage.value = 4
-  apiError.value = ''
+  apiErrorKey.value = null
   try {
     modOptions.value = await fetchWheelSizeModifications(make, model, year, gslug || undefined)
-    if (!modOptions.value.length) apiError.value = '暂无配置数据'
+    if (!modOptions.value.length) apiErrorKey.value = 'ws.emptyMods'
   } catch {
     modOptions.value = []
-    apiError.value = '配置加载失败'
+    apiErrorKey.value = 'ws.modsFailed'
   } finally {
     loadingStage.value = null
   }
@@ -297,7 +301,7 @@ function onApiStepClick(idx: number) {
 }
 
 function advanceApiStep() {
-  apiActiveStep.value = Math.min(apiActiveStep.value + 1, apiSteps.length - 1)
+  apiActiveStep.value = Math.min(apiActiveStep.value + 1, API_STEP_COUNT - 1)
 }
 
 /** 当前右侧是否正在请求本级列表（与示例「加载中...」一致） */
@@ -380,7 +384,7 @@ function isApiOptionSelected(opt: WheelSizeOption) {
 }
 
 function apiRightTitle() {
-  return apiSteps[apiActiveStep.value]?.title ?? ''
+  return apiSteps.value[apiActiveStep.value]?.title ?? ''
 }
 
 function onPickFromRight(opt: WheelSizeOption) {
@@ -415,7 +419,7 @@ async function hydrateFromProps() {
     return
   }
   isHydrating.value = true
-  apiError.value = ''
+  apiErrorKey.value = null
   try {
     const b = props.brand?.trim()
     const m = props.model?.trim()
@@ -431,7 +435,7 @@ async function hydrateFromProps() {
     await loadMakes()
     const makeOpt = findMatchingOption(makeOptions.value, b)
     if (!makeOpt) {
-      apiError.value = '与接口中的品牌名不一致，请在右侧重选'
+      apiErrorKey.value = 'carSelection.hydrateBrandMismatch'
       hydrationSettledKey.value = k
       return
     }
@@ -448,7 +452,7 @@ async function hydrateFromProps() {
     const modelOpt = findMatchingOption(modelOptions.value, m)
     if (!modelOpt) {
       apiActiveStep.value = 1
-      apiError.value = '与接口中的车型名不一致，请在右侧重选'
+      apiErrorKey.value = 'carSelection.hydrateModelMismatch'
       emitApiSummary()
       hydrationSettledKey.value = k
       return
@@ -580,12 +584,12 @@ watch(
   <div
     class="tg-light-surface grid max-h-[24rem] grid-cols-[minmax(0,7.75rem)_1fr] overflow-hidden rounded-[20px] bg-white text-[#242730] shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
     <div class="flex flex-col border-r border-[#ececf0]">
-      <div class="border-b border-[#ececf0] px-3 py-3 text-3 font-600 !text-[#6b7280]">
-        分类
+      <div class="border-b border-[#ececf0] px-3 py-3 text-3.5 font-600 !text-[#6b7280]">
+        {{ t('carSelection.category') }}
       </div>
       <div class="max-h-[20rem] flex-1 overflow-y-auto py-2">
         <button v-for="(step, idx) in apiSteps" :key="step.key" type="button" :disabled="!apiStepUnlocked(idx)"
-          class="mx-2 mb-1 flex w-[calc(100%-1rem)] flex-col items-start rounded-xl px-2.5 py-2.5 text-left text-3.25 transition disabled:cursor-not-allowed disabled:opacity-40"
+          class="mx-2 mb-1 flex w-[calc(100%-1rem)] flex-col items-start rounded-xl px-2 py-2 text-left text-3 transition disabled:cursor-not-allowed disabled:opacity-40"
           :class="apiActiveStep === idx ? '!bg-[color:var(--app-accent)] !text-[color:var(--app-accent-text)]' : '!text-[#303441] hover:!bg-[#f4f5f7]'"
           @click="onApiStepClick(idx)">
           <span class="font-600">{{ step.title }}</span>
@@ -609,29 +613,29 @@ watch(
       </div>
       <div class="max-h-[20rem] flex-1 overflow-y-auto py-2">
         <div v-if="!useApi" class="px-4 py-8 text-center text-3.5 leading-relaxed !text-[#6b7280]">
-          车辆数据需通过 Wheel-Size 接口加载（品牌 → 车型 → 世代 → 年份 → 配置）。请在环境变量中配置
+          {{ t('carSelection.needWheelSizeEnv') }}
           <code class="rounded bg-[#f3f4f6] px-1 py-0.5 text-3 !text-[#374151]">VITE_WHEEL_SIZE_API_KEY</code>
-          与网关地址后使用本组件。
+          {{ t('carSelection.andGateway') }}
         </div>
 
         <template v-else>
           <div v-if="rightPanelLoading" class="px-4 py-8 text-center text-3.5 !text-[#9ca3af]">
-            加载中…
+            {{ t('common.loading') }}
           </div>
-          <div v-else-if="apiError && !apiRightOptions.length" class="px-4 py-6 text-center text-3.5 !text-[#dc2626]">
-            {{ apiError }}
+          <div v-else-if="apiErrorKey && !apiRightOptions.length" class="px-4 py-6 text-center text-3.5 !text-[#dc2626]">
+            {{ t(apiErrorKey) }}
           </div>
           <template v-else>
             <button v-for="opt in apiRightOptions" :key="`${apiActiveStep}-${opt.id}`" type="button"
               :disabled="!canPickCurrentStep"
-              class="mx-2 mb-1 flex w-[calc(100%-1rem)] items-center rounded-xl px-3 py-3 text-left text-3.5 transition disabled:cursor-not-allowed disabled:opacity-40"
+              class="mx-2 mb-1 flex w-[calc(100%-1rem)] items-center rounded-xl p-1.5 text-left text-3 transition disabled:cursor-not-allowed disabled:opacity-40"
               :class="isApiOptionSelected(opt) ? '!bg-[color:var(--app-accent)] !text-[color:var(--app-accent-text)]' : '!text-[#303441] hover:!bg-[#f4f5f7]'"
               @click="onPickFromRight(opt)">
-              <span class="line-clamp-2">{{ opt.label }}</span>
+              <span class="line-clamp-2 text-3">{{ opt.label }}</span>
             </button>
             <div v-if="!apiRightOptions.length && !rightPanelLoading"
               class="px-4 py-8 text-center text-3.5 !text-[#9ca3af]">
-              {{ apiError || '暂无数据，请先在左侧选择上一级' }}
+              {{ apiErrorKey ? t(apiErrorKey) : t('carSelection.emptyList') }}
             </div>
           </template>
         </template>

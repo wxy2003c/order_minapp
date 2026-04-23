@@ -49,6 +49,9 @@ export const ORDER_PREORDER_ALLOWED_KEYS = new Set([
   'size_choice',
   'spec_mode',
   'appearance',
+  'wheel_shape_url',
+  'wheel_lip_url',
+  'center_cap_url',
 ])
 
 export type PreorderRawFields = Record<string, unknown>
@@ -170,6 +173,9 @@ export function buildPreorderBodyFromCustomOrder(s: CustomOrderFormsSnapshot): R
     r_qty: mirror ? String(v.frontQuantity ?? '') : String(v.rearQuantity ?? ''),
     r_note: '',
     r_oem_bolt: mirror ? String(v.frontBoltSeat ?? '') : String(v.rearBoltSeat ?? ''),
+    wheel_shape_url: String(c.wheelShapeUrl ?? ''),
+    wheel_lip_url: String(c.wheelLipUrl ?? ''),
+    center_cap_url: String(c.centerCapUrl ?? ''),
   }
 
   const payload = pickPreorderPayload(raw)

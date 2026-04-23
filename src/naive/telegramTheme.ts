@@ -39,7 +39,7 @@ export function buildTelegramNaiveThemeOverrides(
     Modal: {
       color: c('secondary_bg_color'),
     },
-    /** 避免 NButton 在部分组合下字色与背景对比不足（尤其 secondary + TG 主题） */
+    /** 仍使用 Naive 内建按钮/弹层等时的字色（TgButton 不依赖此段） */
     Button: {
       textColor: c('text_color'),
       textColorHover: c('text_color'),
