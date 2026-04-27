@@ -20,7 +20,7 @@ const specGroups = {
     { label: '条辐', value: '10' },
     { label: '载重', value: '820kg' },
     { label: '旋向', value: '支持' },
-    { label: '孔型', value: '旋口' },
+    { label: '孔型', value: '球口' },
     { label: '表面处理', value: '拉丝曜黑' },
   ],
   rear: [

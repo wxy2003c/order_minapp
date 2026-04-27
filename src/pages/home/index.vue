@@ -22,15 +22,15 @@ const browse = useProductBrowseStore()
 const phoneAuthModalOpen = ref(false)
 
 /** 用户关闭弹层（遮罩/X）且未授权：本会话内不再自动弹出；Mini App `close` 事件会清标记，下次从聊天进入可再提示 */
-watch(phoneAuthModalOpen, (open) => {
-  if (open) {
-    return
-  }
-  if (getStoredTelegramContact()) {
-    return
-  }
-  setPhoneAuthModalDismissedThisSession()
-})
+// watch(phoneAuthModalOpen, (open) => {
+//   if (open) {
+//     return
+//   }
+//   if (getStoredTelegramContact()) {
+//     return
+//   }
+//   setPhoneAuthModalDismissedThisSession()
+// })
 
 function getUserPhone() {
   const w = getTelegramWebApp()
@@ -106,15 +106,15 @@ onMounted(async () => {
     resizeObserver.observe(carEntryRef.value)
   }
 
-  const w = getTelegramWebApp()
-  if (
-    w
-    && typeof w.requestContact === 'function'
-    && !getStoredTelegramContact()
-    && !getPhoneAuthModalDismissedThisSession()
-  ) {
-    phoneAuthModalOpen.value = true
-  }
+  // const w = getTelegramWebApp()
+  // if (
+  //   w
+  //   && typeof w.requestContact === 'function'
+  //   && !getStoredTelegramContact()
+  //   && !getPhoneAuthModalDismissedThisSession()
+  // ) {
+  //   phoneAuthModalOpen.value = true
+  // }
 })
 
 onBeforeUnmount(() => {
@@ -208,7 +208,7 @@ function goToProduct() {
     <div
       class="pos-fixed right-5 top-1/2 h-12 w-12 flex flex-items-center justify-center rounded-50% border -translate-y-1/2"
       style="border-color: var(--tg-theme-section-separator-color); background: var(--tg-theme-secondary-bg-color)"
-      @click="router.push('/OrderCreate')">
+      @click="router.push('/CustomOrder')">
       <Icon
         icon="mdi:plus"
         width="22"
@@ -217,7 +217,7 @@ function goToProduct() {
       />
     </div>
 
-    <NModal v-model:show="phoneAuthModalOpen" preset="card" :style="{ maxWidth: 'min(90vw, 400px)' }"
+    <!-- <NModal v-model:show="phoneAuthModalOpen" preset="card" :style="{ maxWidth: 'min(90vw, 400px)' }"
       :mask-closable="true" :closable="true">
       <template #header>
         <div class="w-full text-center text-4 font-600 text-[#1F2937]">
@@ -232,6 +232,6 @@ function goToProduct() {
           {{ t('phoneAuth.action') }}
         </TgButton>
       </template>
-    </NModal>
+    </NModal> -->
   </div>
 </template>

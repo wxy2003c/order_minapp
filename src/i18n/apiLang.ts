@@ -11,19 +11,19 @@ const STORAGE_KEY = 'app_api_lang'
 /** 与后端约定的 `lang` 短码（BCP-47 primary 或项目约定） */
 export type AppLang = 'en' | 'zh' | 'ru'
 
-let apiLang: AppLang = 'en'
+let apiLang: AppLang = 'zh'
 
 /**
  * Telegram `language_code` 与 IETF BCP-47 标签可能为 `en-US`、`zh-Hans`、`ru` 等；
- * 取首段 primary language subtag 再映射到应用支持的语言，默认 en。
+ * 取首段 primary language subtag 再映射到应用支持的语言；**无/空码时默认中文**。
  */
 export function normalizeAppLangCode(code: string | undefined | null): AppLang {
   if (!code || typeof code !== 'string') {
-    return 'en'
+    return 'zh'
   }
   const trimmed = code.trim()
   if (!trimmed) {
-    return 'en'
+    return 'zh'
   }
   const primary = trimmed.split(/[-_]/)[0]!.toLowerCase()
 
@@ -43,7 +43,7 @@ export function normalizeAppLangCode(code: string | undefined | null): AppLang {
   if (primary === 'ru') {
     return 'ru'
   }
-  return 'en'
+  return 'zh'
 }
 
 export function getApiLang(): string {

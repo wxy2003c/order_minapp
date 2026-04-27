@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { t } from '@/i18n/uiI18n'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { t, uiLocale } from '@/i18n/uiI18n'
 import { currenciesToSelectOptions } from '@/constants/currencies'
 import { Icon } from '@iconify/vue'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
 import TgSwitch from '@/components/TgSwitch.vue'
 import TgFilepond from '@/components/TgFilepond.vue'
-import { buildPreorderBodyFromCustomOrder, createPreorder } from '@/api/orders'
+import { buildCreateOrderFromCustomOrder, createOrder, fetchOrderDetail } from '@/api/orders'
+import {
+  applyOrderDetailToCustomOrderForms,
+  brandModelLabelsFromDetail,
+  findSelectValue,
+  orderIdFromRouteQuery,
+} from '@/utils/applyOrderDetailToCustomOrder'
 import type { WheelSizeGenerationRow, WheelSizeOption } from '@/api/wheelsline-size'
 import {
   fetchWheelSizeGenerations,
@@ -17,6 +24,8 @@ import {
   isWheelSizeEnabled,
   resolveWheelSizeYearOptions,
 } from '@/api/wheelsline-size'
+import { fetchFinishCards, type FinishCardGroup, type FinishCardItem } from '@/api/finishCards'
+import { getTelegramUserId } from '@/utils/userTelegram'
 
 type OrderTab = 'vehicle' | 'creative' | 'address' | 'amount'
 
@@ -25,7 +34,79 @@ interface SelectOption {
   label: string
 }
 
+const route = useRoute()
 const openOutline = ref<boolean>(false)
+const orderEditLoading = ref(false)
+const orderEditError = ref('')
+
+function strU(v: unknown) {
+  return v == null ? '' : String(v)
+}
+
+/** 从详情页「修改订单」进入时带 `orderId`，回填各步表单 */
+async function hydrateFromOrderId(orderId: string) {
+  orderEditLoading.value = true
+  orderEditError.value = ''
+  try {
+    const d = await fetchOrderDetail(orderId)
+    const o = d as Record<string, unknown>
+    if (wheelSizeEnabled) {
+      if (!wsBrandOptions.value.length) await loadWheelMakes()
+      const { brand: bLabel, model: mLabel } = brandModelLabelsFromDetail(d)
+      const bVal = findSelectValue(wsBrandOptions.value, bLabel)
+      if (bVal) {
+        await onWheelBrandChange(bVal)
+        const mVal = findSelectValue(wsModelOptions.value, mLabel)
+        if (mVal) {
+          await onWheelModelChange(mVal)
+          const genKey = strU(o.wheel_generation) || strU(o.structure_subtype_offroad)
+          if (genKey) {
+            const gVal = findSelectValue(wsGenOptions.value, genKey)
+            if (gVal) {
+              await onWheelGenerationChange(gVal)
+              const yLabel = strU(o.year)
+              if (yLabel) {
+                const yVal = findSelectValue(wsYearOptions.value, yLabel)
+                if (yVal) {
+                  await onWheelYearChange(yVal)
+                  const modKey = strU(o.wheel_modification) || strU(o.modification)
+                  if (modKey) {
+                    const modVal = findSelectValue(wsModOptions.value, modKey)
+                    if (modVal) onWheelModificationChange(modVal)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      applyOrderDetailToCustomOrderForms(
+        d,
+        { vehicleForm, creativeForm, addressForm, amountForm },
+        countryOptions,
+      )
+    } else {
+      const { brand: bLabel, model: mLabel } = brandModelLabelsFromDetail(d)
+      if (bLabel) {
+        const v = findSelectValue(staticBrandOptions, bLabel)
+        if (v) vehicleForm.brand = v
+      }
+      if (mLabel) {
+        const v = findSelectValue(staticModelOptions, mLabel)
+        if (v) vehicleForm.model = v
+      }
+      applyOrderDetailToCustomOrderForms(
+        d,
+        { vehicleForm, creativeForm, addressForm, amountForm },
+        countryOptions,
+      )
+    }
+  } catch (e) {
+    orderEditError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    orderEditLoading.value = false
+  }
+}
 
 const activeTab = ref<OrderTab>('vehicle')
 const vehicleExpanded = ref(false)
@@ -80,9 +161,14 @@ const yesNoOptions = computed<SelectOption[]>(() => [
 
 const sizeOptions = computed<SelectOption[]>(() => [
   { value: '16', label: t('wheel.inch16') },
+  { value: '17', label: t('wheel.inch17') },
   { value: '18', label: t('wheel.inch18') },
   { value: '19', label: t('wheel.inch19') },
   { value: '20', label: t('wheel.inch20') },
+  { value: '21', label: t('wheel.inch21') },
+  { value: '22', label: t('wheel.inch22') },
+  { value: '23', label: t('wheel.inch23') },
+  { value: '24', label: t('wheel.inch24') },
 ])
 
 const designModeOptions = computed(() => [
@@ -103,12 +189,23 @@ function structureLabel(v: string): string {
   return k ? t(k) : v
 }
 
-const wheelColors = [
-  { name: 'Black', hex: '#20212A' },
-  { name: 'Blue', hex: '#3E5D8A' },
-  { name: 'Bronze & Gold', hex: '#7A6138' },
-  { name: 'Grey & Gunmet', hex: '#585A64' },
-]
+const finishCardGroups = ref<FinishCardGroup[]>([])
+const allFinishItems = ref<FinishCardItem[]>([])
+const finishCardLoading = ref(false)
+const finishCardLoadError = ref('')
+const selectedFinishGroupIndex = ref(0)
+
+const groupsWithItems = computed(() =>
+  [...finishCardGroups.value]
+    .filter(g => (g.items?.length ?? 0) > 0)
+    .sort((a, b) => a.sort - b.sort),
+)
+
+const currentFinishItems = computed(() => {
+  const g = groupsWithItems.value[selectedFinishGroupIndex.value]
+  if (!g?.items?.length) return []
+  return [...g.items].sort((a, b) => a.sort - b.sort)
+})
 
 const tabItems = computed(() => [
   { label: t('customOrder.tabs.vehicle'), value: 'vehicle' as const },
@@ -119,7 +216,7 @@ const tabItems = computed(() => [
 
 const vehicleForm = reactive({
   customerName: 'Mexicidad Dukoi',
-  customerId: '6182608402',
+  customerId: getTelegramUserId(),
   brand: wheelSizeEnabled ? '' : 'audi',
   model: wheelSizeEnabled ? '' : 'a5',
   /** Wheel-Size：世代 slug、年份 id、配置 slug（仅 API 模式使用） */
@@ -158,7 +255,16 @@ const creativeForm = reactive({
   designMode: 'creative',
   /** 结构类型：默认不选，首次点选直接赋值，已选时切换走确认弹窗 */
   structure: '' as string,
-  selectedColor: 'Black',
+  /** 色卡项 id；与 `finishCardOrderNote` 同步 */
+  finishCardId: null as number | null,
+  /** 预下单 f_note 片段：色卡 code + 展示名 */
+  finishCardOrderNote: '',
+  /** 色卡缩略图 URL，供 `wheel_color_image` 提交 */
+  finishCardImageUrl: '',
+  /** 接口 `image_path`，与 URL 二选一或同时用于拼 `{ path, url, name }` */
+  finishCardImagePath: '',
+  /** 当前所选色卡展示名称拼接 → `wheel_color_desc` */
+  wheelColorSelectionDesc: '',
   wheelShapeFile: null as File | null,
   wheelLipFile: null as File | null,
   centerCapFile: null as File | null,
@@ -170,6 +276,109 @@ const creativeForm = reactive({
   centerCapNote: '',
   centerCapTexture: '',
   specialRequest: '',
+})
+
+const selectedFinishPreview = computed(() => {
+  const id = creativeForm.finishCardId
+  if (id == null) return null
+  return allFinishItems.value.find(x => x.id === id) ?? null
+})
+
+function finishSectionLabel(g: FinishCardGroup): string {
+  const loc = uiLocale.value
+  if (loc === 'en' && g.section_name_en) return g.section_name_en
+  if (loc === 'ru' && g.section_name_en) return g.section_name_en
+  return g.section_name || g.section_name_en || g.group_name
+}
+
+function finishItemDisplayLabel(item: FinishCardItem): string {
+  const loc = uiLocale.value
+  const d = (item.description || '').toString()
+  if (loc === 'en') {
+    return (item.name_en || item.name_cn || d || item.code).toString().split('\n').pop() || item.code
+  }
+  if (loc === 'zh') {
+    return (item.name_cn || item.name_en || d || item.code).toString().split('\n')[0] || item.code
+  }
+  return (item.name_en || item.name_cn || d || item.code).toString().split('\n')[0] || item.code
+}
+
+function buildFinishOrderNote(item: FinishCardItem): string {
+  const label = finishItemDisplayLabel(item)
+  return [item.code, label].filter(Boolean).join(' · ')
+}
+
+function finishGroupContainingItem(item: FinishCardItem): FinishCardGroup | undefined {
+  return finishCardGroups.value.find(g => (g.items ?? []).some(i => i.id === item.id))
+}
+
+/** 提交 `wheel_color_desc`：分区名 + 条目展示名 + 工艺/色调（若有） */
+function buildWheelColorSelectionDesc(item: FinishCardItem, group: FinishCardGroup | undefined): string {
+  const parts: string[] = []
+  if (group) {
+    const sec = finishSectionLabel(group)
+    if (sec) parts.push(sec)
+  }
+  const label = finishItemDisplayLabel(item)
+  if (label) parts.push(label)
+  for (const x of [item.tone_label, item.process_label]) {
+    const t = String(x ?? '').trim()
+    if (t && !parts.includes(t)) parts.push(t)
+  }
+  return parts.join(' · ')
+}
+
+function applyFinishSelection(item: FinishCardItem) {
+  creativeForm.finishCardId = item.id
+  creativeForm.finishCardOrderNote = buildFinishOrderNote(item)
+  creativeForm.finishCardImageUrl = (item.image_url && String(item.image_url).trim()) || ''
+  creativeForm.finishCardImagePath = (item.image_path && String(item.image_path).trim()) || ''
+  creativeForm.wheelColorSelectionDesc = buildWheelColorSelectionDesc(item, finishGroupContainingItem(item))
+}
+
+function selectFinishGroup(i: number) {
+  if (i < 0 || i >= groupsWithItems.value.length) return
+  selectedFinishGroupIndex.value = i
+  const first = currentFinishItems.value[0]
+  if (first) applyFinishSelection(first)
+}
+
+async function loadFinishCards() {
+  finishCardLoadError.value = ''
+  finishCardLoading.value = true
+  try {
+    const data = await fetchFinishCards()
+    const groups = [...(data.groups ?? [])].sort((a, b) => a.sort - b.sort)
+    finishCardGroups.value = groups
+    allFinishItems.value = groups.flatMap(g => g.items ?? [])
+
+    const withItems = groupsWithItems.value
+    if (withItems.length) {
+      selectedFinishGroupIndex.value = 0
+      const g0 = withItems[0]
+      const sorted = [...(g0.items ?? [])].sort((a, b) => a.sort - b.sort)
+      if (sorted[0]) applyFinishSelection(sorted[0])
+    } else {
+      creativeForm.finishCardId = null
+      creativeForm.finishCardOrderNote = ''
+      creativeForm.finishCardImageUrl = ''
+      creativeForm.finishCardImagePath = ''
+      creativeForm.wheelColorSelectionDesc = ''
+    }
+  } catch (e) {
+    finishCardGroups.value = []
+    allFinishItems.value = []
+    finishCardLoadError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    finishCardLoading.value = false
+  }
+}
+
+watch(uiLocale, () => {
+  const id = creativeForm.finishCardId
+  if (id == null) return
+  const it = allFinishItems.value.find(x => x.id === id)
+  if (it) applyFinishSelection(it)
 })
 
 const addressForm = reactive({
@@ -184,7 +393,7 @@ const addressForm = reactive({
 
 const amountForm = reactive({
   basePrice: '',
-  currency: 'CNY',
+  currency: '',
 })
 
 const currencyOptions = computed<SelectOption[]>(() => currenciesToSelectOptions())
@@ -199,9 +408,11 @@ const countryOptions: SelectOption[] = [
   { value: 'uae', label: 'UAE' },
 ]
 
+// 与 `specs.孔型` / `specs.后轮孔型` 及创建订单 `f_hole` / `r_hole` 一致
 const holeOptions = computed<SelectOption[]>(() => [
-  { value: '旋口', label: t('wheel.holeHelicoil') },
-  { value: '直孔', label: t('wheel.holeStraight') },
+  { value: '锥口', label: t('wheel.holeConical') },
+  { value: '平口', label: t('wheel.holeFlat') },
+  { value: '球口', label: t('wheel.holeBall') },
 ])
 
 const boltSeatOptions = computed<SelectOption[]>(() => [
@@ -351,8 +562,25 @@ function onWheelModificationChange(v: string | number) {
 }
 
 onMounted(() => {
-  if (wheelSizeEnabled) void loadWheelMakes()
+  void (async () => {
+    if (wheelSizeEnabled) await loadWheelMakes()
+    await loadFinishCards()
+    const oid = orderIdFromRouteQuery(
+      route.query as Record<string, string | string[] | null | undefined>,
+    )
+    if (oid) await hydrateFromOrderId(oid)
+  })()
 })
+
+watch(
+  () =>
+    orderIdFromRouteQuery(route.query as Record<string, string | string[] | null | undefined>),
+  (id, oldId) => {
+    if (!id) return
+    if (id === oldId) return
+    void hydrateFromOrderId(id)
+  },
+)
 
 function goNextFromVehicle() {
   activeTab.value = 'creative'
@@ -440,7 +668,7 @@ async function submitPreorder() {
     if (creativeForm.centerCapFile && !String(creativeForm.centerCapUrl).trim())
       throw new Error(t('customOrder.errCapUpload'))
 
-    const body = buildPreorderBodyFromCustomOrder({
+    const body = buildCreateOrderFromCustomOrder({
       vehicle: { ...vehicleForm },
       creative: { ...creativeForm },
       address: { ...addressForm },
@@ -452,7 +680,7 @@ async function submitPreorder() {
       wheelYearOptions: wheelSizeEnabled ? wsYearOptions.value : undefined,
       wheelModOptions: wheelSizeEnabled ? wsModOptions.value : undefined,
     })
-    const res = await createPreorder(body)
+    const res = await createOrder(body)
     if (!res?.order)
       throw new Error(t('customOrder.errCreate'))
     orderSubmitOk.value = true
@@ -467,6 +695,12 @@ async function submitPreorder() {
 
 <template>
   <div class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#FAFAFA] pb-32 text-[#1F2937]">
+    <div v-if="orderEditLoading" class="px-4 py-2 text-3.25 text-[#6B7280]">
+      {{ t('common.loading') }}
+    </div>
+    <div v-else-if="orderEditError" class="px-4 py-2 text-3.25 text-[#B91C1C]">
+      {{ orderEditError }}
+    </div>
     <div class="min-h-full">
       <div class="sticky top-0 z-20 border-b border-[#ECECEC] bg-white px-4 pb-2 pt-4">
         <img src="@/assets/image/navLogo.png" class="h-8 w-34 object-contain" alt="">
@@ -700,24 +934,47 @@ async function submitPreorder() {
             <div>
               <div class="text-4 font-700">{{ t('customOrder.wheelColor') }}</div>
               <div class="mt-4 overflow-hidden rounded-3xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                <img src="@/assets/vue.svg" class="h-42 w-full object-contain opacity-80" alt=""
-                  v-if="creativeForm.structure != '越野'">
+                <div v-if="selectedFinishPreview?.image_url" class="h-42 w-full overflow-hidden bg-[#F3F4F6]">
+                  <img :src="selectedFinishPreview.image_url" class="h-full w-full object-contain" alt="" />
+                </div>
+                <div v-else class="h-42 w-full">
+                  <img src="@/assets/vue.svg" class="h-full w-full object-contain opacity-80" alt=""
+                    v-if="creativeForm.structure != '越野'">
+                </div>
+                <div v-if="finishCardLoadError"
+                  class="mt-2 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-2 py-1.5 text-3 text-[#B91C1C]">
+                  {{ finishCardLoadError }}
+                </div>
+                <div v-else-if="finishCardLoading" class="mt-2 text-center text-3 text-[#9CA3AF]">
+                  {{ t('common.loading') }}
+                </div>
                 <div class="mt-4 flex flex-wrap justify-around gap-3 text-3 text-[#6B7280]">
-                  <button v-for="item in wheelColors" :key="item.name" type="button" class="border-b pb-1"
-                    :class="creativeForm.selectedColor === item.name ? 'border-[#2A2C33] text-[#111827]' : 'border-transparent'"
-                    @click="creativeForm.selectedColor = item.name">
-                    {{ item.name }}
+                  <button v-for="(g, i) in groupsWithItems" :key="`${g.sort}-${g.section_name}`" type="button"
+                    class="border-b pb-1" :class="selectedFinishGroupIndex === i
+                      ? 'border-[#2A2C33] text-[#111827]' : 'border-transparent'
+                    " :disabled="finishCardLoading" @click="selectFinishGroup(i)">
+                    {{ finishSectionLabel(g) }}
                   </button>
                 </div>
                 <div class="mt-4 text-center text-4 font-700">
                   {{ t('customOrder.sampleName') }}
                 </div>
-                <div class="mt-4 flex items-center justify-center gap-3">
-                  <button v-for="item in wheelColors" :key="`${item.name}-dot`" type="button"
-                    class="h-10 w-10 rounded-full border transition"
-                    :class="creativeForm.selectedColor === item.name ? 'border-[#2A2C33] shadow-[0_0_0_3px_white,0_0_0_4px_#2A2C33]' : 'border-transparent'"
-                    :style="{ backgroundColor: item.hex }" @click="creativeForm.selectedColor = item.name" />
+                <div class="mt-4 flex max-h-50 flex-wrap items-center justify-center gap-3 overflow-y-auto">
+                  <button v-for="item in currentFinishItems" :key="item.id" type="button"
+                    class="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border transition"
+                    :class="creativeForm.finishCardId === item.id
+                      ? 'border-[#2A2C33] shadow-[0_0_0_3px_white,0_0_0_4px_#2A2C33]' : 'border-[#D1D5DB]'
+                    " :disabled="finishCardLoading" :title="finishItemDisplayLabel(item)" @click="applyFinishSelection(item)">
+                    <img v-if="item.image_url" :src="item.image_url" class="h-full w-full object-cover" alt="" />
+                    <span v-else
+                      class="flex h-full w-full items-center justify-center bg-[#E5E7EB] text-2.5 text-[#6B7280]">
+                      {{ item.code.length > 4 ? item.code.slice(0, 4) : item.code }}
+                    </span>
+                  </button>
                 </div>
+                <p v-if="!finishCardLoading && !currentFinishItems.length" class="mt-2 text-center text-3 text-[#9CA3AF]">
+                  {{ t('customOrder.emptyFinishSwatches') }}
+                </p>
               </div>
             </div>
           </template>

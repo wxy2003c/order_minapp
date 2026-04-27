@@ -1,6 +1,13 @@
 import axios, {AxiosHeaders} from 'axios';
 import type {InternalAxiosRequestConfig} from 'axios';
 import {getApiLang} from '@/i18n/apiLang';
+import {getTelegramUserId} from '@/utils/userTelegram';
+
+/**
+ * 后端 API 的 Axios 客户端：Laravel 风格 query 序列化、HMAC-SHA256 请求签、
+ * 默认 query 注入 `lang`、`platform=telegram`、`user_id`（来自 Telegram），以及
+ * 将 `{ code, data }` 解包为 `data`。
+ */
 
 /** 须与 Laravel `api_clients` 中对应 api_key 的明文密钥一致（DB 中存加密值，验签时用解密后的明文） */
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://chain.wheelsline.com/api/v1').trim();
@@ -173,14 +180,25 @@ function formDataParamsForSign(fd: FormData): Record<string, string> {
   return out;
 }
 
-function collectUrlQuery(config: InternalAxiosRequestConfig): Record<string, string> {
-  const requestUrl = axios.getUri(config);
-  const fullUrl = new URL(requestUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
-  const realQuery: Record<string, string> = {};
-  fullUrl.searchParams.forEach((value, key) => {
-    realQuery[key] = value;
-  });
-  return realQuery;
+/**
+ * 与请求实际发出的 query 一致，用于签名字符串第 3 行（`normalizedParams`）。
+ * 必须在拦截器里合并完 `lang` / `platform` / `user_id` 之后再调用，避免 `getUri` 与最终请求不一致
+ * 导致验签时缺少 `user_id`、`platform`。
+ */
+function getQueryObjectForSign(config: InternalAxiosRequestConfig): Record<string, unknown> {
+  const p = config.params;
+  if (p == null) return {};
+  if (p instanceof URLSearchParams) {
+    const out: Record<string, unknown> = {};
+    p.forEach((value, key) => {
+      out[key] = value;
+    });
+    return out;
+  }
+  if (typeof p === 'object' && !Array.isArray(p)) {
+    return { ...(p as Record<string, unknown>) };
+  }
+  return {};
 }
 
 // ----------------------------------------
@@ -197,15 +215,36 @@ const httpApi = axios.create({
   }
 });
 
+/**
+ * 请求拦截：合并语言与平台、补全 `user_id`，再按 method/path/query/body 计算 SHA256 与 HMAC，
+ * 设置 `X-Timestamp`、`X-Nonce`、`X-Signature`。
+ */
 httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
   const lang = getApiLang();
+  const defaultUserId = (getTelegramUserId() || '').trim();
   if (config.params instanceof URLSearchParams) {
-    config.params.set('lang', lang);
+    const sp = config.params;
+    if (!String(sp.get('lang') ?? '').trim()) {
+      sp.set('lang', lang);
+    }
+    sp.set('platform', 'telegram');
+    if (defaultUserId && !String(sp.get('user_id') ?? '').trim()) {
+      sp.set('user_id', defaultUserId);
+    }
   } else {
     const base = (config.params && typeof config.params === 'object' && !Array.isArray(config.params)) ?
       {...(config.params as Record<string, unknown>)} :
       {};
-    config.params = {...base, lang} as typeof config.params;
+    const withUid: Record<string, unknown> = {
+      ...base,
+      lang,
+      platform: 'telegram',
+    };
+    const existingUid = withUid['user_id'];
+    const hasUid
+      = existingUid !== undefined && existingUid !== null && String(existingUid).trim() !== '';
+    if (!hasUid && defaultUserId) withUid['user_id'] = defaultUserId;
+    config.params = withUid as typeof config.params;
   }
 
   const method = (config.method || 'GET').toUpperCase();
@@ -213,7 +252,7 @@ httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
   const nonce = genNonce(32);
 
   const path = resolveRequestPath(config);
-  const realQuery = collectUrlQuery(config);
+  const realQuery = getQueryObjectForSign(config);
 
   let bodyStr = '';
   let normalizedParams = '';
@@ -285,6 +324,7 @@ httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
   return config;
 }, (error) => Promise.reject(error));
 
+/** 响应拦截：`code !== 0` 时抛错；`code === 0` 时返回内层 `data`。 */
 httpApi.interceptors.response.use(
   (response) => {
     const body = response.data;

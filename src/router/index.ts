@@ -61,6 +61,11 @@ const router = createRouter({
       component: () => import('@/pages/order/details.vue'),
     },
     {
+      path: '/OrderList',
+      name: '订单列表',
+      component: () => import('@/pages/order/list.vue'),
+    },
+    {
       path: '/Evaluation',
       name: '订单评价',
       component: () => import('@/pages/Evaluation/index.vue'),

@@ -657,9 +657,9 @@ onBeforeUnmount(() => {
                 </div>
 
                 <button v-for="tag in activeTags" :key="tag.key" type="button"
-                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-3 transition [color:var(--tg-theme-text-color)] [background:color-mix(in_srgb,var(--tg-theme-text-color)_10%,transparent)] [box-shadow:0_0_0_1px_color-mix(in_srgb,var(--tg-theme-text-color)_20%,transparent)] hover:[background:color-mix(in_srgb,var(--tg-theme-text-color)_16%,transparent)]"
+                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-2 bg-[var(--app-accent)] text-3 transition [color:var(--tg-theme-text-color)] [background:color-mix(in_srgb,var(--tg-theme-text-color)_10%,transparent)] [box-shadow:0_0_0_1px_color-mix(in_srgb,var(--tg-theme-text-color)_20%,transparent)] hover:[background:color-mix(in_srgb,var(--tg-theme-text-color)_16%,transparent)]"
                     @click="removeTag(tag.key)">
-                    <span class="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">{{ tag.label }}</span>
+                    <span class="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap color-white">{{ tag.label }}</span>
                     <Icon icon="mdi:close" width="14" height="14" class="shrink-0 [color:var(--tg-theme-hint-color)]" />
                 </button>
             </div>

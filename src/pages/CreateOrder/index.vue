@@ -7,8 +7,8 @@ import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
 import TgSwitch from '@/components/TgSwitch.vue'
 import {
-  buildSimpleCreateOrderPayload,
-  createPreorder,
+  buildCreateOrderFromSimpleForm,
+  createOrder,
   type SimpleCreateOrderForm,
 } from '@/api/orders'
 import type { WheelSizeGenerationRow, WheelSizeOption } from '@/api/wheelsline-size'
@@ -126,9 +126,14 @@ const currencyOptions = computed<SelectOption[]>(() => currenciesToSelectOptions
 
 const sizeOptions = computed<SelectOption[]>(() => [
   { value: '16', label: t('wheel.inch16') },
+  { value: '17', label: t('wheel.inch17') },
   { value: '18', label: t('wheel.inch18') },
   { value: '19', label: t('wheel.inch19') },
   { value: '20', label: t('wheel.inch20') },
+  { value: '21', label: t('wheel.inch21') },
+  { value: '22', label: t('wheel.inch22') },
+  { value: '23', label: t('wheel.inch23') },
+  { value: '24', label: t('wheel.inch24') },
 ])
 
 const structureValues = ['单片', '双片', '三片', '越野'] as const
@@ -365,16 +370,13 @@ function buildFormSnapshot(): SimpleCreateOrderForm {
   let carBrand = ''
   let carModel = ''
   let yearField = ''
-  let structureSubtypeOffroad = ''
+  const structureSubtypeOffroad = ''
 
   if (wheelSizeEnabled) {
     carBrand = labelOf(wsBrandOptions.value, form.brand)
     carModel = labelOf(wsModelOptions.value, form.model)
-    const genLabel = labelOf(wsGenOptions.value, form.wheelGeneration)
     const yLabel = labelOf(wsYearOptions.value, form.wheelYear)
-    // 与示例里 `year` 隐藏域一致：仅「年份」一列文案；世代进 `structure_subtype_offroad`
     yearField = yLabel
-    structureSubtypeOffroad = genLabel
   } else {
     carBrand = form.carBrandText.trim()
     carModel = form.carModelText.trim()
@@ -397,6 +399,8 @@ function buildFormSnapshot(): SimpleCreateOrderForm {
     carModel,
     year: yearField,
     structureSubtypeOffroad,
+    wheelGeneration: form.wheelGeneration,
+    wheelModification: form.wheelModification,
     vin: form.vin.trim(),
     chassis: form.chassis.trim(),
     styleName: form.styleName.trim(),
@@ -466,8 +470,8 @@ async function submit() {
   orderSubmitting.value = true
   try {
     const snap = buildFormSnapshot()
-    const body = buildSimpleCreateOrderPayload(snap)
-    const res = await createPreorder(body)
+    const body = buildCreateOrderFromSimpleForm(snap)
+    const res = await createOrder(body)
     if (!res?.order) throw new Error(t('customOrder.errCreate'))
     const no = orderNoFromRes(res.order)
     const okText = no

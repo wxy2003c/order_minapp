@@ -88,6 +88,20 @@ export function getTelegramUserLanguageCode(): string | undefined {
   return getTelegramWebApp()?.initDataUnsafe?.user?.language_code
 }
 
+/**
+ * 无法从 Telegram WebApp 读取用户时，请求体 / query 里 `user_id` 等使用的默认值（本地与联调用）。
+ */
+export const DEFAULT_TELEGRAM_USER_ID = '8548581087'
+
+/**
+ * Telegram 用户 id，作 `user_id` / `telegram_id` 等提交用；
+ * 若 TMA 未提供用户，则回退为 {@link DEFAULT_TELEGRAM_USER_ID}。
+ */
+export function getTelegramUserId(): string {
+  const id = getTelegramWebApp()?.initDataUnsafe?.user?.id
+  return id != null ? String(id) : DEFAULT_TELEGRAM_USER_ID
+}
+
 /** 取某一主题色（TMA 或回退表），供 Naive 等必须解析为实色的场景使用。 */
 export function pickTgColor(
   themeParams: TelegramThemeParams | null | undefined,
