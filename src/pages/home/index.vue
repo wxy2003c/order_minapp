@@ -54,10 +54,10 @@ function getUserPhone() {
 const carBrand = ref('')
 const carModel = ref('')
 const carYear = ref('')
-const activeStyle = ref('')
 
 function selectStyleTag(tag: string) {
-  activeStyle.value = tag
+  browse.setStyleMood(tag)
+  router.push({ path: '/product' })
 }
 
 const carSelectionSummary = computed(() => {
@@ -73,8 +73,12 @@ const carEntryRef = ref<HTMLElement | null>(null)
 const panelWidth = ref(0)
 
 const popoverPanelStyle = computed((): Record<string, string> => {
-  if (!panelWidth.value) return {}
+  const base: Record<string, string> = {
+    backgroundColor: 'var(--tg-theme-secondary-bg-color)',
+  }
+  if (!panelWidth.value) return base
   return {
+    ...base,
     width: `${panelWidth.value}px`,
     maxWidth: `${panelWidth.value}px`,
   }
@@ -120,7 +124,6 @@ onBeforeUnmount(() => {
 /** 将当前首页选择写入 Pinia 后再进产品页；未点 Go 时产品页不会带上这里的草稿 */
 function goToProduct() {
   browse.setCar(carBrand.value, carModel.value, carYear.value)
-  browse.setStyleMood(activeStyle.value)
   router.push({ path: '/product' })
 }
 </script>
@@ -133,15 +136,15 @@ function goToProduct() {
     <div class="mt-3 flex-items-center flex gap-2">
       <div ref="carEntryRef" class="flex-1">
         <NPopover v-model:show="carPopoverOpen" trigger="manual" :animated="false" display-directive="show"
-          placement="bottom-start" :show-arrow="false" :content-style="popoverPanelStyle" arrow-wrapper-class="p-0"
-          :on-clickoutside="closeCarPopover">
+          placement="bottom-start" :show-arrow="false" :content-style="popoverPanelStyle" arrow-wrapper-class="p-0">
           <template #trigger>
             <button type="button"
               class="flex h-full flex-items-center min-h-12 w-full items-center justify-between gap-2 border border-white/20 rounded-2xl bg-white/5 px-4 py-2.5 text-left text-3.5 text-white/95 outline-none transition active:bg-white/10"
               @click.stop="toggleCarPopover">
               <div class="min-w-0 flex-1">
                 <div class="text-3 text-white/50">{{ t('home.selectCar') }}</div>
-                <div class="mt-0.5 truncate text-2.75 text-white/70 max-w-50 overflow-hidden text-ellipsis whitespace-nowrap">
+                <div
+                  class="mt-0.5 truncate text-2.75 text-white/70 max-w-50 overflow-hidden text-ellipsis whitespace-nowrap">
                   {{ carSelectionSummary }}
                 </div>
               </div>
@@ -150,7 +153,8 @@ function goToProduct() {
             </button>
           </template>
           <div
-            class="tg-light-surface z-50 overflow-hidden rounded-[20px] border border-[#d9d9dc] bg-white p-0 text-[#242730] shadow-[0_20px_50px_rgba(0,0,0,0.28)] outline-none">
+            class="tg-light-surface z-50 overflow-hidden rounded-[20px] border p-0 shadow-[var(--app-shadow)] outline-none"
+            style="border-color: var(--tg-theme-section-separator-color)">
             <CarSelectionPanel v-model:brand="carBrand" v-model:model="carModel" v-model:year="carYear"
               :groups="carGroups" @complete="closeCarPopover" />
           </div>
@@ -165,9 +169,8 @@ function goToProduct() {
     <div
       class="mt-3 flex w-full flex-nowrap items-stretch gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <button v-for="tag in STYLE_MOOD_TAGS" :key="tag" type="button"
-        class="shrink-0 rounded-2xl border px-3.5 py-2.5 text-3.5 font-600 leading-none transition" :class="activeStyle === tag
-          ? 'border-[#88AEE4] bg-[#EFF5FF] text-[#1F2937] shadow-[inset_0_0_0_1px_rgba(136,174,228,0.25)]'
-          : 'border-[#ECECEC] bg-white text-[#4F5869]'" @click="selectStyleTag(tag)">
+        class="shrink-0 rounded-2xl border px-3.5 py-2.5 text-3.5 font-600 leading-none transition border-[#ECECEC] bg-white text-[#4F5869]"
+        @click="selectStyleTag(tag)">
         {{ tag }}
       </button>
     </div>
@@ -203,18 +206,19 @@ function goToProduct() {
     </div>
 
     <div
-      class="pos-fixed right-5 top-1/2 h-12 w-12 flex flex-items-center justify-center border border-white/10 bg-[#ffffff] rounded-50% -translate-y-1/2"
-      @click="router.push('/CustomOrder')">
-      +
+      class="pos-fixed right-5 top-1/2 h-12 w-12 flex flex-items-center justify-center rounded-50% border -translate-y-1/2"
+      style="border-color: var(--tg-theme-section-separator-color); background: var(--tg-theme-secondary-bg-color)"
+      @click="router.push('/OrderCreate')">
+      <Icon
+        icon="mdi:plus"
+        width="22"
+        height="22"
+        :style="{ color: 'var(--tg-theme-text-color)' }"
+      />
     </div>
 
-    <NModal
-      v-model:show="phoneAuthModalOpen"
-      preset="card"
-      :style="{ maxWidth: 'min(90vw, 400px)' }"
-      :mask-closable="true"
-      :closable="true"
-    >
+    <NModal v-model:show="phoneAuthModalOpen" preset="card" :style="{ maxWidth: 'min(90vw, 400px)' }"
+      :mask-closable="true" :closable="true">
       <template #header>
         <div class="w-full text-center text-4 font-600 text-[#1F2937]">
           {{ t('phoneAuth.title') }}

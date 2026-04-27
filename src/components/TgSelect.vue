@@ -71,8 +71,13 @@ function onUpdate(v: string | number | null) {
 </template>
 
 <style scoped>
-.tg-nselect :deep(.n-base-selection-label) {
+.tg-nselect :deep(.n-base-selection:not(.n-base-selection--disabled) .n-base-selection-label) {
   color: var(--tg-theme-link-color);
+  font-weight: 600;
+}
+
+.tg-nselect :deep(.n-base-selection--disabled .n-base-selection-label) {
+  color: inherit;
   font-weight: 600;
 }
 </style>

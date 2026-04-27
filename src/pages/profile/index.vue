@@ -6,14 +6,18 @@ import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import { carGroups, getDefaultCarSelection } from '@/data/carSelection'
 import { orderStatusMeta, profileOrders } from '@/data/orders'
 import { t } from '@/i18n/uiI18n'
-
+import {OrderList} from '@/api/orders'
 const router = useRouter()
 const initialCar = getDefaultCarSelection()
 const pickerOpen = ref(false)
 const selectedBrand = ref(initialCar.brand)
 const selectedModel = ref(initialCar.model)
 const selectedYear = ref(initialCar.year)
-
+const searchParams = reactive({
+  phone:'15566886688',
+  page:1,
+  page_size:10
+})  // 订单搜索参数
 const currentCarText = computed(() => `${selectedBrand.value} ${selectedModel.value}[${selectedYear.value}]`)
 
 function openOrderDetails(orderId: string) {
@@ -24,6 +28,16 @@ function openOrderDetails(orderId: string) {
     },
   })
 }
+
+// 订单列表
+async function pagesOrder() {
+   const res = await OrderList(searchParams)
+   console.log(res);
+}
+
+onMounted(()=>{
+  pagesOrder()
+})
 </script>
 
 <template>

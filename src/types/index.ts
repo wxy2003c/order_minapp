@@ -31,6 +31,8 @@ export interface TelegramUser {
 
 export interface TelegramInitDataUnsafe {
   user?: TelegramUser
+  /** `t.me/bot?startapp=...` 等进入时由客户端注入 */
+  start_param?: string
 }
 
 export interface TelegramBackButton {

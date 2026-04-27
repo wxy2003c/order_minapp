@@ -51,6 +51,11 @@ const router = createRouter({
       component: () => import('@/pages/CustomOrder/index.vue'),
     },
     {
+      path: '/OrderCreate',
+      name: '快速创建订单',
+      component: () => import('@/pages/CreateOrder/index.vue'),
+    },
+    {
       path: '/OrderDetails',
       name: '订单详情',
       component: () => import('@/pages/order/details.vue'),

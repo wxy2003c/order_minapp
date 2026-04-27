@@ -30,10 +30,16 @@ function goBack() {
   <button
     v-if="visible"
     type="button"
-    class="fixed left-3 top-3 z-[38] flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--app-divider)] bg-[rgb(0,0,0,.4)] text-[#1F2937] shadow-[var(--app-shadow)] backdrop-blur-sm transition active:scale-95"
+    class="tg-floating-back fixed left-3 top-3 z-[38] flex h-10 w-10 items-center justify-center rounded-full transition [isolation:isolate] [transform:translateZ(0)] active:scale-95"
     :aria-label="t('backButton.aria')"
     @click="goBack"
   >
-    <Icon icon="mdi:arrow-left" width="22" height="22" color="#ffffff"/>
+    <Icon
+      icon="mdi:arrow-left"
+      width="22"
+      height="22"
+      class="text-[color:var(--tg-theme-text-color)]"
+      color="currentColor"
+    />
   </button>
 </template>

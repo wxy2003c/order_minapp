@@ -54,22 +54,28 @@ body {
 }
 
 /**
- * 选车 / 筛选等浅色弹层（常 teleport 到 body 下）
- * TG 暗色下 body 字色为浅色，若仅设 bg-white 会继承浅色字 → 白底白字看不见
+ * 选车 / 筛选等浮层：与 Telegram 主题一致（secondary 底 + 正文字色）
  */
 .tg-light-surface {
   isolation: isolate;
-  color: #1a1d24;
-  color-scheme: only light;
+  position: relative;
+  z-index: 0;
+  color: var(--tg-theme-text-color);
+  background-color: var(--tg-theme-secondary-bg-color);
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-secondary-bg-color),
+    var(--tg-theme-secondary-bg-color)
+  );
 }
 
 .tg-light-surface :where(button, input, textarea, select) {
   font: inherit;
 }
 
-/** 深色页上一块区域：显式字色，避免在 TG 下与主题继承打架（仅作容器，具体按钮见组件 class） */
+/** 深色页上一块区域：用 TG 副标题色 */
 .tg-on-dark-surface {
-  color: #d6e0f0;
+  color: var(--tg-theme-subtitle-text-color);
 }
 
 button,
@@ -110,10 +116,14 @@ select {
   transform: translateZ(0);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  color: var(--app-on-light) !important;
-  background-color: #fff !important;
-  background-image: linear-gradient(0deg, #fff, #fff) !important;
-  border: 1px solid var(--app-accent) !important;
+  color: var(--tg-theme-text-color) !important;
+  background-color: var(--tg-theme-secondary-bg-color) !important;
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-secondary-bg-color),
+    var(--tg-theme-secondary-bg-color)
+  ) !important;
+  border: 1px solid var(--tg-theme-link-color) !important;
 }
 
 .tg-btn-white {
@@ -121,10 +131,14 @@ select {
   transform: translateZ(0);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  color: var(--app-on-light) !important;
-  background-color: #fff !important;
-  background-image: linear-gradient(0deg, #fff, #fff) !important;
-  border: 1px solid #fff !important;
+  color: var(--tg-theme-text-color) !important;
+  background-color: var(--tg-theme-secondary-bg-color) !important;
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-secondary-bg-color),
+    var(--tg-theme-secondary-bg-color)
+  ) !important;
+  border: 1px solid var(--tg-theme-section-separator-color) !important;
 }
 
 .tg-btn-danger {
@@ -132,14 +146,63 @@ select {
   transform: translateZ(0);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  color: #fff !important;
-  background-color: var(--app-danger) !important;
-  background-image: linear-gradient(0deg, var(--app-danger), var(--app-danger)) !important;
-  border: 1px solid var(--app-danger) !important;
+  color: var(--tg-theme-button-text-color) !important;
+  background-color: var(--tg-theme-destructive-text-color) !important;
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-destructive-text-color),
+    var(--tg-theme-destructive-text-color)
+  ) !important;
+  border: 1px solid var(--tg-theme-destructive-text-color) !important;
 }
 
 .n-popover-shared {
   padding: 0 !important;
   margin-top: 0 !important;
-  background-color: transparent !important;
+  /* 不要强制透明：否则暗色下整段与深色页叠色，选车内容像「全透明/看不见」 */
+}
+
+/**
+ * 禁用态：Naive 会给 .n-select 或内部 selection 加低 opacity，与半透明底相乘会接近全透明
+ */
+.tg-nselect.n-select--disabled,
+.tg-nselect.n-select--disabled .n-base-selection,
+.tg-nselect .n-base-selection--disabled,
+.tg-nselect .n-base-selection[aria-disabled='true'] {
+  opacity: 1 !important;
+}
+
+.tg-nselect .n-base-selection--disabled,
+.tg-nselect .n-base-selection[aria-disabled='true'] {
+  --n-color: var(--tg-theme-secondary-bg-color) !important;
+  --n-text-color: var(--tg-theme-hint-color) !important;
+  --n-arrow-color: var(--tg-theme-hint-color) !important;
+  --n-placeholder-color: var(--tg-theme-hint-color) !important;
+  --n-border: 1px solid var(--tg-theme-section-separator-color) !important;
+  color: var(--tg-theme-hint-color) !important;
+  background: var(--tg-theme-secondary-bg-color) !important;
+  background-color: var(--tg-theme-secondary-bg-color) !important;
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-secondary-bg-color),
+    var(--tg-theme-secondary-bg-color)
+  ) !important;
+}
+
+.tg-nselect .n-base-selection--disabled .n-base-selection-label,
+.tg-nselect .n-base-selection--disabled .n-base-selection-input,
+.tg-nselect .n-base-selection[aria-disabled='true'] .n-base-selection-label,
+.tg-nselect .n-base-selection[aria-disabled='true'] .n-base-selection-input {
+  color: var(--tg-theme-hint-color) !important;
+  opacity: 1 !important;
+}
+
+/** 全局返回：背景/描边/字色走 Telegram 主题，勿写死灰黑 rgba */
+.tg-floating-back {
+  border: 1px solid color-mix(in srgb, var(--tg-theme-section-separator-color) 60%, transparent);
+  background: color-mix(in srgb, var(--tg-theme-secondary-bg-color) 90%, transparent);
+  color: var(--tg-theme-text-color);
+  box-shadow: 0 4px 16px
+    color-mix(in srgb, var(--tg-theme-bg-color) 55%, var(--tg-theme-text-color));
+  backdrop-filter: blur(8px);
 }

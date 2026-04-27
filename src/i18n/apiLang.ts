@@ -1,3 +1,11 @@
+/*
+ * @Author: wxy2003c 774078984@qq.com
+ * @Date: 2026-04-23 16:42:06
+ * @LastEditors: wxy2003c 774078984@qq.com
+ * @LastEditTime: 2026-04-24 13:54:05
+ * @FilePath: \vite-project\src\i18n\apiLang.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 const STORAGE_KEY = 'app_api_lang'
 
 /** 与后端约定的 `lang` 短码（BCP-47 primary 或项目约定） */

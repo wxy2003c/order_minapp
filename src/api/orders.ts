@@ -86,6 +86,29 @@ function normalizeRearEmpties(payload: Record<string, unknown>) {
   }
 }
 
+const REAR_KEY_SET = new Set<string>(REAR_KEYS)
+
+/**
+ * 与「另一套 createOrderViaApi」一致：只带**有值**的选填；空串的键不下发，避免一坨与示例无关的 `""`。
+ * 例外：`r_*` 仍随 `normalizeRearEmpties` 保留在 body 中（允许全为 `''`，与对后轮字段单独 pick 的约定一致）。
+ */
+function isEmptyStringField(v: unknown): boolean {
+  if (v === undefined || v === null) return true
+  if (typeof v === 'string') return v.trim() === ''
+  return false
+}
+
+function pruneEmptyPreorderFields(payload: Record<string, unknown>) {
+  for (const key of Object.keys(payload)) {
+    if (REAR_KEY_SET.has(key)) {
+      continue
+    }
+    if (isEmptyStringField(payload[key])) {
+      delete payload[key]
+    }
+  }
+}
+
 export type SelectOptionLite = { value: string | number; label: string }
 
 export interface CustomOrderFormsSnapshot {
@@ -180,11 +203,150 @@ export function buildPreorderBodyFromCustomOrder(s: CustomOrderFormsSnapshot): R
 
   const payload = pickPreorderPayload(raw)
   normalizeRearEmpties(payload)
+  pruneEmptyPreorderFields(payload)
   return payload
 }
 
 export type PreorderResponse = {
   order?: Record<string, unknown>
+}
+
+/** 简版「创建订单」页表单（对齐示例 `submitCreateOrder` 字段，仅发送 `ORDER_PREORDER_ALLOWED_KEYS` 内键） */
+export interface SimpleCreateOrderForm {
+  /** 提交体字段名：`telegram_id` */
+  telegramId: string
+  /** 提交体字段名：`telegram_name`（深链第二段或当前用户展示名） */
+  telegramName: string
+  orderDate: string
+  customerPhone: string
+  customerEmail: string
+  shippingAddress: string
+  country: string
+  coupon: string
+  remark: string
+  basePrice: string
+  currency: string
+  carBrand: string
+  carModel: string
+  year: string
+  structureSubtypeOffroad: string
+  vin: string
+  chassis: string
+  styleName: string
+  brakeDisc: string
+  caliper: string
+  structure: string
+  structureSubtypeSingle: string
+  specMode: 'split' | 'same'
+  sizeChoice: string
+  fDiam: string
+  appearance: string
+  rAppearance: string
+  fWidth: string
+  fEt: string
+  fPcd: string
+  fCb: string
+  fHole: string
+  fQty: string
+  fOemBolt: string
+  fNote: string
+  rDiam: string
+  rWidth: string
+  rEt: string
+  rPcd: string
+  rCb: string
+  rHole: string
+  rQty: string
+  rOemBolt: string
+  rNote: string
+}
+
+/**
+ * 将简版创建订单表单转为 `/orders/preorder` body，含前后轮同规时从前轮复制到后轮。
+ * 字段名与桌面 `submitCreateOrder` / `OrderFields` 对齐；**唯二**可被深链替换的是入口里的 `telegramId`/`telegramName`（见 CreateOrder 页），其它键含义不变。
+ */
+/** 与后端校验一致：`year` 最长 50 字符 */
+const PREORDER_YEAR_MAX_LEN = 50
+
+export function buildSimpleCreateOrderPayload(f: SimpleCreateOrderForm): Record<string, unknown> {
+  const same = f.specMode === 'same'
+  const sizeChoice = f.sizeChoice.trim() || f.fDiam.trim() || f.rDiam.trim()
+  const yearTrimmed = f.year.trim()
+  const yearOut
+    = yearTrimmed.length > PREORDER_YEAR_MAX_LEN
+      ? yearTrimmed.slice(0, PREORDER_YEAR_MAX_LEN)
+      : yearTrimmed
+
+  let rD = f.rDiam.trim()
+  let rW = f.rWidth.trim()
+  let rEt = f.rEt.trim()
+  let rP = f.rPcd.trim()
+  let rCb = f.rCb.trim()
+  let rH = f.rHole.trim()
+  let rQ = f.rQty.trim()
+  let rOb = f.rOemBolt.trim()
+  let rN = f.rNote.trim()
+  if (same) {
+    rD = f.fDiam.trim() || sizeChoice || rD
+    rW = f.fWidth.trim() || rW
+    rEt = f.fEt.trim() || rEt
+    rP = f.fPcd.trim() || rP
+    rCb = f.fCb.trim() || rCb
+    rH = f.fHole.trim() || rH
+    rQ = f.fQty.trim() || rQ
+    rOb = f.fOemBolt.trim() || rOb
+    rN = f.fNote.trim() || rN
+  }
+
+  const raw: PreorderRawFields = {
+    telegram_id: f.telegramId,
+    telegram_name: f.telegramName,
+    order_date: f.orderDate,
+    customer_phone: f.customerPhone,
+    customer_email: f.customerEmail,
+    shipping_address: f.shippingAddress,
+    country: f.country,
+    coupon: f.coupon,
+    remark: f.remark,
+    base_price: f.basePrice.trim(),
+    currency: f.currency.trim(),
+    car_brand: f.carBrand,
+    car_model: f.carModel,
+    year: yearOut,
+    structure_subtype_offroad: f.structureSubtypeOffroad,
+    vin: f.vin,
+    chassis: f.chassis,
+    style_name: f.styleName,
+    brake_disc: f.brakeDisc,
+    caliper: f.caliper,
+    structure: f.structure,
+    structure_subtype_single: f.structureSubtypeSingle,
+    f_width: f.fWidth,
+    f_et: f.fEt,
+    f_pcd: f.fPcd,
+    f_cb: f.fCb,
+    f_note: f.fNote,
+    f_hole: f.fHole,
+    f_qty: f.fQty,
+    f_oem_bolt: f.fOemBolt,
+    r_diam: rD,
+    r_width: rW,
+    r_et: rEt,
+    r_pcd: rP,
+    r_cb: rCb,
+    r_hole: rH,
+    r_qty: rQ,
+    r_note: rN,
+    r_oem_bolt: rOb,
+    r_appearance: f.rAppearance,
+    size_choice: sizeChoice,
+    spec_mode: f.specMode,
+    appearance: f.appearance,
+  }
+  const p = pickPreorderPayload(raw)
+  normalizeRearEmpties(p)
+  pruneEmptyPreorderFields(p)
+  return p
 }
 
 /**
@@ -194,5 +356,14 @@ export async function createPreorder(
   body: Record<string, unknown>,
 ): Promise<PreorderResponse> {
   const res = (await httpApi.post('/orders/preorder', body)) as PreorderResponse
+  return res ?? {}
+}
+
+
+// 订单列表
+export async function OrderList(
+  body: Record<string, unknown>,
+): Promise<PreorderResponse> {
+  const res = (await httpApi.get('/orders', {params:body})) as PreorderResponse
   return res ?? {}
 }

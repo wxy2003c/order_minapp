@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { t } from '@/i18n/uiI18n'
+import { currenciesToSelectOptions } from '@/constants/currencies'
 import { Icon } from '@iconify/vue'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
@@ -186,11 +187,7 @@ const amountForm = reactive({
   currency: 'CNY',
 })
 
-const currencyOptions = computed<SelectOption[]>(() => [
-  { value: 'CNY', label: t('customOrder.cny') },
-  { value: 'USD', label: t('customOrder.usd') },
-  { value: 'EUR', label: t('customOrder.eur') },
-])
+const currencyOptions = computed<SelectOption[]>(() => currenciesToSelectOptions())
 
 const orderSubmitting = ref(false)
 const orderSubmitError = ref('')

@@ -9,7 +9,9 @@ declare global {
   const EffectScope: typeof import('vue').EffectScope
   const TG_PHONE_CONTACT_STORAGE_KEY: typeof import('./src/utils/userTelegram').TG_PHONE_CONTACT_STORAGE_KEY
   const applyTelegramThemeParams: typeof import('./src/utils/userTelegram').applyTelegramThemeParams
+  const buildDecodedLinkDebugSnapshot: typeof import('./src/utils/telegramDeepLink').buildDecodedLinkDebugSnapshot
   const clearPhoneAuthModalDismissedThisSession: typeof import('./src/utils/userTelegram').clearPhoneAuthModalDismissedThisSession
+  const collectOrderDeepLinkFromLocation: typeof import('./src/utils/telegramDeepLink').collectOrderDeepLinkFromLocation
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
   const customRef: typeof import('vue').customRef
@@ -23,6 +25,7 @@ declare global {
   const getPhoneAuthModalDismissedThisSession: typeof import('./src/utils/userTelegram').getPhoneAuthModalDismissedThisSession
   const getStoredTelegramContact: typeof import('./src/utils/userTelegram').getStoredTelegramContact
   const getTelegram: typeof import('./src/utils/userTelegram').getTelegram
+  const getTelegramStartParam: typeof import('./src/utils/telegramDeepLink').getTelegramStartParam
   const getTelegramUserLanguageCode: typeof import('./src/utils/userTelegram').getTelegramUserLanguageCode
   const getTelegramViewportHeight: typeof import('./src/utils/userTelegram').getTelegramViewportHeight
   const getTelegramWebApp: typeof import('./src/utils/userTelegram').getTelegramWebApp
@@ -34,6 +37,7 @@ declare global {
   const isReadonly: typeof import('vue').isReadonly
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
+  const logTelegramLinkParams: typeof import('./src/utils/telegramDeepLink').logTelegramLinkParams
   const markRaw: typeof import('vue').markRaw
   const nextTick: typeof import('vue').nextTick
   const onActivated: typeof import('vue').onActivated
@@ -52,6 +56,8 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
+  const parseCreateToken: typeof import('./src/utils/telegramDeepLink').parseCreateToken
+  const parseOrderStartParam: typeof import('./src/utils/telegramDeepLink').parseOrderStartParam
   const pickTgColor: typeof import('./src/utils/userTelegram').pickTgColor
   const provide: typeof import('vue').provide
   const reactive: typeof import('vue').reactive
@@ -71,6 +77,7 @@ declare global {
   const toRefs: typeof import('vue').toRefs
   const toValue: typeof import('vue').toValue
   const triggerRef: typeof import('vue').triggerRef
+  const tryApplyOrderDeepLink: typeof import('./src/utils/telegramDeepLink').tryApplyOrderDeepLink
   const unref: typeof import('vue').unref
   const useAttrs: typeof import('vue').useAttrs
   const useCssModule: typeof import('vue').useCssModule
@@ -93,6 +100,9 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { OrderDeepLinkPayload } from './src/utils/telegramDeepLink'
+  import('./src/utils/telegramDeepLink')
 }
 
 // for vue template auto import
@@ -103,7 +113,9 @@ declare module 'vue' {
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly TG_PHONE_CONTACT_STORAGE_KEY: UnwrapRef<typeof import('./src/utils/userTelegram')['TG_PHONE_CONTACT_STORAGE_KEY']>
     readonly applyTelegramThemeParams: UnwrapRef<typeof import('./src/utils/userTelegram')['applyTelegramThemeParams']>
+    readonly buildDecodedLinkDebugSnapshot: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['buildDecodedLinkDebugSnapshot']>
     readonly clearPhoneAuthModalDismissedThisSession: UnwrapRef<typeof import('./src/utils/userTelegram')['clearPhoneAuthModalDismissedThisSession']>
+    readonly collectOrderDeepLinkFromLocation: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['collectOrderDeepLinkFromLocation']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly createApp: UnwrapRef<typeof import('vue')['createApp']>
     readonly customRef: UnwrapRef<typeof import('vue')['customRef']>
@@ -115,6 +127,7 @@ declare module 'vue' {
     readonly getCurrentWatcher: UnwrapRef<typeof import('vue')['getCurrentWatcher']>
     readonly getPhoneAuthModalDismissedThisSession: UnwrapRef<typeof import('./src/utils/userTelegram')['getPhoneAuthModalDismissedThisSession']>
     readonly getStoredTelegramContact: UnwrapRef<typeof import('./src/utils/userTelegram')['getStoredTelegramContact']>
+    readonly getTelegramStartParam: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['getTelegramStartParam']>
     readonly getTelegramUserLanguageCode: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramUserLanguageCode']>
     readonly getTelegramWebApp: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramWebApp']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
@@ -125,6 +138,7 @@ declare module 'vue' {
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
     readonly isShallow: UnwrapRef<typeof import('vue')['isShallow']>
+    readonly logTelegramLinkParams: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['logTelegramLinkParams']>
     readonly markRaw: UnwrapRef<typeof import('vue')['markRaw']>
     readonly nextTick: UnwrapRef<typeof import('vue')['nextTick']>
     readonly onActivated: UnwrapRef<typeof import('vue')['onActivated']>
@@ -143,6 +157,8 @@ declare module 'vue' {
     readonly onUnmounted: UnwrapRef<typeof import('vue')['onUnmounted']>
     readonly onUpdated: UnwrapRef<typeof import('vue')['onUpdated']>
     readonly onWatcherCleanup: UnwrapRef<typeof import('vue')['onWatcherCleanup']>
+    readonly parseCreateToken: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['parseCreateToken']>
+    readonly parseOrderStartParam: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['parseOrderStartParam']>
     readonly pickTgColor: UnwrapRef<typeof import('./src/utils/userTelegram')['pickTgColor']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly reactive: UnwrapRef<typeof import('vue')['reactive']>
@@ -161,6 +177,7 @@ declare module 'vue' {
     readonly toRefs: UnwrapRef<typeof import('vue')['toRefs']>
     readonly toValue: UnwrapRef<typeof import('vue')['toValue']>
     readonly triggerRef: UnwrapRef<typeof import('vue')['triggerRef']>
+    readonly tryApplyOrderDeepLink: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['tryApplyOrderDeepLink']>
     readonly unref: UnwrapRef<typeof import('vue')['unref']>
     readonly useAttrs: UnwrapRef<typeof import('vue')['useAttrs']>
     readonly useCssModule: UnwrapRef<typeof import('vue')['useCssModule']>

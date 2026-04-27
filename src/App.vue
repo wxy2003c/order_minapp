@@ -8,7 +8,7 @@
 -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NConfigProvider, darkTheme, enUS, dateEnUS, zhCN, dateZhCN, ruRU, dateRuRU, type GlobalTheme } from 'naive-ui'
+import { NConfigProvider, NMessageProvider, darkTheme, enUS, dateEnUS, zhCN, dateZhCN, ruRU, dateRuRU, type GlobalTheme } from 'naive-ui'
 import TgBackButton from '@/components/TgBackButton.vue'
 import { useTelegramTheme } from '@/composables/useTelegramTheme'
 import { uiLocale } from '@/i18n/uiI18n'
@@ -36,12 +36,14 @@ const naiveDateLocale = computed(() => {
     :locale="naiveLocale"
     :date-locale="naiveDateLocale"
   >
-    <main class="min-h-screen h-screen bg-tg-bg text-tg-text">
-      <div class="relative h-full w-full">
-        <TgBackButton />
-        <RouterView class="pb-24" />
-        <NavBar />
-      </div>
-    </main>
+    <NMessageProvider placement="top" :max="3">
+      <main class="min-h-screen h-screen bg-tg-bg text-tg-text">
+        <div class="relative h-full w-full">
+          <TgBackButton />
+          <RouterView class="pb-24" />
+          <NavBar />
+        </div>
+      </main>
+    </NMessageProvider>
   </NConfigProvider>
 </template>

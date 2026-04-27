@@ -198,11 +198,15 @@ const selectedColor = computed(
     () => colors.value.find(item => item.value === filterForm.color) ?? colors.value[0]!,
 )
 
-// 弹窗宽度样式（跟随头部宽度）；无宽度时给 {}，避免部分环境下 content-style=undefined 异常
+// 弹窗宽度样式（跟随头部宽度）；与 .tg-light-surface / NConfigProvider 一致
 const popoverPanelStyle = computed((): Record<string, string> => {
+    const base: Record<string, string> = {
+        backgroundColor: 'var(--tg-theme-secondary-bg-color)',
+    }
     if (!panelWidth.value)
-        return {}
+        return base
     return {
+        ...base,
         width: `${panelWidth.value}px`,
         maxWidth: `${panelWidth.value}px`,
     }
@@ -518,7 +522,8 @@ onBeforeUnmount(() => {
                     </button>
                 </template>
                 <div
-                    class="tg-light-surface z-50 overflow-hidden rounded-[20px] border border-[#d9d9dc] bg-white p-0 text-[#242730] shadow-[0_20px_50px_rgba(0,0,0,0.28)] outline-none">
+                    class="tg-light-surface z-50 overflow-hidden rounded-[20px] border p-0 shadow-[var(--app-shadow)] outline-none"
+                    style="border-color: var(--tg-theme-section-separator-color)">
                     <CarSelectionPanel v-model:brand="activeBrand" v-model:model="selectedModel"
                         v-model:year="selectedYear" :groups="carGroups" @complete="closeCarPopover" />
                 </div>
@@ -536,7 +541,8 @@ onBeforeUnmount(() => {
                     </button>
                 </template>
                 <div
-                    class="tg-light-surface z-50 flex max-h-[min(70vh,40rem)] flex-col overflow-hidden rounded-[20px] border border-[#d9d9dc] bg-white text-[#242730] shadow-[0_20px_50px_rgba(0,0,0,0.28)] outline-none">
+                    class="tg-light-surface z-50 flex max-h-[min(70vh,40rem)] flex-col overflow-hidden rounded-[20px] border shadow-[var(--app-shadow)] outline-none"
+                    style="border-color: var(--tg-theme-section-separator-color)">
                     <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-2">
                         <div class="space-y-5">
                             <div class="text-5 font-700">
@@ -568,7 +574,9 @@ onBeforeUnmount(() => {
                                 <div class="flex items-center justify-between gap-3">
                                     <button v-for="item in colors" :key="item.value" type="button"
                                         class="relative h-12 w-12 rounded-full border transition"
-                                        :class="filterForm.color === item.value ? 'border-[#242730] shadow-[0_0_0_3px_white,0_0_0_4px_#242730]' : 'border-transparent'"
+                                        :class="filterForm.color === item.value
+                                            ? 'border-[color:var(--tg-theme-text-color)] shadow-[0_0_0_3px_var(--tg-theme-secondary-bg-color),0_0_0_4px_var(--tg-theme-text-color)]'
+                                            : 'border-transparent'"
                                         :style="{ backgroundColor: item.hex }" @click="filterForm.color = item.value" />
                                 </div>
                             </div>
@@ -577,8 +585,13 @@ onBeforeUnmount(() => {
                             <template v-if="props.ProductSelection">
                                 <div class="space-y-2">
                                     <div class="text-3.5 font-600">{{ t('headerFilter.modelCode') }}</div>
-                                    <input v-model="filterForm.modelCode" type="text" :placeholder="t('headerFilter.phModelCode')"
-                                        class="h-12 w-full rounded-2xl border border-[#d5d7dd] bg-white px-4 text-3.5 outline-none transition placeholder:text-[#b2b5bd] focus:border-[#242730]" />
+                                    <input
+                                        v-model="filterForm.modelCode"
+                                        type="text"
+                                        :placeholder="t('headerFilter.phModelCode')"
+                                        class="h-12 w-full rounded-2xl border px-4 text-3.5 outline-none transition focus:border-[color:var(--tg-theme-link-color)] [background:var(--tg-theme-secondary-bg-color)] [color:var(--tg-theme-text-color)] placeholder:text-[color:var(--tg-theme-hint-color)]"
+                                        style="border-color: var(--tg-theme-section-separator-color)"
+                                    />
                                 </div>
 
                                 <div class="space-y-2">
@@ -616,7 +629,8 @@ onBeforeUnmount(() => {
                     </div>
                     <!-- 底部固定：不参与中间区域滚动 -->
                     <div
-                        class="shrink-0 border-t border-[#ececf0] bg-white px-4 pt-3 pb-4">
+                        class="shrink-0 border-t px-4 pt-3 pb-4"
+                        style="border-color: var(--tg-theme-section-separator-color); background: var(--tg-theme-secondary-bg-color)">
                         <div class="flex gap-4">
                             <button type="button"
                                 class="tg-btn-outline-light h-12 flex-1 rounded-xl border text-4 font-600"
@@ -638,20 +652,20 @@ onBeforeUnmount(() => {
         <div class="mt-4 flex items-start justify-between gap-3">
             <div class="min-h-9 flex flex-1 flex-wrap gap-2 tg-on-dark-surface">
                 <div v-if="activeTags.length === 0"
-                    class="flex items-center rounded-full bg-white/6 px-3 py-2 text-3 !text-[#8b9cb0]">
+                    class="flex items-center rounded-full px-3 py-2 text-3 [background:color-mix(in_srgb,var(--tg-theme-text-color)_6%,transparent)] [color:var(--tg-theme-hint-color)]">
                     {{ t('headerFilter.noActiveFilters') }}
                 </div>
 
                 <button v-for="tag in activeTags" :key="tag.key" type="button"
-                    class="inline-flex items-center gap-1.5 rounded-full !bg-white/12 px-3 py-2 text-3 !text-[#E4EBF4] !ring-1 !ring-white/10 transition hover:!bg-white/18"
+                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-3 transition [color:var(--tg-theme-text-color)] [background:color-mix(in_srgb,var(--tg-theme-text-color)_10%,transparent)] [box-shadow:0_0_0_1px_color-mix(in_srgb,var(--tg-theme-text-color)_20%,transparent)] hover:[background:color-mix(in_srgb,var(--tg-theme-text-color)_16%,transparent)]"
                     @click="removeTag(tag.key)">
                     <span class="max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">{{ tag.label }}</span>
-                    <Icon icon="mdi:close" width="14" height="14" class="shrink-0 !text-[#b0c0d2]" />
+                    <Icon icon="mdi:close" width="14" height="14" class="shrink-0 [color:var(--tg-theme-hint-color)]" />
                 </button>
             </div>
 
             <TgButton type="button" variant="outline" shape="pill" @click="clearAllSelections">
-                <span class="color-[#4F5869]">{{ t('headerFilter.clearFilters') }}</span>
+                <span class="[color:var(--tg-theme-hint-color)]">{{ t('headerFilter.clearFilters') }}</span>
             </TgButton>
         </div>
     </div>
