@@ -1,5 +1,6 @@
 import type { Router } from 'vue-router'
-import { getTelegramWebApp } from '@/utils/userTelegram'
+import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
+import { getTelegramWebApp, getTelegramUserId } from '@/utils/userTelegram'
 
 const LINK_DEBUG_TAG = '[TMA link]'
 
@@ -101,7 +102,8 @@ export function logTelegramLinkParams(
   const u = tg?.initDataUnsafe?.user
   const startUnsafe = tg?.initDataUnsafe?.start_param
   const startResolved = getTelegramStartParam()
-  const createParsed = parseCreateToken(startResolved)
+  const createParsed = parseCreateStaffToken(startResolved)
+  const manageParsed = parseManageStaffToken(startResolved)
   const orderParsed = parseOrderStartParam(startResolved)
   const collected = collectOrderDeepLinkFromLocation()
   const decoded = buildDecodedLinkDebugSnapshot()
@@ -123,7 +125,7 @@ export function logTelegramLinkParams(
       && !collected
       && !Object.keys(allQuery).length
       ? '无 start 时 start_param 为空是正常现象（从菜单/聊天按钮直接打开、未用 t.me/bot?startapp=…）。'
-        + ' hash 里多为 user、auth、theme。订单深链用 `create_数字_数字` 或 `order_…`（start_param / ?create=…）。'
+        + ' hash 里多为 user、auth、theme。深链：`manage_平台uid_客户telegram`、`create_…`、`order_…`（start_param / ?create=）。'
       : undefined
 
   // eslint-disable-next-line no-console
@@ -143,7 +145,8 @@ export function logTelegramLinkParams(
       : null,
     'initDataUnsafe.start_param': typeof startUnsafe === 'string' ? startUnsafe : startUnsafe === undefined ? '(undefined)' : String(startUnsafe),
     getTelegramStartParam: startResolved || '(empty)',
-    parseCreateToken: createParsed,
+    parseCreateStaffToken: createParsed,
+    parseManageStaffToken: manageParsed,
     parseOrderStartParam: orderParsed,
     collectOrderDeepLink: collected,
     note,
@@ -249,16 +252,46 @@ export function parseOrderStartParam(startParam: string): OrderDeepLinkPayload |
   return { uid, name }
 }
 
-/** `create_<id>_<name>`，两段均为数字串（第二段作「名称」业务上可为编号等） */
-const CREATE_DEEP_RE = /^create_(\d+)_(\d+)$/
+/**
+ * 解析 `create_<平台user_id>_<客户telegram_id>[_<base64url昵称>]`（第三段可选，UTF-8 base64url）
+ */
+export interface StaffCreateDeepLink {
+  platformUid: string
+  telegramCustomerId: string
+  displayName: string
+}
+
+export function parseCreateStaffToken(raw: string): StaffCreateDeepLink | null {
+  const m = /^create_(\d+)_(\d+)(?:_(.+))?$/.exec((raw || '').trim())
+  if (!m) return null
+  let displayName = ''
+  if (m[3]) {
+    const decoded = base64UrlToUtf8(m[3])
+    displayName = decoded || m[3]
+  }
+  return {
+    platformUid: m[1]!,
+    telegramCustomerId: m[2]!,
+    displayName,
+  }
+}
 
 /**
- * 解析 `create_45454545_454545` 这类 token；成功则两段映射为 uid / name（字符串）
+ * @deprecated 旧 `create_数字_数字` 曾把第二段当「名称」；请用 {@link parseCreateStaffToken}
  */
 export function parseCreateToken(raw: string): OrderDeepLinkPayload | null {
-  const m = CREATE_DEEP_RE.exec((raw || '').trim())
+  const p = parseCreateStaffToken(raw)
+  if (!p) return null
+  return { uid: p.platformUid, name: p.telegramCustomerId }
+}
+
+/** `manage_<平台user_id>_<客户telegram_id>` → 订单列表用平台 user_id，客户 id 写入 session 供 telegram_id */
+export function parseManageStaffToken(
+  raw: string,
+): { platformUid: string; telegramCustomerId: string } | null {
+  const m = /^manage_(\d+)_(\d+)$/.exec((raw || '').trim())
   if (!m) return null
-  return { uid: m[1]!, name: m[2]! }
+  return { platformUid: m[1]!, telegramCustomerId: m[2]! }
 }
 
 /**
@@ -271,14 +304,24 @@ export function parseCreateToken(raw: string): OrderDeepLinkPayload | null {
 export function collectOrderDeepLinkFromLocation(): OrderDeepLinkPayload | null {
   const start = getTelegramStartParam()
 
-  const fromCreateStart = parseCreateToken(start)
-  if (fromCreateStart) return fromCreateStart
+  const fromCreateStart = parseCreateStaffToken(start)
+  if (fromCreateStart) {
+    return {
+      uid: fromCreateStart.platformUid,
+      name: fromCreateStart.telegramCustomerId,
+    }
+  }
 
   if (typeof window !== 'undefined') {
     const createQuery = new URLSearchParams(window.location.search).get('create')
     if (createQuery) {
-      const fromCreateQuery = parseCreateToken(createQuery)
-      if (fromCreateQuery) return fromCreateQuery
+      const fromCreateQuery = parseCreateStaffToken(createQuery)
+      if (fromCreateQuery) {
+        return {
+          uid: fromCreateQuery.platformUid,
+          name: fromCreateQuery.telegramCustomerId,
+        }
+      }
     }
   }
 
@@ -288,22 +331,131 @@ export function collectOrderDeepLinkFromLocation(): OrderDeepLinkPayload | null 
   return null
 }
 
+function commitStaffDeepLinkAndLanding(
+  router: Router,
+  platformUid: string,
+  telegramCustomerId: string,
+  displayName: string | undefined,
+  replaceTo: { path: string; query?: Record<string, string> },
+) {
+  const store = useStaffDeeplinkStore()
+  store.setStaffContext(
+    {
+      platformUid,
+      customerTelegramId: telegramCustomerId,
+      customerDisplayName: displayName,
+    },
+    { fromTelegramStartParam: true },
+  )
+  void router.replace(replaceTo).then(() => {
+    store.setLandingRoute(router.currentRoute.value.fullPath)
+  })
+}
+
+/** 当前环境是否带有任一代客深链（不含纯 `order_` 遗留；无任一则视为「普通入口」仅用本人 Telegram）。 */
+function hasStaffDeepLinkToken(start: string): boolean {
+  if (parseManageStaffToken(start) || parseCreateStaffToken(start))
+    return true
+  if (typeof window === 'undefined') return false
+  const sp = new URLSearchParams(window.location.search)
+  const c = String(sp.get('create') ?? '').trim()
+  const m = String(sp.get('manage') ?? '').trim()
+  if (c && (parseManageStaffToken(c) || parseCreateStaffToken(c)))
+    return true
+  if (m && parseManageStaffToken(m))
+    return true
+  return false
+}
+
 /**
- * 满足「创建订单深链」时，一律 `replace` 到 `/OrderCreate`，并只保留 `id` / `name`（及兼容用的 `uid`）；
- * 不判断当前路由。`create_…` 匹配成功后 query 只留 id/name，不再带原始 `create=`。
+ * `start_param` / `tgWebAppStartParam` / `?create=` / `?manage=`：
+ * - **无深链**：清空代客会话，后续 API `user_id` 仅为当前 Telegram（与从历史恢复区分：每次冷启动不带 token 即清）。
+ * - `manage_<平台uid>_<客户telegram/chat_id>` → `/OrderList`（列表参数 `user_id`=平台 uid；客户在 session）
+ * - `create_<平台uid>_<客户telegram/chat_id>[_<base64昵称>]` → `/CustomOrder`（表单 `telegram_id` 等处用参数上的客户 id）
+ * - `order_<uid>[_…]` → `/CustomOrder`（兼容）
+ *
+ * **`/OrderDetails`**：需在 `staffDeeplink` 中已存在平台 uid + 客户 id 时代客；此时 HTTP `user_id`=本人，`telegram_id`=参数客户 id。
  */
-export function tryApplyOrderDeepLink(router: Router): void {
-  logTelegramLinkParams('tryApplyOrderDeepLink', {
+export function tryApplyTelegramStaffDeepLink(router: Router): void {
+  logTelegramLinkParams('tryApplyTelegramStaffDeepLink', {
     routeQuery: { ...router.currentRoute.value.query },
   })
-  const payload = collectOrderDeepLinkFromLocation()
-  if (!payload) return
+  const start = getTelegramStartParam()
 
-  const q: Record<string, string> = {}
-  if (payload.uid) {
-    q.id = payload.uid
-    q.uid = payload.uid
+  if (!hasStaffDeepLinkToken(start) && !parseOrderStartParam(start)) {
+    useStaffDeeplinkStore().clearDeepLinkSession()
+    return
   }
-  if (payload.name) q.name = payload.name
-  void router.replace({ path: '/OrderCreate', query: q })
+
+  const manage = parseManageStaffToken(start)
+  if (manage) {
+    commitStaffDeepLinkAndLanding(router, manage.platformUid, manage.telegramCustomerId, undefined, {
+      path: '/OrderList',
+    })
+    return
+  }
+
+  const createStaff = parseCreateStaffToken(start)
+  if (createStaff) {
+    commitStaffDeepLinkAndLanding(
+      router,
+      createStaff.platformUid,
+      createStaff.telegramCustomerId,
+      createStaff.displayName || undefined,
+      { path: '/CustomOrder' },
+    )
+    return
+  }
+
+  const orderLegacy = parseOrderStartParam(start)
+  if (orderLegacy) {
+    const tid = (getTelegramUserId() || '').trim()
+    commitStaffDeepLinkAndLanding(router, orderLegacy.uid, tid, orderLegacy.name || undefined, {
+      path: '/CustomOrder',
+    })
+    return
+  }
+
+  if (typeof window === 'undefined') return
+  const sp = new URLSearchParams(window.location.search)
+  const createQuery = sp.get('create')
+  const manageQuery = sp.get('manage')
+
+  if (manageQuery) {
+    const mq = parseManageStaffToken(manageQuery)
+    if (mq) {
+      commitStaffDeepLinkAndLanding(router, mq.platformUid, mq.telegramCustomerId, undefined, {
+        path: '/OrderList',
+        query: {},
+      })
+      return
+    }
+  }
+
+  if (createQuery) {
+    const cqManage = parseManageStaffToken(createQuery)
+    if (cqManage) {
+      commitStaffDeepLinkAndLanding(router, cqManage.platformUid, cqManage.telegramCustomerId, undefined, {
+        path: '/OrderList',
+        query: {},
+      })
+      return
+    }
+
+    const cqCreate = parseCreateStaffToken(createQuery)
+    if (cqCreate) {
+      commitStaffDeepLinkAndLanding(
+        router,
+        cqCreate.platformUid,
+        cqCreate.telegramCustomerId,
+        cqCreate.displayName || undefined,
+        { path: '/CustomOrder', query: {} },
+      )
+    }
+  }
+}
+
+/** @deprecated 使用 {@link tryApplyTelegramStaffDeepLink} */
+export function tryApplyOrderDeepLink(router: Router): void {
+  tryApplyTelegramStaffDeepLink(router)
 }

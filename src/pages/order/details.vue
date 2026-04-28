@@ -20,6 +20,7 @@ import { orderIdFromRouteQuery } from '@/utils/applyOrderDetailToCustomOrder'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
 import { getTelegramWebApp } from '@/utils/userTelegram'
 import { t } from '@/i18n/uiI18n'
+import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
 import {
   asPlainText,
   buildWheelSpecRows,
@@ -39,6 +40,7 @@ import {
 
 const router = useRouter()
 const route = useRoute()
+const staffDeeplink = useStaffDeeplinkStore()
 
 const loading = ref(true)
 const loadError = ref('')
@@ -175,11 +177,12 @@ const avatarUrl = computed(
 const brandModelLine = computed(() => {
   const d = detail.value
   if (!d) return ''
+  const car = str(d.car).trim()
+  if (car) return car
   const b = str((d as { car_brand?: string }).car_brand)
   const m = str((d as { car_model?: string }).car_model)
   if (b && m) return `${b} ${m}`.trim()
-  const car = str(d.car).trim()
-  return car || '—'
+  return '—'
 })
 
 const libThumb = computed(() => {
@@ -229,9 +232,11 @@ const vehicleInfoRows = computed(() => {
   const v = (s: string) => (s.trim() ? s : '—')
   return [
     {
-      labelKey: 'orderDetails.oemBrake' as const,
+      labelKey: 'orderDetails.brakeDiscLabel' as const,
       value: v(
         fieldFromOrder([
+          'brake_disc',
+          '刹车盘',
           'forged',
           'is_oem_brake',
           'oem_brake',
@@ -253,7 +258,7 @@ const vehicleInfoRows = computed(() => {
   ]
 })
 
-/** 车型信息除首行（原厂刹车）外，在展开区内 */
+/** 车型信息除首行（刹车盘）外，在展开区内 */
 const vehicleInfoRowsRest = computed(() => vehicleInfoRows.value.slice(1))
 
 const wheelSpecUnifiedRows = computed(() => {
@@ -372,6 +377,19 @@ watch(orderId, (id, prev) => {
   if (id === prev) return
   void load()
 })
+
+/** 深链代客场景：详情里的客户 telegram_id 与 Pinia 对齐，进入「修改订单」时与客商一致 */
+watch(
+  detail,
+  (d) => {
+    if (!d || !staffDeeplink.openedViaTelegramStartParam) return
+    const tid = str((d as { telegram_id?: unknown }).telegram_id)
+    if (!tid) return
+    const name = str((d as { customer?: unknown }).customer)
+    staffDeeplink.patchCustomerFromOrderDetail(tid, name || undefined)
+  },
+  { flush: 'post' },
+)
 
 const supportUrl = (import.meta.env.VITE_SUPPORT_URL as string | undefined)?.trim() || 'https://t.me/'
 

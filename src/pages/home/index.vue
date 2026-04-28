@@ -4,51 +4,12 @@ import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import { STYLE_MOOD_TAGS } from '@/constants/styleMoodTags'
 import { useProductBrowseStore } from '@/stores/productBrowse'
 import { Icon } from '@iconify/vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { carGroups } from '@/data/carSelection'
 import { t } from '@/i18n/uiI18n'
-import {
-  getPhoneAuthModalDismissedThisSession,
-  getStoredTelegramContact,
-  getTelegramWebApp,
-  setPhoneAuthModalDismissedThisSession,
-  setStoredTelegramContact,
-} from '@/utils/userTelegram'
-
 const router = useRouter()
 const browse = useProductBrowseStore()
-
-const phoneAuthModalOpen = ref(false)
-
-/** 用户关闭弹层（遮罩/X）且未授权：本会话内不再自动弹出；Mini App `close` 事件会清标记，下次从聊天进入可再提示 */
-// watch(phoneAuthModalOpen, (open) => {
-//   if (open) {
-//     return
-//   }
-//   if (getStoredTelegramContact()) {
-//     return
-//   }
-//   setPhoneAuthModalDismissedThisSession()
-// })
-
-function getUserPhone() {
-  const w = getTelegramWebApp()
-  if (!w?.requestContact) {
-    window.alert(t('phoneAuth.notSupported'))
-    return
-  }
-  w.requestContact((success, contact) => {
-    if (!success) {
-      window.alert(t('phoneAuth.reject'))
-      return
-    }
-    const raw
-      = typeof contact === 'string' ? contact : JSON.stringify(contact ?? null)
-    setStoredTelegramContact(raw)
-    phoneAuthModalOpen.value = false
-  })
-}
 
 /** 首页「草稿」：仅选车/点风格，不写入 Pinia；点 Go 再写入并进产品页 */
 const carBrand = ref('')

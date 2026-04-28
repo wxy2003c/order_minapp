@@ -10,33 +10,39 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from '@/App.vue'
 import router from '@/router'
-import { getApiLang, initApiLangFromStorage } from '@/i18n/apiLang'
-import { applyLanguageFromTelegram, initUiLanguage, uiLocale } from '@/i18n/uiI18n'
-import { getTelegramWebApp } from '@/utils/userTelegram'
+import { tryApplyTelegramStaffDeepLink } from '@/composables/TelegramParams'
+import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
+import { initApiLangFromStorage } from '@/i18n/apiLang'
+import { applyLanguageFromTelegram, initUiLanguage } from '@/i18n/uiI18n'
 import '@unocss/reset/tailwind.css'
 import 'uno.css'
 import '@/style.css'
 
 initApiLangFromStorage()
 
-// 多语言只认 Telegram 客户端注入的 `initDataUnsafe.user.language_code`（BCP-47），不读 `document` / `html`
-const tg = getTelegramWebApp()
-const tgUser = tg?.initDataUnsafe?.user
-const code = tgUser?.language_code
-
-if (typeof code === 'string' && code.trim()) {
-  applyLanguageFromTelegram(code)
-} else if (tg) {
-  // 在 Mini App 内但暂无 language_code：与默认中文对齐
-  applyLanguageFromTelegram(undefined)
-} else {
-  // 非 Telegram 环境：沿用上次在本地持久化的 `app_api_lang`
-  uiLocale.value = getApiLang() as import('@/i18n/apiLang').AppLang
-  initUiLanguage()
-}
+// 默认界面与 API 均为中文；不因 Telegram `language_code` 自动切换语言
+applyLanguageFromTelegram(undefined)
+initUiLanguage()
 
 const app = createApp(App)
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
-app.mount('#app')
+
+router.afterEach((to) => {
+  const sd = useStaffDeeplinkStore()
+  sd.onRouteFullPathChange(to.fullPath)
+
+  const isDetail = to.path === '/OrderDetails'
+  const platform = String(sd.platformUid ?? '').trim()
+  const custTg = String(sd.customerTelegramId ?? '').trim()
+  /** 代客链路：详情页 API 的 `user_id` 用本人 Telegram，客户在 query 里传 `telegram_id` */
+  sd.setHttpUserIdUsesSelfTelegram(isDetail && !!platform && !!custTg)
+})
+
+;(async () => {
+  await router.isReady()
+  tryApplyTelegramStaffDeepLink(router)
+  app.mount('#app')
+})()
 

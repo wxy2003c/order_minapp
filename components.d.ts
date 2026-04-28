@@ -19,6 +19,7 @@ declare module 'vue' {
     OrderListCard: typeof import('./src/components/OrderListCard.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    StyleModelPickerDrawer: typeof import('./src/components/StyleModelPickerDrawer.vue')['default']
     Swiper: typeof import('./src/components/Swiper.vue')['default']
     TgBackButton: typeof import('./src/components/TgBackButton.vue')['default']
     TgButton: typeof import('./src/components/TgButton.vue')['default']

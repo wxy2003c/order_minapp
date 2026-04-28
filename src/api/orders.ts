@@ -1,4 +1,5 @@
 import httpApi from '@/utils/http'
+import { buildOrderDetailRequestParams, resolveOrderSubmitPlatformUserId } from '@/utils/deeplinkStaffContext'
 import {
   colorSampleFromUrl,
   colorSampleListFromUrls,
@@ -17,7 +18,7 @@ export const ORDER_CREATE_ALLOWED_KEYS = new Set([
   'customer_email', 'currency', 'remark', 'f_width', 'f_et', 'f_pcd', 'f_cb', 'f_note', 'f_hole', 'f_qty',
   'f_oem_bolt', 'r_width', 'r_diam', 'r_et', 'r_pcd', 'r_cb', 'r_hole', 'r_qty', 'r_oem_bolt', 'r_note',
   'r_appearance', 'size_choice', 'structure', 'structure_subtype_single', 'structure_subtype_offroad',
-  'wheel_generation', 'wheel_modification',
+  'vehicle_model',
   'appearance', 'special_req', 'factory_name', 'factory_po', 'color_sample', 'color_sample_desc',
   'cover_image', 'center_cap', 'front_marking', 'front_mark_image', 'wheel_color_desc', 'wheel_color_image',
   'order_date', 'coupon', 'spec_mode',
@@ -41,6 +42,14 @@ const REAR_KEYS = [
 const REAR_KEY_SET = new Set<string>(REAR_KEYS)
 
 const CREATE_EMPTY_ARRAY_KEYS = new Set(['color_sample', 'cover_image', 'front_mark_image', 'wheel_color_image'])
+
+/**
+ * 图片类字段：后端按字符串收（JSON 文本），空则返回 `''` 以便剪枝。
+ */
+function imageListToJsonStringForApi(arr: unknown[] | null | undefined): string {
+  if (!Array.isArray(arr) || arr.length === 0) return ''
+  return JSON.stringify(arr)
+}
 
 /**
  * 后轮相关键若缺省，补成空串，与对端「后轮字段可全空」的约定一致。
@@ -107,6 +116,15 @@ function joinFinishNotes(finishCardOrderNote: unknown, wheelColorNote: unknown):
   return [a, b].filter(Boolean).join(' | ')
 }
 
+function wheelStyleFromCreative(c: Record<string, unknown>): { styleNo: string; styleName: string } {
+  const sm = c.selectedStyleModel as { style_no?: unknown; style_name?: unknown } | null | undefined
+  if (!sm || typeof sm !== 'object') return { styleNo: '', styleName: '' }
+  return {
+    styleNo: String(sm.style_no ?? '').trim(),
+    styleName: String(sm.style_name ?? '').trim(),
+  }
+}
+
 /**
  * 将「定制单」多步表单快照转为 `POST /orders` 的 body（已 pick + 剪枝）。
  */
@@ -116,7 +134,8 @@ export function buildCreateOrderFromCustomOrder(s: CustomOrderFormsSnapshot): Re
   const a = s.address
 
   const carBrand = labelOf(s.brandOptions, v.brand as string)
-  const carModel = labelOf(s.modelOptions, v.model as string)
+  const { styleNo: wheelStyleNo, styleName: wheelStyleName } = wheelStyleFromCreative(c)
+  const carModel = wheelStyleNo || labelOf(s.modelOptions, v.model as string)
   const countryLabel = labelOf(s.countryOptions, a.country as string)
   const yearOnly = labelOf(s.wheelYearOptions ?? [], String(v.wheelYear ?? ''))
   const mirror = !!v.mirrorPair
@@ -138,10 +157,11 @@ export function buildCreateOrderFromCustomOrder(s: CustomOrderFormsSnapshot): Re
   const frontD = normalizeInchDiamString(String(v.frontSize ?? ''))
   const rearD = normalizeInchDiamString(String(v.rearSize ?? ''))
 
+  const customerTg = String(v.customerId ?? '').trim()
   const raw: Record<string, unknown> = {
-    user_id: String(v.customerId ?? ''),
+    user_id: resolveOrderSubmitPlatformUserId(customerTg),
     customer: String(v.customerName ?? ''),
-    telegram_id: String(v.customerId ?? ''),
+    telegram_id: customerTg,
     car_model_imgs: [],
     order_date: new Date().toISOString().slice(0, 10),
     customer_phone: String(a.phone ?? ''),
@@ -155,13 +175,14 @@ export function buildCreateOrderFromCustomOrder(s: CustomOrderFormsSnapshot): Re
     car_brand: carBrand,
     car_model: carModel,
     year: yearOnly || '',
-    structure_subtype_offroad: '',
-    wheel_generation: String(v.wheelGeneration ?? '').trim(),
-    wheel_modification: String(v.wheelModification ?? '').trim(),
+    /** 型号库世代 slug（仅世代，不含配置） */
+    structure_subtype_offroad: buildStructureSubtypeOffroadFromWheelLibrary(String(v.wheelGeneration ?? '')),
+    /** 型号库配置；对应前端的「配置」下拉 */
+    vehicle_model: String(v.wheelModification ?? '').trim(),
     vin: String(v.vin ?? ''),
     chassis: String(v.plate ?? ''),
-    style_name: '',
-    brake_disc: String(v.axleWeight ?? ''),
+    style_name: wheelStyleName,
+    brake_disc: String(v.brakeDisc ?? ''),
     caliper: String(v.rimThickness ?? ''),
     structure: String(c.structure ?? ''),
     structure_subtype_single: '',
@@ -176,7 +197,8 @@ export function buildCreateOrderFromCustomOrder(s: CustomOrderFormsSnapshot): Re
     appearance: String(v.frontPaint ?? ''),
     r_appearance: String(v.rearPaint ?? ''),
     size_choice: frontD,
-    spec_mode: String(c.designMode ?? ''),
+    /** 与快建单一致：`split` 分轮 / `same` 前后同规（勿与 creative/custom 设计模式混用） */
+    spec_mode: mirror ? 'same' : 'split',
     r_width: mirror ? String(v.frontWidth ?? '') : String(v.rearWidth ?? ''),
     r_diam: mirror ? frontD : rearD,
     r_et: mirror ? String(v.frontEt ?? '') : String(v.rearEt ?? ''),
@@ -189,14 +211,14 @@ export function buildCreateOrderFromCustomOrder(s: CustomOrderFormsSnapshot): Re
     special_req: String(c.specialRequest ?? ''),
     factory_name: '',
     factory_po: '',
-    color_sample: colorSample,
+    color_sample: imageListToJsonStringForApi(colorSample),
     color_sample_desc: String(c.wheelShapeNote ?? ''),
-    cover_image: cover ? [cover] : [],
+    cover_image: imageListToJsonStringForApi(cover ? [cover] : []),
     center_cap: String(c.centerCapNote ?? ''),
     front_marking: '',
-    front_mark_image: [],
+    front_mark_image: imageListToJsonStringForApi([]),
     wheel_color_desc: wheelColorDesc,
-    wheel_color_image: wheelColorImageList,
+    wheel_color_image: imageListToJsonStringForApi(wheelColorImageList),
   }
 
   const payload = pickCreateOrderPayload(raw)
@@ -221,6 +243,7 @@ export interface SimpleCreateOrderForm {
   carModel: string
   year: string
   structureSubtypeOffroad: string
+  vehicle_model: string
   vin: string
   chassis: string
   styleName: string
@@ -250,12 +273,34 @@ export interface SimpleCreateOrderForm {
   rQty: string
   rOemBolt: string
   rNote: string
-  /** Wheel-Size 世代 / 配置 slug，与 `structure_subtype_offroad` 互斥，由 `wheel_*` 单独提交 */
-  wheelGeneration?: string
-  wheelModification?: string
 }
 
 const MAX_ORDER_YEAR_STR_LEN = 50
+
+const WHEEL_LIBRARY_OFFROAD_SEP = ' / '
+
+/**
+ * 型号库：**仅世代** slug → `structure_subtype_offroad`（配置走 `vehicle_model`）。
+ */
+export function buildStructureSubtypeOffroadFromWheelLibrary(
+  wheelGeneration: string | null | undefined,
+): string {
+  return String(wheelGeneration ?? '').trim()
+}
+
+/**
+ * 兼容旧数据：曾把「世代 / 配置」拼进 `structure_subtype_offroad`；新接口已拆成两字段。
+ */
+export function parseWheelLibraryStructureSubtypeOffroad(raw: string | null | undefined): {
+  gen: string
+  mod: string
+} {
+  const t = String(raw ?? '').trim()
+  if (!t) return { gen: '', mod: '' }
+  const i = t.indexOf(WHEEL_LIBRARY_OFFROAD_SEP)
+  if (i < 0) return { gen: t, mod: '' }
+  return { gen: t.slice(0, i).trim(), mod: t.slice(i + WHEEL_LIBRARY_OFFROAD_SEP.length).trim() }
+}
 
 /**
  * 将「快建单」单页表单转为 `POST /orders` body；`specMode === 'same'` 时从前轮规格复制到后轮。
@@ -289,7 +334,7 @@ export function buildCreateOrderFromSimpleForm(f: SimpleCreateOrderForm): Record
   }
 
   const raw: Record<string, unknown> = {
-    user_id: f.telegramId,
+    user_id: resolveOrderSubmitPlatformUserId(String(f.telegramId ?? '')),
     customer: f.telegramName,
     telegram_id: f.telegramId,
     car_model_imgs: [],
@@ -306,8 +351,7 @@ export function buildCreateOrderFromSimpleForm(f: SimpleCreateOrderForm): Record
     car_model: f.carModel,
     year: yearOut,
     structure_subtype_offroad: f.structureSubtypeOffroad || '',
-    wheel_generation: String(f.wheelGeneration ?? '').trim(),
-    wheel_modification: String(f.wheelModification ?? '').trim(),
+    vehicle_model: f.vehicle_model || '',
     vin: f.vin,
     chassis: f.chassis,
     style_name: f.styleName,
@@ -358,6 +402,17 @@ export type OrderWriteResult = { order?: Record<string, unknown> }
  */
 export async function createOrder(body: Record<string, unknown>): Promise<OrderWriteResult> {
   return (await httpApi.post('/orders', body)) as OrderWriteResult
+}
+
+/**
+ * 修改订单 `PUT /orders/{orderId}`（与创建使用同一套 body 字段）。
+ */
+export async function updateOrder(
+  orderId: string | number,
+  body: Record<string, unknown>,
+): Promise<OrderWriteResult> {
+  const id = encodeURIComponent(String(orderId).trim())
+  return (await httpApi.put(`/orders/${id}`, body)) as OrderWriteResult
 }
 
 /**
@@ -496,10 +551,12 @@ function normalizeOrderDetailPayload(raw: unknown): OrderDetailResponse {
 }
 
 /**
- * 订单详情 `GET /orders/detail`，query：`order_id`（平台 `user_id` 由 http 默认带在 query 上）。
+ * 订单详情 `GET /orders/detail`，query：`order_id`；代客时另有 `telegram_id`，`user_id` 由全局拦截器注入（见 deeplinkStaffContext）。
  */
 export async function fetchOrderDetail(orderId: string | number): Promise<OrderDetailResponse> {
-  return normalizeOrderDetailPayload(await httpApi.get('/orders/detail', { params: { order_id: orderId } }))
+  return normalizeOrderDetailPayload(
+    await httpApi.get('/orders/detail', { params: buildOrderDetailRequestParams(orderId) }),
+  )
 }
 
 /** 重新导出，便于与订单展示共用同一套映射 */

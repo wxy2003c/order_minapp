@@ -1,7 +1,7 @@
 import axios, {AxiosHeaders} from 'axios';
 import type {InternalAxiosRequestConfig} from 'axios';
 import {getApiLang} from '@/i18n/apiLang';
-import {getTelegramUserId} from '@/utils/userTelegram';
+import {resolveHttpDefaultUserId} from '@/utils/deeplinkStaffContext';
 
 /**
  * 后端 API 的 Axios 客户端：Laravel 风格 query 序列化、HMAC-SHA256 请求签、
@@ -221,7 +221,7 @@ const httpApi = axios.create({
  */
 httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
   const lang = getApiLang();
-  const defaultUserId = (getTelegramUserId() || '').trim();
+  const defaultUserId = resolveHttpDefaultUserId();
   if (config.params instanceof URLSearchParams) {
     const sp = config.params;
     if (!String(sp.get('lang') ?? '').trim()) {

@@ -2,11 +2,9 @@ import { init } from '@tma.js/sdk-vue'
 import { computed, onMounted, onUnmounted, readonly, ref } from 'vue'
 import type { TelegramUser } from '@/types'
 import { buildTelegramNaiveThemeOverrides } from '@/naive/telegramTheme'
-import { applyLanguageFromTelegram } from '@/i18n/uiI18n'
 import {
   applyTelegramThemeParams,
   clearPhoneAuthModalDismissedThisSession,
-  getTelegramUserLanguageCode,
   getTelegramWebApp,
   resolveTelegramColorScheme,
 } from '@/utils/userTelegram'
@@ -30,10 +28,6 @@ export function useTelegramTheme() {
       = tg?.colorScheme ?? resolveTelegramColorScheme(tg?.themeParams)
 
     document.documentElement.dataset.colorScheme = colorScheme.value
-    const code = getTelegramUserLanguageCode()
-    if (typeof code === 'string' && code.trim()) {
-      applyLanguageFromTelegram(code)
-    }
   }
 
   function onTelegramThemeChanged() {

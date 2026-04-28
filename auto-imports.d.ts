@@ -13,11 +13,14 @@ declare global {
   const applyTelegramThemeParams: typeof import('./src/utils/userTelegram').applyTelegramThemeParams
   const asPlainText: typeof import('./src/utils/orderDetailHelpers').asPlainText
   const brandModelLabelsFromDetail: typeof import('./src/utils/applyOrderDetailToCustomOrder').brandModelLabelsFromDetail
-  const buildDecodedLinkDebugSnapshot: typeof import('./src/utils/telegramDeepLink').buildDecodedLinkDebugSnapshot
+  const buildDecodedLinkDebugSnapshot: typeof import('./src/composables/TelegramParams').buildDecodedLinkDebugSnapshot
+  const buildFinishOrderNote: typeof import('./src/utils/finishCardDisplayHelpers').buildFinishOrderNote
+  const buildOrderDetailRequestParams: typeof import('./src/utils/deeplinkStaffContext').buildOrderDetailRequestParams
+  const buildWheelColorSelectionDesc: typeof import('./src/utils/finishCardDisplayHelpers').buildWheelColorSelectionDesc
   const buildWheelSpecRows: typeof import('./src/utils/orderDetailHelpers').buildWheelSpecRows
   const clearPhoneAuthModalDismissedThisSession: typeof import('./src/utils/userTelegram').clearPhoneAuthModalDismissedThisSession
   const collectImgUrlsForSlot: typeof import('./src/utils/orderDetailHelpers').collectImgUrlsForSlot
-  const collectOrderDeepLinkFromLocation: typeof import('./src/utils/telegramDeepLink').collectOrderDeepLinkFromLocation
+  const collectOrderDeepLinkFromLocation: typeof import('./src/composables/TelegramParams').collectOrderDeepLinkFromLocation
   const colorSampleFromOrderImageFields: typeof import('./src/utils/orderMedia').colorSampleFromOrderImageFields
   const colorSampleFromUrl: typeof import('./src/utils/orderMedia').colorSampleFromUrl
   const colorSampleListFromUrls: typeof import('./src/utils/orderMedia').colorSampleListFromUrls
@@ -30,6 +33,9 @@ declare global {
   const effectScope: typeof import('vue').effectScope
   const fieldFromOrder: typeof import('./src/utils/orderDetailHelpers').fieldFromOrder
   const findSelectValue: typeof import('./src/utils/applyOrderDetailToCustomOrder').findSelectValue
+  const finishItemDisplayLabel: typeof import('./src/utils/finishCardDisplayHelpers').finishItemDisplayLabel
+  const finishSectionLabel: typeof import('./src/utils/finishCardDisplayHelpers').finishSectionLabel
+  const firstOrderListImageForSlot: typeof import('./src/utils/orderDetailHelpers').firstOrderListImageForSlot
   const formatOrderListDateTime: typeof import('./src/utils/orderListCardDisplay').formatOrderListDateTime
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
@@ -40,7 +46,8 @@ declare global {
   const getSpecialReqFromSpecs: typeof import('./src/utils/orderDetailHelpers').getSpecialReqFromSpecs
   const getStoredTelegramContact: typeof import('./src/utils/userTelegram').getStoredTelegramContact
   const getTelegram: typeof import('./src/utils/userTelegram').getTelegram
-  const getTelegramStartParam: typeof import('./src/utils/telegramDeepLink').getTelegramStartParam
+  const getTelegramDisplayName: typeof import('./src/utils/userTelegram').getTelegramDisplayName
+  const getTelegramStartParam: typeof import('./src/composables/TelegramParams').getTelegramStartParam
   const getTelegramUserId: typeof import('./src/utils/userTelegram').getTelegramUserId
   const getTelegramUserLanguageCode: typeof import('./src/utils/userTelegram').getTelegramUserLanguageCode
   const getTelegramViewportHeight: typeof import('./src/utils/userTelegram').getTelegramViewportHeight
@@ -54,11 +61,14 @@ declare global {
   const isReactive: typeof import('vue').isReactive
   const isReadonly: typeof import('vue').isReadonly
   const isRef: typeof import('vue').isRef
+  const isRequiredWheelFieldKey: typeof import('./src/utils/customOrderValidation').isRequiredWheelFieldKey
   const isShallow: typeof import('vue').isShallow
   const isWheelsIdenticalOrder: typeof import('./src/utils/orderDetailHelpers').isWheelsIdenticalOrder
-  const logTelegramLinkParams: typeof import('./src/utils/telegramDeepLink').logTelegramLinkParams
+  const loadMyVehicleSelection: typeof import('./src/utils/myVehicleStorage').loadMyVehicleSelection
+  const logTelegramLinkParams: typeof import('./src/composables/TelegramParams').logTelegramLinkParams
   const mapApiStatusToOrderStatus: typeof import('./src/utils/orderStatus').mapApiStatusToOrderStatus
   const markRaw: typeof import('vue').markRaw
+  const myVehicleStorageKey: typeof import('./src/utils/myVehicleStorage').myVehicleStorageKey
   const nextTick: typeof import('vue').nextTick
   const normalizeInchDiamString: typeof import('./src/utils/wheelDiam').normalizeInchDiamString
   const onActivated: typeof import('vue').onActivated
@@ -77,22 +87,33 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
+  const openPhotoSwipeGallery: typeof import('./src/utils/photoswipeGallery').openPhotoSwipeGallery
   const orderIdFromRouteQuery: typeof import('./src/utils/applyOrderDetailToCustomOrder').orderIdFromRouteQuery
   const orderRowAvatarSrc: typeof import('./src/utils/orderListCardDisplay').orderRowAvatarSrc
   const orderRowDateText: typeof import('./src/utils/orderListCardDisplay').orderRowDateText
   const orderRowDisplayName: typeof import('./src/utils/orderListCardDisplay').orderRowDisplayName
   const orderRowSpecsText: typeof import('./src/utils/orderListCardDisplay').orderRowSpecsText
   const orderRowThumbSrc: typeof import('./src/utils/orderListCardDisplay').orderRowThumbSrc
-  const parseCreateToken: typeof import('./src/utils/telegramDeepLink').parseCreateToken
-  const parseOrderStartParam: typeof import('./src/utils/telegramDeepLink').parseOrderStartParam
+  const parseCreateStaffToken: typeof import('./src/composables/TelegramParams').parseCreateStaffToken
+  const parseCreateToken: typeof import('./src/composables/TelegramParams').parseCreateToken
+  const parseManageStaffToken: typeof import('./src/composables/TelegramParams').parseManageStaffToken
+  const parseOrderStartParam: typeof import('./src/composables/TelegramParams').parseOrderStartParam
+  const persistStaffDeepLinkContext: typeof import('./src/utils/deeplinkStaffContext').persistStaffDeepLinkContext
   const pickTgColor: typeof import('./src/utils/userTelegram').pickTgColor
   const provide: typeof import('vue').provide
   const reactive: typeof import('vue').reactive
+  const readStaffCustomerDisplayName: typeof import('./src/utils/deeplinkStaffContext').readStaffCustomerDisplayName
+  const readStaffCustomerTelegramId: typeof import('./src/utils/deeplinkStaffContext').readStaffCustomerTelegramId
+  const readStaffPlatformUid: typeof import('./src/utils/deeplinkStaffContext').readStaffPlatformUid
+  const readStaffSnapshotFromSession: typeof import('./src/utils/deeplinkSessionStorage').readStaffSnapshotFromSession
   const readonly: typeof import('vue').readonly
   const ref: typeof import('vue').ref
   const resolveComponent: typeof import('vue').resolveComponent
+  const resolveHttpDefaultUserId: typeof import('./src/utils/deeplinkStaffContext').resolveHttpDefaultUserId
   const resolveOrderAssetUrl: typeof import('./src/utils/orderMedia').resolveOrderAssetUrl
+  const resolveOrderSubmitPlatformUserId: typeof import('./src/utils/deeplinkStaffContext').resolveOrderSubmitPlatformUserId
   const resolveTelegramColorScheme: typeof import('./src/utils/userTelegram').resolveTelegramColorScheme
+  const saveMyVehicleSelection: typeof import('./src/utils/myVehicleStorage').saveMyVehicleSelection
   const setPhoneAuthModalDismissedThisSession: typeof import('./src/utils/userTelegram').setPhoneAuthModalDismissedThisSession
   const setStoredTelegramContact: typeof import('./src/utils/userTelegram').setStoredTelegramContact
   const setupRem: typeof import('./src/utils/rem').setupRem
@@ -100,6 +121,7 @@ declare global {
   const shallowReadonly: typeof import('vue').shallowReadonly
   const shallowRef: typeof import('vue').shallowRef
   const specGet: typeof import('./src/utils/orderDetailHelpers').specGet
+  const splitOrderDetailCarField: typeof import('./src/utils/applyOrderDetailToCustomOrder').splitOrderDetailCarField
   const splitPcdSegment: typeof import('./src/utils/applyOrderDetailToCustomOrder').splitPcdSegment
   const splitWheelSpecHeadRest: typeof import('./src/utils/orderDetailHelpers').splitWheelSpecHeadRest
   const str: typeof import('./src/utils/orderDetailHelpers').str
@@ -109,7 +131,8 @@ declare global {
   const toRefs: typeof import('vue').toRefs
   const toValue: typeof import('vue').toValue
   const triggerRef: typeof import('vue').triggerRef
-  const tryApplyOrderDeepLink: typeof import('./src/utils/telegramDeepLink').tryApplyOrderDeepLink
+  const tryApplyOrderDeepLink: typeof import('./src/composables/TelegramParams').tryApplyOrderDeepLink
+  const tryApplyTelegramStaffDeepLink: typeof import('./src/composables/TelegramParams').tryApplyTelegramStaffDeepLink
   const unref: typeof import('vue').unref
   const useAttrs: typeof import('vue').useAttrs
   const useCssModule: typeof import('vue').useCssModule
@@ -122,6 +145,8 @@ declare global {
   const useSlots: typeof import('vue').useSlots
   const useTelegramTheme: typeof import('./src/composables/useTelegramTheme').useTelegramTheme
   const useTemplateRef: typeof import('vue').useTemplateRef
+  const validateVehicleRequired: typeof import('./src/utils/customOrderValidation').validateVehicleRequired
+  const validateWheelSizeAndFinish: typeof import('./src/utils/customOrderValidation').validateWheelSizeAndFinish
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect
@@ -133,8 +158,17 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
+  export type { OrderDeepLinkPayload, StaffCreateDeepLink } from './src/composables/TelegramParams'
+  import('./src/composables/TelegramParams')
+  // @ts-ignore
   export type { TgSelectOption } from './src/utils/applyOrderDetailToCustomOrder'
   import('./src/utils/applyOrderDetailToCustomOrder')
+  // @ts-ignore
+  export type { CustomOrderTranslate, VehicleRequiredFields, WheelFinishFields } from './src/utils/customOrderValidation'
+  import('./src/utils/customOrderValidation')
+  // @ts-ignore
+  export type { MyVehicleCache } from './src/utils/myVehicleStorage'
+  import('./src/utils/myVehicleStorage')
   // @ts-ignore
   export type { ImgSlotValue, WheelSpecRow } from './src/utils/orderDetailHelpers'
   import('./src/utils/orderDetailHelpers')
@@ -142,8 +176,8 @@ declare global {
   export type { ColorSampleImage } from './src/utils/orderMedia'
   import('./src/utils/orderMedia')
   // @ts-ignore
-  export type { OrderDeepLinkPayload } from './src/utils/telegramDeepLink'
-  import('./src/utils/telegramDeepLink')
+  export type { PhotoSwipeSlideInput } from './src/utils/photoswipeGallery'
+  import('./src/utils/photoswipeGallery')
 }
 
 // for vue template auto import
@@ -158,11 +192,14 @@ declare module 'vue' {
     readonly applyTelegramThemeParams: UnwrapRef<typeof import('./src/utils/userTelegram')['applyTelegramThemeParams']>
     readonly asPlainText: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['asPlainText']>
     readonly brandModelLabelsFromDetail: UnwrapRef<typeof import('./src/utils/applyOrderDetailToCustomOrder')['brandModelLabelsFromDetail']>
-    readonly buildDecodedLinkDebugSnapshot: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['buildDecodedLinkDebugSnapshot']>
+    readonly buildDecodedLinkDebugSnapshot: UnwrapRef<typeof import('./src/composables/TelegramParams')['buildDecodedLinkDebugSnapshot']>
+    readonly buildFinishOrderNote: UnwrapRef<typeof import('./src/utils/finishCardDisplayHelpers')['buildFinishOrderNote']>
+    readonly buildOrderDetailRequestParams: UnwrapRef<typeof import('./src/utils/deeplinkStaffContext')['buildOrderDetailRequestParams']>
+    readonly buildWheelColorSelectionDesc: UnwrapRef<typeof import('./src/utils/finishCardDisplayHelpers')['buildWheelColorSelectionDesc']>
     readonly buildWheelSpecRows: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['buildWheelSpecRows']>
     readonly clearPhoneAuthModalDismissedThisSession: UnwrapRef<typeof import('./src/utils/userTelegram')['clearPhoneAuthModalDismissedThisSession']>
     readonly collectImgUrlsForSlot: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['collectImgUrlsForSlot']>
-    readonly collectOrderDeepLinkFromLocation: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['collectOrderDeepLinkFromLocation']>
+    readonly collectOrderDeepLinkFromLocation: UnwrapRef<typeof import('./src/composables/TelegramParams')['collectOrderDeepLinkFromLocation']>
     readonly colorSampleFromOrderImageFields: UnwrapRef<typeof import('./src/utils/orderMedia')['colorSampleFromOrderImageFields']>
     readonly colorSampleFromUrl: UnwrapRef<typeof import('./src/utils/orderMedia')['colorSampleFromUrl']>
     readonly colorSampleListFromUrls: UnwrapRef<typeof import('./src/utils/orderMedia')['colorSampleListFromUrls']>
@@ -175,6 +212,9 @@ declare module 'vue' {
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
     readonly fieldFromOrder: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['fieldFromOrder']>
     readonly findSelectValue: UnwrapRef<typeof import('./src/utils/applyOrderDetailToCustomOrder')['findSelectValue']>
+    readonly finishItemDisplayLabel: UnwrapRef<typeof import('./src/utils/finishCardDisplayHelpers')['finishItemDisplayLabel']>
+    readonly finishSectionLabel: UnwrapRef<typeof import('./src/utils/finishCardDisplayHelpers')['finishSectionLabel']>
+    readonly firstOrderListImageForSlot: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['firstOrderListImageForSlot']>
     readonly formatOrderListDateTime: UnwrapRef<typeof import('./src/utils/orderListCardDisplay')['formatOrderListDateTime']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
@@ -183,7 +223,8 @@ declare module 'vue' {
     readonly getSlotDescText: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['getSlotDescText']>
     readonly getSpecialReqFromSpecs: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['getSpecialReqFromSpecs']>
     readonly getStoredTelegramContact: UnwrapRef<typeof import('./src/utils/userTelegram')['getStoredTelegramContact']>
-    readonly getTelegramStartParam: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['getTelegramStartParam']>
+    readonly getTelegramDisplayName: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramDisplayName']>
+    readonly getTelegramStartParam: UnwrapRef<typeof import('./src/composables/TelegramParams')['getTelegramStartParam']>
     readonly getTelegramUserId: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramUserId']>
     readonly getTelegramUserLanguageCode: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramUserLanguageCode']>
     readonly getTelegramWebApp: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramWebApp']>
@@ -196,11 +237,14 @@ declare module 'vue' {
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
+    readonly isRequiredWheelFieldKey: UnwrapRef<typeof import('./src/utils/customOrderValidation')['isRequiredWheelFieldKey']>
     readonly isShallow: UnwrapRef<typeof import('vue')['isShallow']>
     readonly isWheelsIdenticalOrder: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['isWheelsIdenticalOrder']>
-    readonly logTelegramLinkParams: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['logTelegramLinkParams']>
+    readonly loadMyVehicleSelection: UnwrapRef<typeof import('./src/utils/myVehicleStorage')['loadMyVehicleSelection']>
+    readonly logTelegramLinkParams: UnwrapRef<typeof import('./src/composables/TelegramParams')['logTelegramLinkParams']>
     readonly mapApiStatusToOrderStatus: UnwrapRef<typeof import('./src/utils/orderStatus')['mapApiStatusToOrderStatus']>
     readonly markRaw: UnwrapRef<typeof import('vue')['markRaw']>
+    readonly myVehicleStorageKey: UnwrapRef<typeof import('./src/utils/myVehicleStorage')['myVehicleStorageKey']>
     readonly nextTick: UnwrapRef<typeof import('vue')['nextTick']>
     readonly normalizeInchDiamString: UnwrapRef<typeof import('./src/utils/wheelDiam')['normalizeInchDiamString']>
     readonly onActivated: UnwrapRef<typeof import('vue')['onActivated']>
@@ -219,28 +263,40 @@ declare module 'vue' {
     readonly onUnmounted: UnwrapRef<typeof import('vue')['onUnmounted']>
     readonly onUpdated: UnwrapRef<typeof import('vue')['onUpdated']>
     readonly onWatcherCleanup: UnwrapRef<typeof import('vue')['onWatcherCleanup']>
+    readonly openPhotoSwipeGallery: UnwrapRef<typeof import('./src/utils/photoswipeGallery')['openPhotoSwipeGallery']>
     readonly orderIdFromRouteQuery: UnwrapRef<typeof import('./src/utils/applyOrderDetailToCustomOrder')['orderIdFromRouteQuery']>
     readonly orderRowAvatarSrc: UnwrapRef<typeof import('./src/utils/orderListCardDisplay')['orderRowAvatarSrc']>
     readonly orderRowDateText: UnwrapRef<typeof import('./src/utils/orderListCardDisplay')['orderRowDateText']>
     readonly orderRowDisplayName: UnwrapRef<typeof import('./src/utils/orderListCardDisplay')['orderRowDisplayName']>
     readonly orderRowSpecsText: UnwrapRef<typeof import('./src/utils/orderListCardDisplay')['orderRowSpecsText']>
     readonly orderRowThumbSrc: UnwrapRef<typeof import('./src/utils/orderListCardDisplay')['orderRowThumbSrc']>
-    readonly parseCreateToken: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['parseCreateToken']>
-    readonly parseOrderStartParam: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['parseOrderStartParam']>
+    readonly parseCreateStaffToken: UnwrapRef<typeof import('./src/composables/TelegramParams')['parseCreateStaffToken']>
+    readonly parseCreateToken: UnwrapRef<typeof import('./src/composables/TelegramParams')['parseCreateToken']>
+    readonly parseManageStaffToken: UnwrapRef<typeof import('./src/composables/TelegramParams')['parseManageStaffToken']>
+    readonly parseOrderStartParam: UnwrapRef<typeof import('./src/composables/TelegramParams')['parseOrderStartParam']>
+    readonly persistStaffDeepLinkContext: UnwrapRef<typeof import('./src/utils/deeplinkStaffContext')['persistStaffDeepLinkContext']>
     readonly pickTgColor: UnwrapRef<typeof import('./src/utils/userTelegram')['pickTgColor']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly reactive: UnwrapRef<typeof import('vue')['reactive']>
+    readonly readStaffCustomerDisplayName: UnwrapRef<typeof import('./src/utils/deeplinkStaffContext')['readStaffCustomerDisplayName']>
+    readonly readStaffCustomerTelegramId: UnwrapRef<typeof import('./src/utils/deeplinkStaffContext')['readStaffCustomerTelegramId']>
+    readonly readStaffPlatformUid: UnwrapRef<typeof import('./src/utils/deeplinkStaffContext')['readStaffPlatformUid']>
+    readonly readStaffSnapshotFromSession: UnwrapRef<typeof import('./src/utils/deeplinkSessionStorage')['readStaffSnapshotFromSession']>
     readonly readonly: UnwrapRef<typeof import('vue')['readonly']>
     readonly ref: UnwrapRef<typeof import('vue')['ref']>
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>
+    readonly resolveHttpDefaultUserId: UnwrapRef<typeof import('./src/utils/deeplinkStaffContext')['resolveHttpDefaultUserId']>
     readonly resolveOrderAssetUrl: UnwrapRef<typeof import('./src/utils/orderMedia')['resolveOrderAssetUrl']>
+    readonly resolveOrderSubmitPlatformUserId: UnwrapRef<typeof import('./src/utils/deeplinkStaffContext')['resolveOrderSubmitPlatformUserId']>
     readonly resolveTelegramColorScheme: UnwrapRef<typeof import('./src/utils/userTelegram')['resolveTelegramColorScheme']>
+    readonly saveMyVehicleSelection: UnwrapRef<typeof import('./src/utils/myVehicleStorage')['saveMyVehicleSelection']>
     readonly setPhoneAuthModalDismissedThisSession: UnwrapRef<typeof import('./src/utils/userTelegram')['setPhoneAuthModalDismissedThisSession']>
     readonly setStoredTelegramContact: UnwrapRef<typeof import('./src/utils/userTelegram')['setStoredTelegramContact']>
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
     readonly shallowReadonly: UnwrapRef<typeof import('vue')['shallowReadonly']>
     readonly shallowRef: UnwrapRef<typeof import('vue')['shallowRef']>
     readonly specGet: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['specGet']>
+    readonly splitOrderDetailCarField: UnwrapRef<typeof import('./src/utils/applyOrderDetailToCustomOrder')['splitOrderDetailCarField']>
     readonly splitPcdSegment: UnwrapRef<typeof import('./src/utils/applyOrderDetailToCustomOrder')['splitPcdSegment']>
     readonly splitWheelSpecHeadRest: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['splitWheelSpecHeadRest']>
     readonly str: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['str']>
@@ -250,7 +306,8 @@ declare module 'vue' {
     readonly toRefs: UnwrapRef<typeof import('vue')['toRefs']>
     readonly toValue: UnwrapRef<typeof import('vue')['toValue']>
     readonly triggerRef: UnwrapRef<typeof import('vue')['triggerRef']>
-    readonly tryApplyOrderDeepLink: UnwrapRef<typeof import('./src/utils/telegramDeepLink')['tryApplyOrderDeepLink']>
+    readonly tryApplyOrderDeepLink: UnwrapRef<typeof import('./src/composables/TelegramParams')['tryApplyOrderDeepLink']>
+    readonly tryApplyTelegramStaffDeepLink: UnwrapRef<typeof import('./src/composables/TelegramParams')['tryApplyTelegramStaffDeepLink']>
     readonly unref: UnwrapRef<typeof import('vue')['unref']>
     readonly useAttrs: UnwrapRef<typeof import('vue')['useAttrs']>
     readonly useCssModule: UnwrapRef<typeof import('vue')['useCssModule']>
@@ -263,6 +320,8 @@ declare module 'vue' {
     readonly useSlots: UnwrapRef<typeof import('vue')['useSlots']>
     readonly useTelegramTheme: UnwrapRef<typeof import('./src/composables/useTelegramTheme')['useTelegramTheme']>
     readonly useTemplateRef: UnwrapRef<typeof import('vue')['useTemplateRef']>
+    readonly validateVehicleRequired: UnwrapRef<typeof import('./src/utils/customOrderValidation')['validateVehicleRequired']>
+    readonly validateWheelSizeAndFinish: UnwrapRef<typeof import('./src/utils/customOrderValidation')['validateWheelSizeAndFinish']>
     readonly watch: UnwrapRef<typeof import('vue')['watch']>
     readonly watchEffect: UnwrapRef<typeof import('vue')['watchEffect']>
     readonly watchPostEffect: UnwrapRef<typeof import('vue')['watchPostEffect']>

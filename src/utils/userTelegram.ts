@@ -102,6 +102,18 @@ export function getTelegramUserId(): string {
   return id != null ? String(id) : DEFAULT_TELEGRAM_USER_ID
 }
 
+/** 表单展示用昵称：firstname + lastname；全无则 @username */
+export function getTelegramDisplayName(): string {
+  const u = getTelegramWebApp()?.initDataUnsafe?.user
+  if (!u) return ''
+  const first = u.first_name ? String(u.first_name).trim() : ''
+  const last = u.last_name ? String(u.last_name).trim() : ''
+  const full = [first, last].filter(Boolean).join(' ').trim()
+  if (full) return full
+  const un = u.username ? String(u.username).trim() : ''
+  return un ? `@${un}` : ''
+}
+
 /** 取某一主题色（TMA 或回退表），供 Naive 等必须解析为实色的场景使用。 */
 export function pickTgColor(
   themeParams: TelegramThemeParams | null | undefined,

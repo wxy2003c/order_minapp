@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
@@ -7,14 +7,31 @@ import OrderListCard from '@/components/OrderListCard.vue'
 import { carGroups, getDefaultCarSelection } from '@/data/carSelection'
 import { fetchOrdersList, type OrderListItem } from '@/api/orders'
 import { t } from '@/i18n/uiI18n'
+import {
+  loadMyVehicleSelection,
+  saveMyVehicleSelection,
+} from '@/utils/myVehicleStorage'
+import { readStaffPlatformUid } from '@/utils/deeplinkStaffContext'
 import { getTelegramUserId } from '@/utils/userTelegram'
 
 const router = useRouter()
 const initialCar = getDefaultCarSelection()
+const storedCar = loadMyVehicleSelection()
 const pickerOpen = ref(false)
-const selectedBrand = ref(initialCar.brand)
-const selectedModel = ref(initialCar.model)
-const selectedYear = ref(initialCar.year)
+const selectedBrand = ref(storedCar?.brand || initialCar.brand)
+const selectedModel = ref(storedCar?.model || initialCar.model)
+const selectedYear = ref(storedCar?.year || initialCar.year)
+
+/** 在用户收起车型选择面板时写入本地（避免首页默认车款即写入并触发下单预填弹窗） */
+watch(pickerOpen, (open, wasOpen) => {
+  if (!open && wasOpen) {
+    saveMyVehicleSelection({
+      brand: String(selectedBrand.value ?? '').trim(),
+      model: String(selectedModel.value ?? '').trim(),
+      year: String(selectedYear.value ?? '').trim(),
+    })
+  }
+})
 
 const orders = ref<OrderListItem[]>([])
 const listLoading = ref(false)
@@ -41,7 +58,7 @@ async function loadProfileOrders() {
   listLoading.value = true
   listError.value = ''
   try {
-    const uid = getTelegramUserId()
+    const uid = readStaffPlatformUid().trim() || getTelegramUserId()
     const res = await fetchOrdersList({
       user_id: uid || undefined,
       page: 1,

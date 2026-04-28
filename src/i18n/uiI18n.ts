@@ -8,9 +8,8 @@ const catalogs: Record<AppLang, typeof en> = { en, zh, ru }
 
 /**
  * 当前 UI 语言（`en` | `zh` | `ru`），与请求参数 `lang` 一致。
- * **仅**由 `applyLanguageFromTelegram(telegramUser.language_code)` 更新；来源是 Telegram
- * `initDataUnsafe.user.language_code`（BCP-47），**不是** `document.documentElement.lang`（后者只作无障碍的镜像写入）。
- * 首屏默认中文；若 Telegram 有明确 `language_code` 则按映射覆盖（`normalizeAppLangCode` 无/空时亦为中文）。
+ * 由 `applyLanguageFromTelegram(languageCode)` 更新；本项目启动时传入 `undefined` 即默认中文。
+ * `document.documentElement.lang` 仅作无障碍镜像写入，不作为语言检测来源。
  */
 export const uiLocale: Ref<AppLang> = ref('zh')
 

@@ -1,5 +1,12 @@
-import type { OrderDetailResponse } from '@/api/orders'
-import { fieldFromOrder, specGet, str } from '@/utils/orderDetailHelpers'
+import { type OrderDetailResponse, parseWheelLibraryStructureSubtypeOffroad } from '@/api/orders'
+import type { StyleModelItem } from '@/api/styleModels'
+import {
+  collectImgUrlsForSlot,
+  fieldFromOrder,
+  firstOrderListImageForSlot,
+  specGet,
+  str,
+} from '@/utils/orderDetailHelpers'
 import { colorSampleFromUrl, resolveOrderAssetUrl } from '@/utils/orderMedia'
 import { normalizeInchDiamString } from '@/utils/wheelDiam'
 
@@ -9,22 +16,27 @@ function resolveImg(u: string): string {
   return resolveOrderAssetUrl(u) || u
 }
 
-/** 色卡 / 造型参考图：优先 `color_sample`，否则 `imgs` 里带 `color_sample` 分类或首张 */
-function colorSampleUrlsFromOrder(o: AnyRec): { u0: string; u1: string } {
+/**
+ * 造型 / 轮辋参考（`wheelShapeUrl` / `wheelLipUrl` ↔ `color_sample`）：
+ * 优先 `imgs` 槽位 `color_sample`；否则根字段 `color_sample` 数组。
+ * 不再把 `wheel_color` 混进此项（轮毂颜色见 `imgs` → `wheel_color` / `wheel_color_image`）。
+ */
+function colorSampleUrlsFromOrder(
+  o: AnyRec,
+  d: OrderDetailResponse,
+): { u0: string; u1: string } {
+  const slotUrls = collectImgUrlsForSlot(d, 'color_sample')
+  if (slotUrls.length) {
+    return { u0: slotUrls[0] ?? '', u1: slotUrls[1] ?? '' }
+  }
   const cs = o.color_sample
   if (Array.isArray(cs) && cs.length) {
-    return { u0: str((cs[0] as AnyRec).url), u1: str((cs[1] as AnyRec)?.url ?? '') }
-  }
-  const imgs = o.imgs
-  if (Array.isArray(imgs) && imgs.length) {
-    const byCat = imgs.filter(
-      (x) => {
-        const c = str((x as AnyRec).category)
-        return c === 'color_sample' || c === 'wheel_color'
-      },
-    ) as AnyRec[]
-    const list = byCat.length ? byCat : (imgs as AnyRec[])
-    return { u0: str(list[0]?.url), u1: str(list[1]?.url ?? '') }
+    return {
+      u0: resolveImg(str((cs[0] as AnyRec).url || (cs[0] as AnyRec).path)),
+      u1: resolveImg(
+        str((cs[1] as AnyRec)?.url || (cs[1] as AnyRec)?.path || ''),
+      ),
+    }
   }
   return { u0: '', u1: '' }
 }
@@ -100,7 +112,7 @@ export function applyOrderDetailToCustomOrderForms(
       wheelGeneration: string
       wheelYear: string
       wheelModification: string
-      forged: string
+      brakeDisc: string
       mirrorPair: boolean
       frontSize: string
       frontQuantity: string
@@ -124,7 +136,6 @@ export function applyOrderDetailToCustomOrderForms(
       rearBoltSeat: string
       vin: string
       plate: string
-      axleWeight: string
       rimThickness: string
     }
     creativeForm: {
@@ -146,6 +157,7 @@ export function applyOrderDetailToCustomOrderForms(
       centerCapNote: string
       centerCapTexture: string
       specialRequest: string
+      selectedStyleModel: StyleModelItem | null
     }
     addressForm: {
       name: string
@@ -176,18 +188,24 @@ export function applyOrderDetailToCustomOrderForms(
     = str(o.telegram_id || o.user_id) || str(o.customer_id) || forms.vehicleForm.customerId
 
   {
-    const wgen = fv(['wheel_generation'])
-    const wmod = fv(['wheel_modification'])
+    const offRaw = fv(['structure_subtype_offroad'])
+    const parsed = parseWheelLibraryStructureSubtypeOffroad(offRaw)
+    const wgen = parsed.gen || fv(['wheel_generation'])
+    const oRec = o as AnyRec
+    const wmod
+      = str(oRec.vehicle_model ?? oRec.vehicleModel) || fv(['wheel_modification']) || parsed.mod
     if (wgen) forms.vehicleForm.wheelGeneration = wgen
     if (wmod) forms.vehicleForm.wheelModification = wmod
   }
 
-  forms.vehicleForm.wheelYear = fv(['year', '年款', '车型年']) || forms.vehicleForm.wheelYear
+  /** 年款以根字段 `year` 为准（与详情接口一致） */
+  forms.vehicleForm.wheelYear = str(o.year) || fv(['year', '年款', '车型年']) || forms.vehicleForm.wheelYear
 
   forms.vehicleForm.vin = fv(['vin', 'VIN', '车架号']) || str(o.车架号)
   forms.vehicleForm.plate
     = str(o.chassis) || fv(['chassis', '底盘', '车牌', '牌', '车型代码'])
-  forms.vehicleForm.axleWeight = fv(['brake_disc', '轴重']) || str(o.轴重)
+  forms.vehicleForm.brakeDisc
+    = fv(['brake_disc', '刹车盘', '轴重']) || str(o.brake_disc)
   forms.vehicleForm.rimThickness = fv(['caliper', '卡钳']) || str(o.卡钳)
 
   forms.vehicleForm.frontSize = normalizeInchDiamString(
@@ -222,9 +240,10 @@ export function applyOrderDetailToCustomOrderForms(
   forms.vehicleForm.rearBoltSeat
     = fv(['r_oem_bolt', '后轮原车螺丝', '后螺丝']) || str(o.r_oem_bolt)
 
-  if (specsMode === 'split' || specsMode === '分轮') {
+  const rootSm = rootSpecMode.trim().toLowerCase()
+  if (specsMode === 'split' || specsMode === '分轮' || rootSm === 'split') {
     forms.vehicleForm.mirrorPair = false
-  } else if (specsMode === 'same' || rootSpecMode === 'same') {
+  } else if (specsMode === 'same' || rootSm === 'same' || rootSm === 'mirror' || rootSm === 'same_front_rear') {
     forms.vehicleForm.mirrorPair = true
   } else {
     const fw = fv(['f_width', '前轮J值']) || str(o.f_width)
@@ -240,39 +259,88 @@ export function applyOrderDetailToCustomOrderForms(
 
   let dm = rootSpecMode
   if (dm !== 'custom' && dm !== 'creative') dm = 'creative'
-  if (['split', 'same'].includes(rootSpecMode)) {
+  if (['split', 'same'].includes(rootSm)) {
     /* 顶层把 split/same 误放在 spec_mode 时仍只控制镜像，不当下拉 designMode */
     dm = 'creative'
   }
   forms.creativeForm.designMode = dm
   if (structure) forms.creativeForm.structure = structure
 
-  const { u0, u1 } = colorSampleUrlsFromOrder(o)
-  if (u0) forms.creativeForm.wheelShapeUrl = resolveImg(u0)
-  if (u1) forms.creativeForm.wheelLipUrl = resolveImg(u1)
-  const ci = o.cover_image
-  if (Array.isArray(ci) && firstArrayUrl(ci, 0)) {
-    const cup = firstArrayUrl(ci, 0)
-    if (cup) forms.creativeForm.centerCapUrl = resolveImg(cup)
-  } else {
-    const coverRaw = str(o.cover)
-    if (coverRaw) {
-      const isImg
-        = /(\.(jpe?g|png|webp|gif|svg))(\?|$)/i.test(coverRaw) || /^(https?:)?\/\//i.test(coverRaw) || coverRaw.startsWith('/storage/') || (coverRaw.startsWith('/') && !coverRaw.trim().includes(' '))
-      if (isImg) forms.creativeForm.centerCapUrl = resolveImg(coverRaw) || coverRaw
+  {
+    const cm = str(o.car_model)
+    const sn = str(o.style_name)
+    if (cm && /^WL[-—]/i.test(cm)) {
+      forms.creativeForm.selectedStyleModel = {
+        id: 0,
+        parent_id: null,
+        style_no: cm,
+        style_name: sn,
+        brand: '',
+        model: '',
+        structure_type: structure || str(o.structure),
+        spoke_type: '',
+        spoke_count: null,
+        directional: false,
+        style_tags: [],
+        enabled: true,
+        cover_image: '',
+        created_at: '',
+        children: [],
+      }
     }
   }
-  const wci = o.wheel_color_image
-  if (Array.isArray(wci) && wci[0]) {
-    const row = wci[0] as AnyRec
-    const url = str(row.url)
-    const path = str(row.path)
-    if (url) forms.creativeForm.finishCardImageUrl = resolveImg(url) || url
-    if (path) {
-      forms.creativeForm.finishCardImagePath = path
-    } else if (url) {
-      const parsed = colorSampleFromUrl(url)
-      if (parsed) forms.creativeForm.finishCardImagePath = parsed.path
+
+  const { u0, u1 } = colorSampleUrlsFromOrder(o, d)
+  if (u0) forms.creativeForm.wheelShapeUrl = u0
+  if (u1) forms.creativeForm.wheelLipUrl = u1
+
+  /** 中心盖预览：优先 `imgs` 槽位 `cover`，否则 `cover_image` / 可解析的图片 `cover` 字符串 */
+  const coverFromImgs = collectImgUrlsForSlot(d, 'cover')
+  if (coverFromImgs[0]) {
+    forms.creativeForm.centerCapUrl = coverFromImgs[0]
+  } else {
+    const ci = o.cover_image
+    if (Array.isArray(ci) && firstArrayUrl(ci, 0)) {
+      const cup = firstArrayUrl(ci, 0)
+      if (cup) forms.creativeForm.centerCapUrl = resolveImg(cup)
+    } else {
+      const coverRaw = str(o.cover)
+      if (coverRaw) {
+        const isImg
+          = /(\.(jpe?g|png|webp|gif|svg))(\?|$)/i.test(coverRaw) || /^(https?:)?\/\//i.test(coverRaw) || coverRaw.startsWith('/storage/') || (coverRaw.startsWith('/') && !coverRaw.trim().includes(' '))
+        if (isImg) forms.creativeForm.centerCapUrl = resolveImg(coverRaw) || coverRaw
+      }
+    }
+  }
+
+  /** 轮毂颜色色卡图：优先 `imgs` 槽位 `wheel_color`，否则 `wheel_color_image` */
+  const wcImg = firstOrderListImageForSlot(d, 'wheel_color')
+  if (wcImg) {
+    const urlRaw = str(wcImg.url || wcImg.path)
+    const url = (resolveOrderAssetUrl(urlRaw) || resolveImg(urlRaw) || urlRaw).trim()
+    if (url) {
+      forms.creativeForm.finishCardImageUrl = url
+      const path = str(wcImg.path)
+      if (path) {
+        forms.creativeForm.finishCardImagePath = path
+      } else {
+        const parsed = colorSampleFromUrl(url)
+        if (parsed) forms.creativeForm.finishCardImagePath = parsed.path
+      }
+    }
+  } else {
+    const wci = o.wheel_color_image
+    if (Array.isArray(wci) && wci[0]) {
+      const row = wci[0] as AnyRec
+      const url = str(row.url)
+      const path = str(row.path)
+      if (url) forms.creativeForm.finishCardImageUrl = resolveImg(url) || url
+      if (path) {
+        forms.creativeForm.finishCardImagePath = path
+      } else if (url) {
+        const parsed = colorSampleFromUrl(url)
+        if (parsed) forms.creativeForm.finishCardImagePath = parsed.path
+      }
     }
   }
 
@@ -311,24 +379,32 @@ export function applyOrderDetailToCustomOrderForms(
 }
 
 /**
+ * 详情接口里 `car` 为后端拼接的「品牌 + 空格 + 型号」（如 `Aiways WL-M-070`），需拆开再匹配 Wheel-Size 下拉。
+ */
+export function splitOrderDetailCarField(carRaw: unknown): { brand: string; model: string } {
+  const car = str(carRaw).trim()
+  if (!car) return { brand: '', model: '' }
+  const parts = car.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return { brand: parts[0] ?? '', model: parts.slice(1).join(' ') }
+  }
+  return { brand: '', model: car }
+}
+
+/**
  * 供 Wheel-Size 模式在加载完 `wsBrandOptions` 后，用接口里的品牌/型号 label 再解析成下拉 value。
+ * 优先从根字段 `car` 拆分；若无 `car` 再回退 `car_brand` / `car_model` / `specs`。
  */
 export function brandModelLabelsFromDetail(d: OrderDetailResponse): { brand: string; model: string } {
   const o = d as AnyRec
   const specs = (o.specs && typeof o.specs === 'object' && !Array.isArray(o.specs) ? o.specs : null) as AnyRec | null
+
+  const fromCar = splitOrderDetailCarField(o.car)
+  if (fromCar.brand || fromCar.model) return fromCar
+
   let brand = str(o.car_brand || specGet(specs, '品牌'))
-  let model = str(o.car_model || specGet(specs, '车型') || specGet(specs, '型号'))
-  if (!brand && !model) {
-    const car = str(o.car).trim()
-    if (car) {
-      const parts = car.split(/\s+/).filter(Boolean)
-      if (parts.length >= 2) {
-        brand = parts[0]
-        model = parts.slice(1).join(' ')
-      } else {
-        model = car
-      }
-    }
-  }
+  const cm = str(o.car_model)
+  let model = str(specGet(specs, '车型') || specGet(specs, '型号'))
+  if (!model && cm && !/^WL[-—]/i.test(cm)) model = cm
   return { brand, model }
 }

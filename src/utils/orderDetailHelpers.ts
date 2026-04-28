@@ -98,6 +98,18 @@ export function collectImgUrlsForSlot(d: OrderDetailResponse | null, slot: ImgSl
   return out
 }
 
+/** `imgs` 中某槽位的第一条原始项（便于取 `path` 回填 `finishCardImagePath` 等） */
+export function firstOrderListImageForSlot(
+  d: OrderDetailResponse | null,
+  slot: ImgSlotValue,
+): OrderListImageItem | undefined {
+  if (!d?.imgs?.length) return undefined
+  for (const im of d.imgs) {
+    if (imgItemMatchesSlot(im, slot)) return im
+  }
+  return undefined
+}
+
 /** `cover` 槽位无图时：回退 `cover_image` / 可解析为图片 URL 的 `cover` 字符串 */
 export function coverFallbackUrlsAfterSlots(d: OrderDetailResponse | null): string[] {
   if (!d) return []

@@ -12,11 +12,15 @@ import { Icon } from '@iconify/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isNavBarTabRoute } from '@/constants/navBarRoutes'
 import { t } from '@/i18n/uiI18n'
+import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
 
 const route = useRoute()
 const router = useRouter()
+const staffDeeplink = useStaffDeeplinkStore()
 
-const visible = computed(() => !isNavBarTabRoute(route.path))
+const visible = computed(
+  () => !isNavBarTabRoute(route.path) && staffDeeplink.allowHistoryBack,
+)
 
 function goBack() {
   if (typeof window !== 'undefined' && window.history.length > 1)

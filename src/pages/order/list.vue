@@ -6,10 +6,13 @@ import OrderListCard from '@/components/OrderListCard.vue'
 import { fetchOrdersList, type OrderListItem, type OrderListStatusTab } from '@/api/orders'
 import { t } from '@/i18n/uiI18n'
 import { getTelegramUserId } from '@/utils/userTelegram'
+import { readStaffPlatformUid } from '@/utils/deeplinkStaffContext'
+import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
 
 const router = useRouter()
+const staffDeeplink = useStaffDeeplinkStore()
 
-const userId = ref(getTelegramUserId())
+const userId = ref(readStaffPlatformUid().trim() || getTelegramUserId())
 const activeKey = ref('all')
 const search = ref('')
 const searchDebounced = ref('')
@@ -126,7 +129,7 @@ function applySearchNow() {
   <div class="min-h-full w-full overflow-x-hidden bg-[#F4F4F5] pb-24 text-[#1F2937] pos-relative">
     <header
       class="sticky top-0 z-10 flex items-center gap-2 border-b border-[#E5E7EB] bg-white/95 px-3 py-3 backdrop-blur">
-      <button type="button"
+      <button v-if="staffDeeplink.allowHistoryBack" type="button"
         class="flex h-9 w-9 items-center justify-center rounded-lg text-[#4B5563] active:bg-[#F3F4F6]"
         :aria-label="t('common.back')" @click="goBack">
         <Icon icon="mdi:chevron-left" width="26" height="26" />

@@ -95,6 +95,8 @@ export default defineConfig((): UserConfig => ({
     ],
   },
   build: {
+    // esbuild 默认压缩对 `??` + 立即执行函数等组合会偶发产出非法 JS（动态 import 报 Unexpected token '||'）；用 terser 更稳。
+    minify: 'terser',
     // 与多数现代机 WebView 对齐；过旧设备可改 es2015
     target: 'es2020',
     cssCodeSplit: true,
