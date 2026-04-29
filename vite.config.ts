@@ -96,7 +96,6 @@ export default defineConfig((): UserConfig => ({
   },
   build: {
     // esbuild 压缩在部分 Unicode/?? 组合上会产出非法语法；换用 terser 更稳（见 applyOrderDetail chunk Node 解析）。
-    minify: 'terser',
     terserOptions: {
       compress: { passes: 2 },
       format: { comments: false },

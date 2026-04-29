@@ -1,23 +1,21 @@
+import type { VehicleFormState } from '@/pages/CustomOrder/models'
+
 export interface CarGroup {
   brand: string
   models: string[]
   years: string[]
 }
 
-export interface CarSelectionValue {
-  brand: string
-  model: string
+/** 与定制单 `vehicleForm` 相同的五段字段名 + 可选展示文案（面板 `v-model:year` / 旧缓存） */
+export type CarSelectionValue = Pick<
+  VehicleFormState,
+  'brand' | 'model' | 'wheelGeneration' | 'wheelYear' | 'wheelModification'
+> & {
   /**
-   * 静态 `carGroups`：年段文案。
-   * Wheel-Size：可为「世代 · 年 · 配置」展示用拼接（兼容旧缓存）；匹配链路优先用下方三段。
+   * Wheel-Size：CarSelectionPanel 展示的「世代 · 年 · 配置」拼接。
+   * 静态 `carGroups`：年段文案。预填/接口以 `wheel*` 为准。
    */
   year: string
-  /** Wheel-Size 世代 slug（与定制单 `vehicleForm.wheelGeneration` 一致） */
-  wheelGeneration?: string
-  /** Wheel-Size 年份选项 value（与 `vehicleForm.wheelYear` 一致） */
-  wheelYear?: string
-  /** Wheel-Size 配置 slug（与 `vehicleForm.wheelModification` 一致） */
-  wheelModification?: string
 }
 
 export const carGroups: CarGroup[] = [
@@ -74,6 +72,9 @@ export function getDefaultCarSelection(groups: CarGroup[] = carGroups): CarSelec
   return {
     brand: firstGroup?.brand ?? '',
     model: firstGroup?.models[0] ?? '',
+    wheelGeneration: '',
+    wheelYear: '',
+    wheelModification: '',
     year: firstGroup?.years[0] ?? '',
   }
 }

@@ -8,14 +8,8 @@ import {
   type OrderStatus,
 } from '@/data/orders'
 import TgButton from '@/components/TgButton.vue'
-import {
-  type OrderDetailResponse,
-  type OrderListImageItem,
-  type OrderListItem,
-  cancelOrder,
-  fetchOrderDetail,
-  mapApiStatusToOrderStatus,
-} from '@/api/orders'
+import type { OrderDetailResponse, OrderListImageItem, OrderListItem } from '@/utils/orderHelpers'
+import { cancelOrder, fetchOrderDetail, mapApiStatusToOrderStatus } from '@/api/orders'
 import { orderIdFromRouteQuery } from '@/utils/applyOrderDetailToCustomOrder'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
 import { getTelegramWebApp } from '@/utils/userTelegram'

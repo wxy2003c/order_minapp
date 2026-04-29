@@ -1,4 +1,7 @@
-import { type OrderDetailResponse, parseWheelLibraryStructureSubtypeOffroad } from '@/api/orders'
+import {
+  parseWheelLibraryStructureSubtypeOffroad,
+  type OrderDetailResponse,
+} from '@/utils/orderHelpers'
 import type { StyleModelItem } from '@/api/styleModels'
 import {
   collectImgUrlsForSlot,
@@ -61,7 +64,7 @@ export function orderIdFromRouteQuery(
 /**
  * 将 API 的 `5x112` 类 PCD 拆成左/右两段，供前/后轮 PCD 双输入框使用。
  */
-export function splitPcdSegment(p: string | null | undefined): [string, string] {
+function splitPcdSegment(p: string | null | undefined): [string, string] {
   const s = String(p ?? '').trim()
   if (!s) return ['', '']
   const m = s.split(/[xX×]/)
@@ -381,7 +384,7 @@ export function applyOrderDetailToCustomOrderForms(
 /**
  * 详情接口里 `car` 为后端拼接的「品牌 + 空格 + 型号」（如 `Aiways WL-M-070`），需拆开再匹配 Wheel-Size 下拉。
  */
-export function splitOrderDetailCarField(carRaw: unknown): { brand: string; model: string } {
+function splitOrderDetailCarField(carRaw: unknown): { brand: string; model: string } {
   const car = str(carRaw).trim()
   if (!car) return { brand: '', model: '' }
   const parts = car.split(/\s+/).filter(Boolean)

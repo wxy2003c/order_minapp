@@ -1,40 +1,53 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import OrderListCard from '@/components/OrderListCard.vue'
 import { carGroups, getDefaultCarSelection } from '@/data/carSelection'
-import { fetchOrdersList, type OrderListItem } from '@/api/orders'
+import type { VehicleFormState } from '@/pages/CustomOrder/models'
+import type { OrderListItem } from '@/utils/orderHelpers'
+import { fetchOrdersList } from '@/api/orders'
 import { t } from '@/i18n/uiI18n'
 import {
   loadMyVehicleSelection,
   saveMyVehicleSelection,
 } from '@/utils/myVehicleStorage'
 import { readStaffPlatformUid } from '@/utils/deeplinkStaffContext'
-import { getTelegramUserId } from '@/utils/userTelegram'
+import { getTelegramDisplayName, getTelegramUserId } from '@/utils/userTelegram'
+
+/** 与定制单车辆 Tab 相同的五段字段（`wheel*` 与接口/缓存一致） */
+type VehiclePick = Pick<
+  VehicleFormState,
+  'brand' | 'model' | 'wheelGeneration' | 'wheelYear' | 'wheelModification'
+>
 
 const router = useRouter()
 const initialCar = getDefaultCarSelection()
 const storedCar = loadMyVehicleSelection()
 const pickerOpen = ref(false)
-const selectedBrand = ref(storedCar?.brand || initialCar.brand)
-const selectedModel = ref(storedCar?.model || initialCar.model)
-const selectedYear = ref(storedCar?.year || initialCar.year)
-const selectedWheelGeneration = ref(storedCar?.wheelGeneration ?? '')
-const selectedWheelYear = ref(storedCar?.wheelYear ?? '')
-const selectedWheelModification = ref(storedCar?.wheelModification ?? '')
+
+const vehicle = reactive<VehiclePick>({
+  brand: storedCar?.brand || initialCar.brand,
+  model: storedCar?.model || initialCar.model,
+  wheelGeneration: storedCar?.wheelGeneration ?? '',
+  wheelYear: storedCar?.wheelYear ?? '',
+  wheelModification: storedCar?.wheelModification ?? '',
+})
+
+/** CarSelectionPanel 仍用 `year` 传展示串「世代 · 年 · 配置」，与 `wheelYear`（id）不同 */
+const selectionSummaryYear = ref(storedCar?.year || initialCar.year)
 
 /** 在用户收起车型选择面板时写入本地（避免首页默认车款即写入并触发下单预填弹窗） */
 watch(pickerOpen, (open, wasOpen) => {
   if (!open && wasOpen) {
     saveMyVehicleSelection({
-      brand: String(selectedBrand.value ?? '').trim(),
-      model: String(selectedModel.value ?? '').trim(),
-      year: String(selectedYear.value ?? '').trim(),
-      wheelGeneration: String(selectedWheelGeneration.value ?? '').trim(),
-      wheelYear: String(selectedWheelYear.value ?? '').trim(),
-      wheelModification: String(selectedWheelModification.value ?? '').trim(),
+      brand: String(vehicle.brand ?? '').trim(),
+      model: String(vehicle.model ?? '').trim(),
+      wheelGeneration: String(vehicle.wheelGeneration ?? '').trim(),
+      wheelYear: String(vehicle.wheelYear ?? '').trim(),
+      wheelModification: String(vehicle.wheelModification ?? '').trim(),
+      year: String(selectionSummaryYear.value ?? '').trim(),
     })
   }
 })
@@ -43,7 +56,16 @@ const orders = ref<OrderListItem[]>([])
 const listLoading = ref(false)
 const listError = ref('')
 
-const currentCarText = computed(() => `${selectedBrand.value} ${selectedModel.value}[${selectedYear.value}]`)
+const currentCarText = computed(
+  () => `${vehicle.brand} ${vehicle.model}[${selectionSummaryYear.value}]`,
+)
+
+const profileDisplayName = computed(
+  () => getTelegramDisplayName().trim() || '—',
+)
+const profileTelegramId = computed(
+  () => getTelegramUserId().trim() || '—',
+)
 
 function openOrderDetails(orderId: string | number) {
   router.push({
@@ -102,10 +124,10 @@ onMounted(() => {
 
         <div class="mt-4 text-center">
           <div class="text-5 font-700">
-            Александр Жихаев1034
+            {{ profileDisplayName }}
           </div>
           <div class="mt-2 text-4 font-700 text-white/90">
-            266086681
+            {{ profileTelegramId }}
           </div>
         </div>
       </div>
@@ -131,12 +153,12 @@ onMounted(() => {
           class="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-[16px] shadow-[0_24px_48px_rgba(0,0,0,0.28)]"
           @click.stop>
           <CarSelectionPanel
-            v-model:brand="selectedBrand"
-            v-model:model="selectedModel"
-            v-model:year="selectedYear"
-            v-model:wheel-generation="selectedWheelGeneration"
-            v-model:wheel-year="selectedWheelYear"
-            v-model:wheel-modification="selectedWheelModification"
+            v-model:brand="vehicle.brand"
+            v-model:model="vehicle.model"
+            v-model:year="selectionSummaryYear"
+            v-model:wheel-generation="vehicle.wheelGeneration"
+            v-model:wheel-year="vehicle.wheelYear"
+            v-model:wheel-modification="vehicle.wheelModification"
             :groups="carGroups" />
         </div>
       </div>

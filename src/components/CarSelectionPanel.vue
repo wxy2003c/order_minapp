@@ -134,12 +134,13 @@ function isSyncedWithProps() {
     = (!wg || wg === genSlug.value)
       && (!wy || wy === yearId.value)
       && (!wm || wm === modId.value)
-  return (
-    normalizeForMatch(props.brand) === normalizeForMatch(makeLabel.value) &&
-    normalizeForMatch(props.model) === normalizeForMatch(modelLabel.value) &&
-    idsMatch &&
-    normalizeForMatch(props.year || '') === normalizeForMatch(currentTailString())
-  )
+  const brandModelOk
+    = normalizeForMatch(props.brand) === normalizeForMatch(makeLabel.value)
+      && normalizeForMatch(props.model) === normalizeForMatch(modelLabel.value)
+  if (!brandModelOk || !idsMatch) return false
+  /** 已与定制单一致存了世代+年份 id 时，以 id 为准，避免展示用 `year` 拼接偶尔不一致导致死循环 hydrate */
+  if (wg && wy) return true
+  return normalizeForMatch(props.year || '') === normalizeForMatch(currentTailString())
 }
 
 function buildPropsKey() {
@@ -621,9 +622,27 @@ async function hydrateFromProps() {
 const lastHydrationPropsKey = ref('')
 
 watch(
-  () => [props.brand, props.model, props.year, useApi.value] as const,
+  () =>
+    [
+      props.brand,
+      props.model,
+      props.year,
+      props.wheelGeneration,
+      props.wheelYear,
+      props.wheelModification,
+      useApi.value,
+    ] as const,
   () => {
-    const k = [props.brand, props.model, props.year].map(x => (x || '').trim()).join('\0')
+    const k = [
+      props.brand,
+      props.model,
+      props.year,
+      props.wheelGeneration,
+      props.wheelYear,
+      props.wheelModification,
+    ]
+      .map(x => (x || '').trim())
+      .join('\0')
     if (k !== lastHydrationPropsKey.value) {
       lastHydrationPropsKey.value = k
       hydrationSettledKey.value = ''

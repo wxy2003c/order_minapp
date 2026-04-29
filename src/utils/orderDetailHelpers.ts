@@ -1,7 +1,7 @@
 /**
  * 订单详情 / 定制单回填：文本归一、`specs` / `imgs` 槽位、轮规行等纯函数。
  */
-import type { OrderDetailResponse, OrderListImageItem } from '@/api/orders'
+import type { OrderDetailResponse, OrderListImageItem } from '@/utils/orderHelpers'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
 import { normalizeInchDiamString } from '@/utils/wheelDiam'
 

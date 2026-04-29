@@ -1,8 +1,8 @@
 /*
  * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
  * @Date: 2026-04-16 14:04:06
- * @LastEditors: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
- * @LastEditTime: 2026-04-17 09:43:17
+ * @LastEditors: wxy2003c 774078984@qq.com
+ * @LastEditTime: 2026-04-29 13:35:54
  * @FilePath: \vite-project\src\utils\userTelegram.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -91,7 +91,7 @@ export function getTelegramUserLanguageCode(): string | undefined {
 /**
  * 无法从 Telegram WebApp 读取用户时，请求体 / query 里 `user_id` 等使用的默认值（本地与联调用）。
  */
-export const DEFAULT_TELEGRAM_USER_ID = '8548581087'
+export const DEFAULT_TELEGRAM_USER_ID = ''
 
 /**
  * Telegram 用户 id，作 `user_id` / `telegram_id` 等提交用；

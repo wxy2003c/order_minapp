@@ -1,4 +1,4 @@
-import type { OrderListItem } from '@/api/orders'
+import type { OrderListItem } from '@/utils/orderHelpers'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
 
 /**

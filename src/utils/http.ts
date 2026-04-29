@@ -1,29 +1,12 @@
 import axios, {AxiosHeaders} from 'axios';
 import type {InternalAxiosRequestConfig} from 'axios';
 import {getApiLang} from '@/i18n/apiLang';
-import {resolveHttpDefaultUserId} from '@/utils/deeplinkStaffContext';
-
-/**
- * 后端 API 的 Axios 客户端：Laravel 风格 query 序列化、HMAC-SHA256 请求签、
- * 默认 query 注入 `lang`、`platform=telegram`、`user_id`（来自 Telegram），以及
- * 将 `{ code, data }` 解包为 `data`。
- */
 
 /** 须与 Laravel `api_clients` 中对应 api_key 的明文密钥一致（DB 中存加密值，验签时用解密后的明文） */
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://chain.wheelsline.com/api/v1').trim();
 /** 明文密钥；须与 DB 解密后的 signingSecret 一致，勿把 migrations 里加密后的密文当 secret */
 const API_SECRET_RAW = (import.meta.env.VITE_API_SECRET_RAW || '').trim();
 const API_KEY = (import.meta.env.VITE_API_KEY || 'telegram_key').trim();
-
-const SIGNING_CONFIGURED = API_SECRET_RAW.length > 0;
-
-if (import.meta.env.PROD && !SIGNING_CONFIGURED) {
-  // eslint-disable-next-line no-console
-  console.error(
-    '[http] 生产包未注入 VITE_API_SECRET_RAW：请求签名为空密钥生成，服务端会报签名错误。'
-    + '请在执行 `vite build` 的环境中设置与 .env 相同的 VITE_*（或 CI Secret），不要只上传本机未重建的 dist。',
-  );
-}
 
 // ----------------------------------------
 // 工具函数
@@ -190,25 +173,14 @@ function formDataParamsForSign(fd: FormData): Record<string, string> {
   return out;
 }
 
-/**
- * 与请求实际发出的 query 一致，用于签名字符串第 3 行（`normalizedParams`）。
- * 必须在拦截器里合并完 `lang` / `platform` / `user_id` 之后再调用，避免 `getUri` 与最终请求不一致
- * 导致验签时缺少 `user_id`、`platform`。
- */
-function getQueryObjectForSign(config: InternalAxiosRequestConfig): Record<string, unknown> {
-  const p = config.params;
-  if (p == null) return {};
-  if (p instanceof URLSearchParams) {
-    const out: Record<string, unknown> = {};
-    p.forEach((value, key) => {
-      out[key] = value;
-    });
-    return out;
-  }
-  if (typeof p === 'object' && !Array.isArray(p)) {
-    return { ...(p as Record<string, unknown>) };
-  }
-  return {};
+function collectUrlQuery(config: InternalAxiosRequestConfig): Record<string, string> {
+  const requestUrl = axios.getUri(config);
+  const fullUrl = new URL(requestUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+  const realQuery: Record<string, string> = {};
+  fullUrl.searchParams.forEach((value, key) => {
+    realQuery[key] = value;
+  });
+  return realQuery;
 }
 
 // ----------------------------------------
@@ -225,42 +197,14 @@ const httpApi = axios.create({
   }
 });
 
-/**
- * 请求拦截：合并语言与平台、补全 `user_id`，再按 method/path/query/body 计算 SHA256 与 HMAC，
- * 设置 `X-Timestamp`、`X-Nonce`、`X-Signature`。
- */
 httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
-  if (import.meta.env.PROD && !SIGNING_CONFIGURED) {
-    return Promise.reject(new Error(
-      'API 签名未配置：构建时缺少 VITE_API_SECRET_RAW，请用带完整环境变量的流程重新 vite build 后再部署。',
-    ));
-  }
-
   const lang = getApiLang();
-  const defaultUserId = resolveHttpDefaultUserId();
-  if (config.params instanceof URLSearchParams) {
-    const sp = config.params;
-    if (!String(sp.get('lang') ?? '').trim()) {
-      sp.set('lang', lang);
-    }
-    sp.set('platform', 'telegram');
-    if (defaultUserId && !String(sp.get('user_id') ?? '').trim()) {
-      sp.set('user_id', defaultUserId);
-    }
+  if(config.params && typeof config.params === 'object' && !Array.isArray(config.params) && !(config.params instanceof URLSearchParams)) {
+    (config.params as Record<string, unknown>).lang = lang;
+  } else if(config.params instanceof URLSearchParams) {
+    config.params.set('lang', lang);
   } else {
-    const base = (config.params && typeof config.params === 'object' && !Array.isArray(config.params)) ?
-      {...(config.params as Record<string, unknown>)} :
-      {};
-    const withUid: Record<string, unknown> = {
-      ...base,
-      lang,
-      platform: 'telegram',
-    };
-    const existingUid = withUid['user_id'];
-    const hasUid
-      = existingUid !== undefined && existingUid !== null && String(existingUid).trim() !== '';
-    if (!hasUid && defaultUserId) withUid['user_id'] = defaultUserId;
-    config.params = withUid as typeof config.params;
+    config.params = {lang};
   }
 
   const method = (config.method || 'GET').toUpperCase();
@@ -268,13 +212,14 @@ httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
   const nonce = genNonce(32);
 
   const path = resolveRequestPath(config);
-  const realQuery = getQueryObjectForSign(config);
+  const realQuery = collectUrlQuery(config);
 
   let bodyStr = '';
   let normalizedParams = '';
 
   if(method === 'GET' || method === 'HEAD') {
-    normalizedParams = normalizeAllParams(realQuery);
+    // 与 POST 及 Laravel `ConvertEmptyStringsToNull` 对齐（normalizeAllParams 内会 sortRecursive）
+    normalizedParams = normalizeAllParams(convertEmptyStringsToNull({...realQuery}) as Record<string, unknown>);
   } else {
     const rawData = config.data;
 
@@ -337,10 +282,13 @@ httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
   hdr.set('X-Nonce', nonce);
   hdr.set('X-Signature', signature);
 
+  if(import.meta.env.DEV) {
+    hdr.set('X-Debug-Sign', '1');
+  }
+
   return config;
 }, (error) => Promise.reject(error));
 
-/** 响应拦截：`code !== 0` 时抛错；`code === 0` 时返回内层 `data`。 */
 httpApi.interceptors.response.use(
   (response) => {
     const body = response.data;

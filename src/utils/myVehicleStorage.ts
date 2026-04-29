@@ -25,14 +25,14 @@ export function loadMyVehicleSelection(): MyVehicleCache | null {
     const wheelGeneration = typeof o.wheelGeneration === 'string' ? o.wheelGeneration.trim() : ''
     const wheelYear = typeof o.wheelYear === 'string' ? o.wheelYear.trim() : ''
     const wheelModification = typeof o.wheelModification === 'string' ? o.wheelModification.trim() : ''
-    if (!brand && !model && !year && !wheelGeneration && !wheelYear) return null
+    if (!brand && !model && !year && !wheelGeneration && !wheelYear && !wheelModification) return null
     return {
       brand,
       model,
       year,
-      ...(wheelGeneration ? { wheelGeneration } : {}),
-      ...(wheelYear ? { wheelYear } : {}),
-      ...(wheelModification ? { wheelModification } : {}),
+      wheelGeneration,
+      wheelYear,
+      wheelModification,
     }
   } catch {
     return null

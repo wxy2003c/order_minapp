@@ -23,9 +23,7 @@ declare module 'vue' {
     Swiper: typeof import('./src/components/Swiper.vue')['default']
     TgBackButton: typeof import('./src/components/TgBackButton.vue')['default']
     TgButton: typeof import('./src/components/TgButton.vue')['default']
-    TgCell: typeof import('./src/components/TgCell.vue')['default']
     TgFilepond: typeof import('./src/components/TgFilepond.vue')['default']
-    TgSection: typeof import('./src/components/TgSection.vue')['default']
     TgSelect: typeof import('./src/components/TgSelect.vue')['default']
     TgSwitch: typeof import('./src/components/TgSwitch.vue')['default']
   }

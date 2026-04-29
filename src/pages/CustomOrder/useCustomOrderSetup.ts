@@ -14,11 +14,9 @@ import { t, uiLocale } from '@/i18n/uiI18n'
 import { useCustomOrderStore } from '@/stores/customOrder'
 import {
   buildCreateOrderFromCustomOrder,
-  createOrder,
-  updateOrder,
-  fetchOrderDetail,
   parseWheelLibraryStructureSubtypeOffroad,
-} from '@/api/orders'
+} from '@/utils/orderHelpers'
+import { createOrder, updateOrder, fetchOrderDetail } from '@/api/orders'
 import {
   applyOrderDetailToCustomOrderForms,
   brandModelLabelsFromDetail,

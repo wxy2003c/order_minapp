@@ -2,7 +2,7 @@
  * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
  * @Date: 2026-04-17 13:55:30
  * @LastEditors: wxy2003c 774078984@qq.com
- * @LastEditTime: 2026-04-20 10:55:49
+ * @LastEditTime: 2026-04-29 10:45:20
  * @FilePath: \vite-project\src\components\NavBar.vue
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -13,7 +13,7 @@ import { t } from '@/i18n/uiI18n'
 
 const route = useRoute()
 const tabs = computed(() => [
-  { label: t('nav.home'), path: '/home', icon: 'home' },
+  { label: t('nav.home'), path: '/', icon: 'home' },
   { label: t('nav.product'), path: '/product', icon: 'product' },
   { label: t('nav.cases'), path: '/cases', icon: 'cases' },
   { label: t('nav.profile'), path: '/profile', icon: 'profile' },

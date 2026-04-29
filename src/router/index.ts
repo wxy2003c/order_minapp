@@ -2,7 +2,7 @@
  * @Author: wxy2003c 774078984@qq.com
  * @Date: 2026-04-17 10:48:46
  * @LastEditors: wxy2003c 774078984@qq.com
- * @LastEditTime: 2026-04-21 11:05:03
+ * @LastEditTime: 2026-04-29 10:44:48
  * @FilePath: \vite-project\src\router\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -13,10 +13,6 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/home',
-    },
-    {
-      path: '/home',
       name: '首页',
       component: () => import('@/pages/home/index.vue'),
     },

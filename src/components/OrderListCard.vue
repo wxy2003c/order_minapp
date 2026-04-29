@@ -8,7 +8,7 @@
 -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { OrderListItem } from '@/api/orders'
+import type { OrderListItem } from '@/utils/orderHelpers'
 import { t } from '@/i18n/uiI18n'
 import {
   orderRowAvatarSrc,
