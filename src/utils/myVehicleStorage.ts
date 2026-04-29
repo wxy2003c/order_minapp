@@ -22,8 +22,18 @@ export function loadMyVehicleSelection(): MyVehicleCache | null {
     const brand = typeof o.brand === 'string' ? o.brand.trim() : ''
     const model = typeof o.model === 'string' ? o.model.trim() : ''
     const year = typeof o.year === 'string' ? o.year.trim() : ''
-    if (!brand && !model && !year) return null
-    return { brand, model, year }
+    const wheelGeneration = typeof o.wheelGeneration === 'string' ? o.wheelGeneration.trim() : ''
+    const wheelYear = typeof o.wheelYear === 'string' ? o.wheelYear.trim() : ''
+    const wheelModification = typeof o.wheelModification === 'string' ? o.wheelModification.trim() : ''
+    if (!brand && !model && !year && !wheelGeneration && !wheelYear) return null
+    return {
+      brand,
+      model,
+      year,
+      ...(wheelGeneration ? { wheelGeneration } : {}),
+      ...(wheelYear ? { wheelYear } : {}),
+      ...(wheelModification ? { wheelModification } : {}),
+    }
   } catch {
     return null
   }
@@ -38,6 +48,9 @@ export function saveMyVehicleSelection(v: MyVehicleCache): void {
         brand: String(v.brand ?? '').trim(),
         model: String(v.model ?? '').trim(),
         year: String(v.year ?? '').trim(),
+        wheelGeneration: String(v.wheelGeneration ?? '').trim(),
+        wheelYear: String(v.wheelYear ?? '').trim(),
+        wheelModification: String(v.wheelModification ?? '').trim(),
       }),
     )
   } catch {

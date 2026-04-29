@@ -95,8 +95,12 @@ export default defineConfig((): UserConfig => ({
     ],
   },
   build: {
-    // esbuild 默认压缩对 `??` + 立即执行函数等组合会偶发产出非法 JS（动态 import 报 Unexpected token '||'）；用 terser 更稳。
+    // esbuild 压缩在部分 Unicode/?? 组合上会产出非法语法；换用 terser 更稳（见 applyOrderDetail chunk Node 解析）。
     minify: 'terser',
+    terserOptions: {
+      compress: { passes: 2 },
+      format: { comments: false },
+    },
     // 与多数现代机 WebView 对齐；过旧设备可改 es2015
     target: 'es2020',
     cssCodeSplit: true,

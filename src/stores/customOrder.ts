@@ -478,6 +478,28 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
       const mVal = findSelectValue(cascade.wsModelOptions.value, cache.model)
       if (!mVal) return
       await cascade.onWheelModelChange(mVal)
+
+      const wgKey = (cache.wheelGeneration ?? '').trim()
+      const wyKey = (cache.wheelYear ?? '').trim()
+      const wmKey = (cache.wheelModification ?? '').trim()
+
+      if (wgKey && wyKey) {
+        const gVal = findSelectValue(cascade.wsGenOptions.value, wgKey)
+        if (gVal) {
+          await cascade.onWheelGenerationChange(gVal)
+          const yVal = findSelectValue(cascade.wsYearOptions.value, wyKey)
+          if (yVal) {
+            await cascade.onWheelYearChange(yVal)
+            if (wmKey) {
+              const modVal = findSelectValue(cascade.wsModOptions.value, wmKey)
+              if (modVal)
+                cascade.onWheelModificationChange(modVal)
+            }
+            return
+          }
+        }
+      }
+
       const yLabel = cache.year.trim()
       if (!yLabel) return
       const gens = [...cascade.wsGenOptions.value]

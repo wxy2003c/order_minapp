@@ -15,6 +15,16 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://chain.wheels
 const API_SECRET_RAW = (import.meta.env.VITE_API_SECRET_RAW || '').trim();
 const API_KEY = (import.meta.env.VITE_API_KEY || 'telegram_key').trim();
 
+const SIGNING_CONFIGURED = API_SECRET_RAW.length > 0;
+
+if (import.meta.env.PROD && !SIGNING_CONFIGURED) {
+  // eslint-disable-next-line no-console
+  console.error(
+    '[http] 生产包未注入 VITE_API_SECRET_RAW：请求签名为空密钥生成，服务端会报签名错误。'
+    + '请在执行 `vite build` 的环境中设置与 .env 相同的 VITE_*（或 CI Secret），不要只上传本机未重建的 dist。',
+  );
+}
+
 // ----------------------------------------
 // 工具函数
 // ----------------------------------------
@@ -220,6 +230,12 @@ const httpApi = axios.create({
  * 设置 `X-Timestamp`、`X-Nonce`、`X-Signature`。
  */
 httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
+  if (import.meta.env.PROD && !SIGNING_CONFIGURED) {
+    return Promise.reject(new Error(
+      'API 签名未配置：构建时缺少 VITE_API_SECRET_RAW，请用带完整环境变量的流程重新 vite build 后再部署。',
+    ));
+  }
+
   const lang = getApiLang();
   const defaultUserId = resolveHttpDefaultUserId();
   if (config.params instanceof URLSearchParams) {

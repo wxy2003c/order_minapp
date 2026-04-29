@@ -21,6 +21,9 @@ const pickerOpen = ref(false)
 const selectedBrand = ref(storedCar?.brand || initialCar.brand)
 const selectedModel = ref(storedCar?.model || initialCar.model)
 const selectedYear = ref(storedCar?.year || initialCar.year)
+const selectedWheelGeneration = ref(storedCar?.wheelGeneration ?? '')
+const selectedWheelYear = ref(storedCar?.wheelYear ?? '')
+const selectedWheelModification = ref(storedCar?.wheelModification ?? '')
 
 /** 在用户收起车型选择面板时写入本地（避免首页默认车款即写入并触发下单预填弹窗） */
 watch(pickerOpen, (open, wasOpen) => {
@@ -29,6 +32,9 @@ watch(pickerOpen, (open, wasOpen) => {
       brand: String(selectedBrand.value ?? '').trim(),
       model: String(selectedModel.value ?? '').trim(),
       year: String(selectedYear.value ?? '').trim(),
+      wheelGeneration: String(selectedWheelGeneration.value ?? '').trim(),
+      wheelYear: String(selectedWheelYear.value ?? '').trim(),
+      wheelModification: String(selectedWheelModification.value ?? '').trim(),
     })
   }
 })
@@ -124,7 +130,13 @@ onMounted(() => {
         <div v-if="pickerOpen"
           class="absolute left-0 top-full z-20 mt-3 w-full overflow-hidden rounded-[16px] shadow-[0_24px_48px_rgba(0,0,0,0.28)]"
           @click.stop>
-          <CarSelectionPanel v-model:brand="selectedBrand" v-model:model="selectedModel" v-model:year="selectedYear"
+          <CarSelectionPanel
+            v-model:brand="selectedBrand"
+            v-model:model="selectedModel"
+            v-model:year="selectedYear"
+            v-model:wheel-generation="selectedWheelGeneration"
+            v-model:wheel-year="selectedWheelYear"
+            v-model:wheel-modification="selectedWheelModification"
             :groups="carGroups" />
         </div>
       </div>

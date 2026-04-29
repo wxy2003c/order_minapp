@@ -7,7 +7,17 @@ export interface CarGroup {
 export interface CarSelectionValue {
   brand: string
   model: string
+  /**
+   * 静态 `carGroups`：年段文案。
+   * Wheel-Size：可为「世代 · 年 · 配置」展示用拼接（兼容旧缓存）；匹配链路优先用下方三段。
+   */
   year: string
+  /** Wheel-Size 世代 slug（与定制单 `vehicleForm.wheelGeneration` 一致） */
+  wheelGeneration?: string
+  /** Wheel-Size 年份选项 value（与 `vehicleForm.wheelYear` 一致） */
+  wheelYear?: string
+  /** Wheel-Size 配置 slug（与 `vehicleForm.wheelModification` 一致） */
+  wheelModification?: string
 }
 
 export const carGroups: CarGroup[] = [

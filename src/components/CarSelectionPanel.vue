@@ -18,16 +18,26 @@ interface Props {
   brand: string
   model: string
   year: string
+  /** 个人中心持久化：世代 slug */
+  wheelGeneration?: string
+  wheelYear?: string
+  wheelModification?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   groups: undefined,
+  wheelGeneration: '',
+  wheelYear: '',
+  wheelModification: '',
 })
 
 const emit = defineEmits<{
   'update:brand': [value: string]
   'update:model': [value: string]
   'update:year': [value: string]
+  'update:wheelGeneration': [value: string]
+  'update:wheelYear': [value: string]
+  'update:wheelModification': [value: string]
   /** 级联选完最后一级（配置）后触发，供父级关闭弹层 */
   'complete': []
 }>()
@@ -82,6 +92,15 @@ function emitApiSummary() {
   emit('update:model', modelLabel.value)
   const tail = [genLabel.value, yearLabel.value, modLabel.value].filter(Boolean).join(' · ')
   emit('update:year', tail)
+  if (useApi.value) {
+    emit('update:wheelGeneration', genSlug.value)
+    emit('update:wheelYear', yearId.value)
+    emit('update:wheelModification', modId.value)
+  } else {
+    emit('update:wheelGeneration', '')
+    emit('update:wheelYear', '')
+    emit('update:wheelModification', '')
+  }
 }
 
 function normalizeForMatch(s: string | undefined | null) {
@@ -108,15 +127,25 @@ function currentTailString() {
 
 function isSyncedWithProps() {
   if (!useApi.value) return true
+  const wg = String(props.wheelGeneration ?? '').trim()
+  const wy = String(props.wheelYear ?? '').trim()
+  const wm = String(props.wheelModification ?? '').trim()
+  const idsMatch
+    = (!wg || wg === genSlug.value)
+      && (!wy || wy === yearId.value)
+      && (!wm || wm === modId.value)
   return (
     normalizeForMatch(props.brand) === normalizeForMatch(makeLabel.value) &&
     normalizeForMatch(props.model) === normalizeForMatch(modelLabel.value) &&
+    idsMatch &&
     normalizeForMatch(props.year || '') === normalizeForMatch(currentTailString())
   )
 }
 
 function buildPropsKey() {
-  return [props.brand, props.model, props.year].map(x => (x || '').trim()).join('\0')
+  return [props.brand, props.model, props.year, props.wheelGeneration, props.wheelYear, props.wheelModification]
+    .map(x => (x || '').trim())
+    .join('\0')
 }
 
 const isHydrating = ref(false)
@@ -423,7 +452,6 @@ async function hydrateFromProps() {
   try {
     const b = props.brand?.trim()
     const m = props.model?.trim()
-    const tail = props.year?.trim() ?? ''
     // 父级未选品牌：必须清空内部状态，否则残留选项会经 emit 写回 Pinia，表现为「默认第一个品牌」
     if (!b) {
       clearMakeAndDown()
@@ -459,14 +487,54 @@ async function hydrateFromProps() {
     }
     modelId.value = String(modelOpt.id)
     modelLabel.value = modelOpt.label
+    await loadGenerations(makeId.value, modelId.value)
+
+    const wg = String(props.wheelGeneration ?? '').trim()
+    const wy = String(props.wheelYear ?? '').trim()
+    const wm = String(props.wheelModification ?? '').trim()
+
+    /** 新缓存：世代 / 年 / 配置 各自存 id，不再依赖 year 文本拼接 */
+    if (wg && genUiOptions.value.length) {
+      const genOpt = genUiOptions.value.find(o => String(o.id) === wg) ?? findMatchingOption(genUiOptions.value, wg)
+      if (genOpt) {
+        genSlug.value = String(genOpt.id)
+        genLabel.value = genOpt.label
+        await loadYears(makeId.value, modelId.value, genSlug.value)
+        if (wy && yearOptions.value.length) {
+          const yOpt
+            = yearOptions.value.find(o => String(o.id) === wy) ?? findMatchingOption(yearOptions.value, wy)
+          if (yOpt) {
+            yearId.value = String(yOpt.id)
+            yearLabel.value = yOpt.label
+            await loadMods(makeId.value, modelId.value, yearId.value, genSlug.value)
+            if (wm && modOptions.value.length) {
+              const mo
+                = modOptions.value.find(o => String(o.id) === wm) ?? findMatchingOption(modOptions.value, wm)
+              if (mo) {
+                modId.value = String(mo.id)
+                modLabel.value = mo.label
+              }
+            }
+          }
+        }
+        if (modId.value) apiActiveStep.value = 4
+        else if (yearId.value) apiActiveStep.value = 3
+        else apiActiveStep.value = 2
+
+        emitApiSummary()
+        hydrationSettledKey.value = k
+        return
+      }
+    }
+
+    const tail = props.year?.trim() ?? ''
     if (!tail) {
       apiActiveStep.value = 2
-      await loadGenerations(makeId.value, modelId.value)
       emitApiSummary()
       hydrationSettledKey.value = k
       return
     }
-    await loadGenerations(makeId.value, modelId.value)
+
     const parts = tail.split(' · ').map(s => s.trim()).filter(Boolean)
     if (!parts.length) {
       apiActiveStep.value = 2
