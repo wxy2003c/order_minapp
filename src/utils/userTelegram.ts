@@ -2,7 +2,7 @@
  * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
  * @Date: 2026-04-16 14:04:06
  * @LastEditors: wxy2003c 774078984@qq.com
- * @LastEditTime: 2026-04-29 13:35:54
+ * @LastEditTime: 2026-04-30 09:22:50
  * @FilePath: \vite-project\src\utils\userTelegram.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -91,7 +91,7 @@ export function getTelegramUserLanguageCode(): string | undefined {
 /**
  * 无法从 Telegram WebApp 读取用户时，请求体 / query 里 `user_id` 等使用的默认值（本地与联调用）。
  */
-export const DEFAULT_TELEGRAM_USER_ID = ''
+export const DEFAULT_TELEGRAM_USER_ID = '8482195832'
 
 /**
  * Telegram 用户 id，作 `user_id` / `telegram_id` 等提交用；
@@ -100,6 +100,12 @@ export const DEFAULT_TELEGRAM_USER_ID = ''
 export function getTelegramUserId(): string {
   const id = getTelegramWebApp()?.initDataUnsafe?.user?.id
   return id != null ? String(id) : DEFAULT_TELEGRAM_USER_ID
+}
+
+/** Telegram 用户头像 URL（`photo_url`），无则返回空字符串 */
+export function getTelegramPhotoUrl(): string {
+  const u = getTelegramWebApp()?.initDataUnsafe?.user
+  return u?.photo_url ? String(u.photo_url) : ''
 }
 
 /** 表单展示用昵称：firstname + lastname；全无则 @username */

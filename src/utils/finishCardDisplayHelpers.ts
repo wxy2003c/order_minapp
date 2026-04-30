@@ -6,7 +6,7 @@
  */
 
 import type { AppLang } from '@/i18n/apiLang'
-import type { FinishCardGroup, FinishCardItem } from '@/api/finishCards'
+import type { FinishCardGroup, FinishCardItem } from '@/api/rolesApi'
 
 /** 分组标题：跟随当前界面语言选 section 名 */
 export function finishSectionLabel(

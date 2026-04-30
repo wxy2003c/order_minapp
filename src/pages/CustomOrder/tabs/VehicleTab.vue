@@ -3,13 +3,48 @@
  * Tab「车辆」：客户信息、Wheel-Size 或静态车型、可选展开项、前后轮规格表。
  * 数据与 handler 均来自 `useCustomOrderContext()`（由根页 provide）。
  */
+import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import TgSelect from '@/components/TgSelect.vue'
 import TgSwitch from '@/components/TgSwitch.vue'
+import type { WheelSizeGenerationRow } from '@/api/wheelsline-size'
 import { t } from '@/i18n/uiI18n'
+import { openPhotoSwipeGallery } from '@/utils/photoswipeGallery'
+import { getCurrentUserRole } from '@/api/rolesApi'
 import { useCustomOrderContext } from '../customOrderContext'
 
 const o = useCustomOrderContext()
+const isAdmin = computed(() => getCurrentUserRole() === 'admin')
+
+const carModelGallerySlides = computed(() => {
+  const out: { src: string; title?: string }[] = []
+  const slug = String(o.vehicleForm.wheelGeneration ?? '').trim().toLowerCase()
+  if (o.wheelSizeEnabled && slug) {
+    const cache = o.wsGenerationsCache as WheelSizeGenerationRow[] | undefined
+    if (Array.isArray(cache)) {
+      const gen = cache.find(g => String(g.slug).toLowerCase() === slug)
+      for (const b of gen?.bodies ?? []) {
+        const src = String(b.image ?? '').trim()
+        if (src)
+          out.push({ src, title: String(b.name ?? '').trim() || undefined })
+      }
+    }
+  }
+  if (!out.length) {
+    const src = String(o.vehicleForm.carModelBodyImageUrl ?? '').trim()
+    if (src) out.push({ src })
+  }
+  return out
+})
+
+async function openCarModelLargeView() {
+  const slides = carModelGallerySlides.value
+  if (!slides.length) return
+  const primary = String(o.vehicleForm.carModelBodyImageUrl ?? '').trim()
+  let start = slides.findIndex(s => s.src === primary)
+  if (start < 0) start = 0
+  await openPhotoSwipeGallery(slides, start)
+}
 </script>
 
 <template>
@@ -21,19 +56,41 @@ const o = useCustomOrderContext()
           <input
             v-model="o.vehicleForm.customerName"
             type="text"
-            class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
+            :disabled="!isAdmin"
+            :class="!isAdmin ? 'bg-[#F3F4F6] text-[#9CA3AF] cursor-not-allowed' : 'bg-white'"
+            class="h-11 w-full rounded-xl border border-[#E5E7EB] px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
         </div>
         <div>
           <div class="mb-2 text-3.5 font-600">{{ t('customOrder.customerId') }}</div>
           <input
             v-model="o.vehicleForm.customerId"
             type="text"
-            class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
+            :disabled="!isAdmin"
+            :class="!isAdmin ? 'bg-[#F3F4F6] text-[#9CA3AF] cursor-not-allowed' : 'bg-white'"
+            class="h-11 w-full rounded-xl border border-[#E5E7EB] px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
         </div>
       </div>
 
-      <div class="overflow-hidden rounded-3xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <img src="@/assets/vue.svg" class="h-34 w-full object-contain" alt="">
+      <div
+        v-if="o.wheelSizeEnabled"
+        class="flex min-h-[136px] flex-col overflow-hidden rounded-3xl bg-white p-4 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <button
+          v-if="o.vehicleForm.carModelBodyImageUrl"
+          type="button"
+          class="group mx-auto w-full max-w-md rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-2"
+          @click="openCarModelLargeView">
+          <img
+            :src="o.vehicleForm.carModelBodyImageUrl"
+            referrerpolicy="no-referrer"
+            class="pointer-events-none mx-auto h-auto max-h-40 w-full object-contain transition group-active:opacity-90"
+            alt="">
+          <div class="mt-1 text-2.75 text-[#9CA3AF]">{{ t('customOrder.carModelTapToEnlarge') }}</div>
+        </button>
+        <div
+          v-else
+          class="flex min-h-[120px] flex-1 flex-col items-center justify-center px-2 text-3 leading-relaxed text-[#9CA3AF]">
+          {{ t('customOrder.carModelImageHint') }}
+        </div>
       </div>
 
       <div>

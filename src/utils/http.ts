@@ -1,6 +1,7 @@
 import axios, {AxiosHeaders} from 'axios';
 import type {InternalAxiosRequestConfig} from 'axios';
 import {getApiLang} from '@/i18n/apiLang';
+import {resolveHttpDefaultUserId} from '@/utils/deeplinkStaffContext';
 
 /** 须与 Laravel `api_clients` 中对应 api_key 的明文密钥一致（DB 中存加密值，验签时用解密后的明文） */
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://chain.wheelsline.com/api/v1').trim();
@@ -197,15 +198,34 @@ const httpApi = axios.create({
   }
 });
 
-httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
+/**
+ * 全局限定：`platform` + `user_id`（与业务传入参数合并后再参与 query 与签名字符串第 3 行；显式传入的同名字段覆盖默认值）。
+ */
+function applyGlobalQueryAndLang(config: InternalAxiosRequestConfig): void {
   const lang = getApiLang();
-  if(config.params && typeof config.params === 'object' && !Array.isArray(config.params) && !(config.params instanceof URLSearchParams)) {
-    (config.params as Record<string, unknown>).lang = lang;
-  } else if(config.params instanceof URLSearchParams) {
-    config.params.set('lang', lang);
-  } else {
-    config.params = {lang};
+  const uid = resolveHttpDefaultUserId().trim();
+  const identity: Record<string, string> = {platform: 'telegram'};
+  if(uid) identity.user_id = uid;
+
+  if(config.params instanceof URLSearchParams) {
+    const sp = config.params;
+    const keys = ['platform', 'user_id'] as const;
+    for(const k of keys) {
+      if(k === 'user_id' && !uid) continue;
+      if(!sp.has(k)) sp.set(k, identity[k]!);
+    }
+    sp.set('lang', lang);
+    return;
   }
+
+  const raw = config.params && typeof config.params === 'object' && !Array.isArray(config.params)
+    ? {...(config.params as Record<string, unknown>)}
+    : {};
+  config.params = {...identity, ...raw, lang} as Record<string, unknown>;
+}
+
+httpApi.interceptors.request.use(async(config: InternalAxiosRequestConfig) => {
+  applyGlobalQueryAndLang(config);
 
   const method = (config.method || 'GET').toUpperCase();
   const timestamp = String(Math.floor(Date.now() / 1000));

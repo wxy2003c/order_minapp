@@ -8,13 +8,12 @@ import {
   fetchWheelSizeModifications,
   isWheelSizeEnabled,
   resolveWheelSizeYearOptions,
+  wheelSizeGenerationOptionLabel,
 } from '@/api/wheelsline-size'
-import type { CarGroup } from '@/data/carSelection'
 import { t } from '@/i18n/uiI18n'
 
 /** 与示例一致：品牌 → 车型 → 世代 → 年份 → 配置，逐级解锁；数据均来自 Wheel-Size API */
 interface Props {
-  groups?: CarGroup[]
   brand: string
   model: string
   year: string
@@ -22,10 +21,11 @@ interface Props {
   wheelGeneration?: string
   wheelYear?: string
   wheelModification?: string
+  /** 只展示品牌 + 车型两级，选完车型即触发 complete */
+  brandModelOnly?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  groups: undefined,
   wheelGeneration: '',
   wheelYear: '',
   wheelModification: '',
@@ -46,13 +46,18 @@ const useApi = computed(() => isWheelSizeEnabled())
 
 const API_STEP_COUNT = 5
 
-const apiSteps = computed(() => [
-  { key: 'make' as const, title: t('carSelection.brands') },
-  { key: 'model' as const, title: t('carSelection.models') },
-  { key: 'generation' as const, title: t('carSelection.generations') },
-  { key: 'year' as const, title: t('carSelection.years') },
-  { key: 'modification' as const, title: t('carSelection.modifications') },
-])
+const apiSteps = computed(() => {
+  const all = [
+    { key: 'make' as const, title: t('carSelection.brands') },
+    { key: 'model' as const, title: t('carSelection.models') },
+    { key: 'generation' as const, title: t('carSelection.generations') },
+    { key: 'year' as const, title: t('carSelection.years') },
+    { key: 'modification' as const, title: t('carSelection.modifications') },
+  ]
+  return props.brandModelOnly ? all.slice(0, 2) : all
+})
+
+const effectiveStepCount = computed(() => props.brandModelOnly ? 2 : API_STEP_COUNT)
 
 const apiActiveStep = ref(0)
 /** 与示例各下拉「加载中」一致：仅当前正在请求的层级显示 loading，避免回退到品牌时整块被锁 */
@@ -83,7 +88,7 @@ const genUiOptions = ref<WheelSizeOption[]>([])
 function generationRowsToOptions(rows: WheelSizeGenerationRow[]): WheelSizeOption[] {
   return rows.map(g => ({
     id: g.slug,
-    label: `${g.name} (${g.start}–${g.end})${g.platform ? ` · ${g.platform}` : ''}`,
+    label: wheelSizeGenerationOptionLabel(g),
   }))
 }
 
@@ -331,7 +336,7 @@ function onApiStepClick(idx: number) {
 }
 
 function advanceApiStep() {
-  apiActiveStep.value = Math.min(apiActiveStep.value + 1, API_STEP_COUNT - 1)
+  apiActiveStep.value = Math.min(apiActiveStep.value + 1, effectiveStepCount.value - 1)
 }
 
 /** 当前右侧是否正在请求本级列表（与示例「加载中...」一致） */
@@ -361,6 +366,10 @@ async function onPickModel(opt: WheelSizeOption) {
   modelId.value = String(opt.id)
   modelLabel.value = opt.label
   emitApiSummary()
+  if (props.brandModelOnly) {
+    emit('complete')
+    return
+  }
   advanceApiStep()
   await loadGenerations(makeId.value, modelId.value)
 }
@@ -659,9 +668,10 @@ watch(
     if (!useApi.value) return
     const step = apiActiveStep.value
     if (apiStepUnlocked(step)) return
-    const unlocked = [0, 1, 2, 3, 4].filter(i => apiStepUnlocked(i))
+    const maxIdx = effectiveStepCount.value - 1
+    const unlocked = [0, 1, 2, 3, 4].slice(0, effectiveStepCount.value).filter(i => apiStepUnlocked(i))
     const last = unlocked.pop()
-    if (last !== undefined && last !== step) apiActiveStep.value = last
+    if (last !== undefined && last !== step) apiActiveStep.value = Math.min(last, maxIdx)
   },
 )
 
@@ -669,12 +679,12 @@ watch(
 
 <template>
   <div
-    class="tg-light-surface grid max-h-[24rem] grid-cols-[minmax(0,7.75rem)_1fr] overflow-hidden rounded-[20px] bg-white text-[#242730] shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-    <div class="flex flex-col border-r border-[#ececf0]">
-      <div class="border-b border-[#ececf0] px-3 py-3 text-3.5 font-600 !text-[#6b7280]">
+    class="tg-light-surface grid h-full min-h-0 grid-cols-[minmax(0,7.75rem)_1fr] overflow-hidden bg-white text-[#242730]">
+    <div class="flex min-h-0 flex-col border-r border-[#ececf0]">
+      <div class="shrink-0 border-b border-[#ececf0] px-3 py-3 text-3.5 font-600 !text-[#6b7280]">
         {{ t('carSelection.category') }}
       </div>
-      <div class="max-h-[20rem] flex-1 overflow-y-auto py-2">
+      <div class="min-h-0 flex-1 overflow-y-auto py-2">
         <button v-for="(step, idx) in apiSteps" :key="step.key" type="button" :disabled="!apiStepUnlocked(idx)"
           class="mx-2 mb-1 flex w-[calc(100%-1rem)] flex-col items-start rounded-xl px-2 py-2 text-left text-3 transition disabled:cursor-not-allowed disabled:opacity-40"
           :class="apiActiveStep === idx ? '!bg-[color:var(--app-accent)] !text-[color:var(--app-accent-text)]' : '!text-[#303441] hover:!bg-[#f4f5f7]'"
@@ -694,11 +704,11 @@ watch(
       </div>
     </div>
 
-    <div class="min-w-0 flex flex-col">
-      <div class="border-b border-[#ececf0] px-4 py-3 text-3.5 font-600 !text-[#6b7280]">
+    <div class="min-h-0 min-w-0 flex flex-col">
+      <div class="shrink-0 border-b border-[#ececf0] px-4 py-3 text-3.5 font-600 !text-[#6b7280]">
         {{ apiRightTitle() }}
       </div>
-      <div class="max-h-[20rem] flex-1 overflow-y-auto py-2">
+      <div class="min-h-0 flex-1 overflow-y-auto py-2">
         <div v-if="!useApi" class="px-4 py-8 text-center text-3.5 leading-relaxed !text-[#6b7280]">
           {{ t('carSelection.needWheelSizeEnv') }}
           <code class="rounded bg-[#f3f4f6] px-1 py-0.5 text-3 !text-[#374151]">VITE_WHEEL_SIZE_API_KEY</code>

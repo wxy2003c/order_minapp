@@ -62,8 +62,10 @@ const props = withDefaults(
     accept?: string
     size?: 'sm' | 'md' | 'lg'
     customClass?: string
-    /** 与外壳一致的方框逻辑下，FilePond 仍允许多文件（一般保持 1） */
+    /** 与外壳一致的方框逻辑下，FilePond 仍允许多文件（一般保持 1）。与 `limit` 二选一，`limit` 优先。 */
     maxFiles?: number
+    /** 最多可选文件数，语义同 `maxFiles`；多图串联上传请用 `TgLimitedImageUpload`。 */
+    limit?: number | null
     /** 点击图片缩略图时全屏查看原图 */
     lightbox?: boolean
     /** accept 为图片时是否启用 FilePond 裁剪元数据（与预览联动） */
@@ -109,6 +111,7 @@ const props = withDefaults(
     size: 'md',
     customClass: '',
     maxFiles: 1,
+    limit: null,
     lightbox: true,
     allowImageCrop: true,
     imageCropAspectRatio: null,
@@ -138,6 +141,12 @@ defineSlots<{
   placeholder?: () => unknown
 }>()
 
+const effectiveMaxFiles = computed(() =>
+  props.limit != null && Number.isFinite(Number(props.limit))
+    ? Math.max(1, Number(props.limit))
+    : props.maxFiles,
+)
+
 const wrapperClass = computed(() => [
   'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#D9DDE5] bg-[#CFCFD2] text-[#2A2C33] transition active:scale-[0.98] w-full h-full',
   props.size === 'sm' && 'min-w-[80px] min-h-[80px]',
@@ -164,6 +173,8 @@ const serverUploadEnabled = computed(
 )
 const uploading = ref(false)
 const uploadFailed = ref(false)
+/** 是否曾有过本地 File（用于区分「仅有父组件写入的 uploadedUrl」与「用户清空了已选文件」） */
+const hadLocalImageFile = ref(false)
 
 watch(lightboxOpen, async (open) => {
   if (!open) return
@@ -187,6 +198,7 @@ watch(
       return
     }
 
+    hadLocalImageFile.value = true
     pondFiles.value = [{ source: file, options: { type: 'local' } }]
   },
   { immediate: true },
@@ -263,9 +275,11 @@ watch(
     serverUploadRequestId += 1
     const id = serverUploadRequestId
     if (!file) {
-      uploadedUrl.value = ''
+      if (hadLocalImageFile.value)
+        uploadedUrl.value = ''
       uploading.value = false
       uploadFailed.value = false
+      hadLocalImageFile.value = false
       return
     }
     uploadFailed.value = false
@@ -424,6 +438,8 @@ function clearFile() {
   lightboxOpen.value = false
   uploading.value = false
   uploadFailed.value = false
+  hadLocalImageFile.value = false
+  uploadedUrl.value = ''
   model.value = null
   pondRef.value?.removeFiles?.()
 }
@@ -431,7 +447,7 @@ function clearFile() {
 function onShellClick() {
   if (uploading.value)
     return
-  if (props.lightbox && isImageFile.value && displayImageSrc.value) {
+  if (props.lightbox && displayImageSrc.value) {
     lightboxOpen.value = true
     return
   }
@@ -485,7 +501,7 @@ onBeforeUnmount(() => {
         @click="onShellClick"
       >
         <img
-          v-if="isImageFile && displayImageSrc"
+          v-if="displayImageSrc"
           :src="displayImageSrc"
           alt=""
           class="h-full w-full cursor-zoom-in object-cover"
@@ -533,7 +549,7 @@ onBeforeUnmount(() => {
       </button>
 
       <button
-        v-if="model"
+        v-if="model || (serverUploadEnabled && displayImageSrc)"
         type="button"
         class="absolute -left-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-black text-white shadow-[0_2px_6px_rgba(0,0,0,0.18)]"
         @click.stop="clearFile"
@@ -552,7 +568,7 @@ onBeforeUnmount(() => {
       </button>
 
       <button
-        v-if="model && !uploading"
+        v-if="(model || displayImageSrc) && !uploading"
         type="button"
         class="absolute bottom-2 right-2 rounded-lg bg-black/55 px-2 py-1 text-xs font-semibold text-white backdrop-blur-[2px] transition hover:bg-black/70"
         @click.stop="openBrowse"
@@ -563,7 +579,7 @@ onBeforeUnmount(() => {
 
     <Teleport to="body">
       <div
-        v-if="lightboxOpen && displayImageSrc && isImageFile"
+        v-if="lightboxOpen && displayImageSrc"
         ref="lightbox"
         role="dialog"
         aria-modal="true"
@@ -600,7 +616,7 @@ onBeforeUnmount(() => {
         name="file"
         class-name="tg-filepond-pond-inner"
         :allow-multiple="false"
-        :max-files="maxFiles"
+        :max-files="effectiveMaxFiles"
         :accepted-file-types="acceptedFileTypes"
         :instant-upload="false"
         :credits="false"

@@ -10,7 +10,7 @@ export type OrderTab = 'vehicle' | 'creative' | 'address' | 'amount'
  * Wheel-Size 关闭时仍用 `brand` / `model`；开启时另含世代/年/配置 slug 或 id。
  */
 export interface VehicleFormState {
-  /** 展示用客户名 */
+  /** Telegram 展示昵称（对接 `telegram_nickname`，≠ 收货人姓名） */
   customerName: string
   /** 通常来自 Telegram，可手改 */
   customerId: string
@@ -50,4 +50,8 @@ export interface VehicleFormState {
   plate: string
   /** 卡钳/轮缘等补充说明 */
   rimThickness: string
+  /**
+   * Wheel-Size：所选世代 + 年份下首张车身图（CDN URL），用于展示与 `car_model_imgs` 提交。
+   */
+  carModelBodyImageUrl: string
 }

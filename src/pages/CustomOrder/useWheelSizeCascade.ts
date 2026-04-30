@@ -13,6 +13,7 @@ import {
   fetchWheelSizeModels,
   fetchWheelSizeModifications,
   resolveWheelSizeYearOptions,
+  wheelSizeGenerationOptionLabel,
 } from '@/api/wheelsline-size'
 
 export interface SelectOptionLite {
@@ -33,11 +34,11 @@ function wheelOptToSelect(o: WheelSizeOption): SelectOptionLite {
   return { value: o.id, label: o.label }
 }
 
-/** 世代列表：slug 写入 `vehicleForm.wheelGeneration`，下拉展示名称+年份区间 */
+/** 世代列表：slug 写入 `vehicleForm.wheelGeneration`；展示与接口 `year_ranges` 对齐 */
 function generationRowsToSelectOptions(rows: WheelSizeGenerationRow[]): SelectOptionLite[] {
   return rows.map(g => ({
     value: g.slug,
-    label: `${g.name} (${g.start}–${g.end})${g.platform ? ` · ${g.platform}` : ''}`,
+    label: wheelSizeGenerationOptionLabel(g),
   }))
 }
 
@@ -123,7 +124,9 @@ export function useWheelSizeCascade(
     wsLoadingStage.value = 3
     wsErrorKey.value = null
     try {
-      const gen = wsGenerationsCache.value.find(x => x.slug === genSlug)
+      const gen = wsGenerationsCache.value.find(
+        x => String(x.slug).toLowerCase() === genSlug.toLowerCase(),
+      )
       const items = await resolveWheelSizeYearOptions(make, model, gen)
       wsYearOptions.value = items.map(wheelOptToSelect)
       if (!items.length) wsErrorKey.value = 'ws.emptyYears'

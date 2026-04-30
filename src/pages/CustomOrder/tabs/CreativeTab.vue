@@ -5,6 +5,7 @@
 import { Icon } from '@iconify/vue'
 import TgButton from '@/components/TgButton.vue'
 import TgFilepond from '@/components/TgFilepond.vue'
+import TgLimitedImageUpload from '@/components/TgLimitedImageUpload.vue'
 import { t } from '@/i18n/uiI18n'
 import { useCustomOrderContext } from '../customOrderContext'
 
@@ -116,7 +117,7 @@ const o = useCustomOrderContext()
               </button>
             </div>
             <div class="mt-4 text-center text-4 font-700">
-              {{ t('customOrder.sampleName') }}
+              {{ o.selectedFinishPreview ? o.finishItemDisplayLabel(o.selectedFinishPreview) : t('customOrder.sampleName') }}
             </div>
             <div class="mt-4 flex max-h-50 flex-wrap items-center justify-center gap-3 overflow-y-auto">
               <button
@@ -146,14 +147,14 @@ const o = useCustomOrderContext()
         <div class="space-y-4">
           <div>
             <div class="mb-2 text-3.5 font-600">{{ t('customOrder.wheelShape') }}</div>
-            <div class="w-26 h-26">
-              <TgFilepond
-                v-model="o.creativeForm.wheelShapeFile"
-                v-model:uploaded-url="o.creativeForm.wheelShapeUrl"
-                :upload-form-fields="{ scene: 'orders' }"
-                accept="image/*"
-                aria-label="upload wheel shape" />
-            </div>
+            <TgLimitedImageUpload
+              v-model:urls="o.creativeForm.wheelShapeRefUrls"
+              v-model:files="o.creativeForm.wheelShapeRefFiles"
+              :limit="o.wheelShapeRefMax"
+              :upload-form-fields="{ scene: 'orders' }"
+              accept="image/*"
+              aria-label-prefix="wheel shape ref"
+            />
           </div>
 
           <div>
@@ -183,14 +184,14 @@ const o = useCustomOrderContext()
       <div class="mt-4 flex flex-col gap-4">
         <div class="border-t border-[#F1F3F5] pt-4">
           <div class="mb-2 text-3.5 font-600">{{ t('customOrder.centerCap') }}</div>
-          <div class="w-26 h-26">
-            <TgFilepond
-              v-model="o.creativeForm.centerCapFile"
-              v-model:uploaded-url="o.creativeForm.centerCapUrl"
-              :upload-form-fields="{ scene: 'orders' }"
-              accept="image/*"
-              aria-label="upload center cap" />
-          </div>
+          <TgLimitedImageUpload
+            v-model:urls="o.creativeForm.centerCapRefUrls"
+            v-model:files="o.creativeForm.centerCapRefFiles"
+            :limit="o.centerCapRefMax"
+            :upload-form-fields="{ scene: 'orders' }"
+            accept="image/*"
+            aria-label-prefix="center cap ref"
+          />
         </div>
 
         <div>

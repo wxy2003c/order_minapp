@@ -12,12 +12,26 @@ export type ColorSampleImage = { path: string; url: string; name: string }
 export function colorSampleFromUrl(raw: string | null | undefined): ColorSampleImage | null {
   const s = String(raw ?? '').trim()
   if (!s) return null
-  let pathname = s
-  try {
-    if (/^https?:\/\//i.test(s)) pathname = new URL(s).pathname
-  } catch {
-    return null
+
+  /** 绝对地址：落库字段 `url` 须为完整地址（Wheel-Size CDN、外链等），不能只剩 pathname。 */
+  if (/^https?:\/\//i.test(s)) {
+    let pathname = ''
+    try {
+      pathname = new URL(s).pathname || '/'
+    } catch {
+      return null
+    }
+    if (!pathname.startsWith('/')) pathname = `/${pathname.replace(/^\/+/, '')}`
+    const segs = pathname.split('/').filter(Boolean)
+    const name = segs[segs.length - 1] || 'image'
+    const upIdx = pathname.indexOf('/uploads/')
+    const pathField = upIdx >= 0
+      ? pathname.slice(upIdx + 1)
+      : (pathname.replace(/^\//, '') || name)
+    return { path: pathField, url: s, name }
   }
+
+  let pathname = s
   if (!pathname.startsWith('/')) pathname = `/${pathname.replace(/^\/+/, '')}`
   const segs = pathname.split('/').filter(Boolean)
   const name = segs[segs.length - 1] || 'image'
@@ -36,6 +50,18 @@ export function colorSampleListFromUrls(urls: (string | null | undefined)[]): Co
     if (e) out.push(e)
   }
   return out
+}
+
+/**
+ * 轮毂颜色参考图：`name` / `imgs[].label` 用语卡 `code`（或 `finish:id`）落库，便于详情与色卡列表匹配回显。
+ */
+export function enrichWheelColorSampleWithFinishCode(
+  img: ColorSampleImage,
+  finishCode: string,
+): ColorSampleImage {
+  const c = String(finishCode ?? '').trim()
+  if (!c) return img
+  return { ...img, name: c }
 }
 
 /**

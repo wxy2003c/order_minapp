@@ -1,7 +1,8 @@
 /**
  * 定制预下单 · 前轮/后轮轮毂规格表单「行定义」。
  *
- * - 用于 `VehicleTab` 里 `v-for`，按 key 绑定到 `vehicleForm`（如 frontSize、rearPaint）。
+ * - 用于 `VehicleTab` 里 `v-for`，按 key 绑定到 `vehicleForm`（如 frontSize、frontPaint）。
+ * - 表面处理全局仅一条，写在前轮 `frontPaint`；后轮列表不包含该行。
  * - `type === 'pcd'` 时在模板中用两个独立 input（左×右），与提交 API 的 `f_*` / `r_*` 拆分一致。
  * - `translate` 传入 `t`，避免本模块依赖全局 i18n（便于测试与非 Vue 侧复用）。
  */
@@ -40,9 +41,12 @@ export function buildWheelFieldsList(opts: {
   holeOptions: CustomOrderSelectOpt[]
   oemBoltTypeOptions: CustomOrderSelectOpt[]
   translate: (key: string) => string
+  /** 为 false 时去掉「表面处理」行（全局仅一条，绑定前轮字段即可） */
+  includeSurfaceRow?: boolean
 }): WheelFieldRowDef[] {
   const { prefix, sizeOptions, holeOptions, oemBoltTypeOptions, translate: tl } = opts
-  return [
+  const includeSurface = opts.includeSurfaceRow !== false
+  const rows: WheelFieldRowDef[] = [
     {
       key: `${prefix}Size`,
       label: tl('customOrder.sizeIn'),
@@ -89,11 +93,14 @@ export function buildWheelFieldsList(opts: {
       options: holeOptions,
       placeholder: tl('common.pleaseSelect'),
     },
-    {
+  ]
+  if (includeSurface) {
+    rows.push({
       key: `${prefix}Paint`,
       label: tl('customOrder.finish'),
       type: 'input',
       placeholder: tl('customOrder.finishPh'),
-    },
-  ]
+    })
+  }
+  return rows
 }

@@ -1,4 +1,4 @@
-/** 订单 HTTP；组包与归一化见 `orderHelpers`。 */
+/** 管理员端订单（超级管理员 / 小程序审核员）；全量 `/orders` 路径。 */
 import httpApi from '@/utils/http'
 import { buildOrderDetailRequestParams } from '@/utils/deeplinkStaffContext'
 import {
@@ -12,21 +12,6 @@ import type {
   OrdersListQuery,
   OrderWriteResult,
 } from '@/utils/orderHelpers'
-
-export type {
-  CustomOrderFormsSnapshot,
-  OrderDetailResponse,
-  OrderListImageItem,
-  OrderListItem,
-  OrderListStatusTab,
-  OrdersListData,
-  OrdersListQuery,
-  OrderWriteResult,
-  SelectOptionLite,
-} from '@/utils/orderHelpers'
-
-export { buildCreateOrderFromCustomOrder, parseWheelLibraryStructureSubtypeOffroad } from '@/utils/orderHelpers'
-export { mapApiStatusToOrderStatus } from '@/utils/orderHelpers'
 
 export async function createOrder(body: Record<string, unknown>): Promise<OrderWriteResult> {
   return (await httpApi.post('/orders', body)) as OrderWriteResult

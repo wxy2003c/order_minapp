@@ -17,6 +17,7 @@ import { applyLanguageFromTelegram, initUiLanguage } from '@/i18n/uiI18n'
 import '@unocss/reset/tailwind.css'
 import 'uno.css'
 import '@/style.css'
+import { fetchUserDetail } from '@/api/rolesApi'
 
 initApiLangFromStorage()
 
@@ -43,6 +44,7 @@ router.afterEach((to) => {
 ;(async () => {
   await router.isReady()
   tryApplyTelegramStaffDeepLink(router)
+  void fetchUserDetail().catch(() => {})
   app.mount('#app')
 })()
 

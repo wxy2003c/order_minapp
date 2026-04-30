@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { Icon } from '@iconify/vue'
+import { NDrawer } from 'naive-ui'
 import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import TgButton from '@/components/TgButton.vue'
 import TgSelect from '@/components/TgSelect.vue'
-import { carGroups, getDefaultCarSelection } from '@/data/carSelection'
+import { getDefaultCarSelection } from '@/data/carSelection'
 import { STYLE_MOOD_TAGS, type StyleMoodTag } from '@/constants/styleMoodTags'
 import { useProductBrowseStore } from '@/stores/productBrowse'
 import { t } from '@/i18n/uiI18n'
@@ -66,10 +67,6 @@ const props = defineProps<PropsType>()
 const carPopoverOpen = ref(false)
 // 筛选弹窗开关
 const filterPopoverOpen = ref(false)
-// 头部容器 DOM
-const headerRef = ref<HTMLElement | null>(null)
-// 弹窗宽度（跟随头部容器）
-const panelWidth = ref(0)
 
 // 条幅数量
 const stripOptions = ['18', '20', '22', '24']
@@ -197,20 +194,6 @@ const styleMoodField = computed({
 const selectedColor = computed(
     () => colors.value.find(item => item.value === filterForm.color) ?? colors.value[0]!,
 )
-
-// 弹窗宽度样式（跟随头部宽度）；与 .tg-light-surface / NConfigProvider 一致
-const popoverPanelStyle = computed((): Record<string, string> => {
-    const base: Record<string, string> = {
-        backgroundColor: 'var(--tg-theme-secondary-bg-color)',
-    }
-    if (!panelWidth.value)
-        return base
-    return {
-        ...base,
-        width: `${panelWidth.value}px`,
-        maxWidth: `${panelWidth.value}px`,
-    }
-})
 
 function toggleCarPopover() {
     carPopoverOpen.value = !carPopoverOpen.value
@@ -439,15 +422,6 @@ function removeTag(key: ActiveTagKey) {
     }
 }
 
-/**
- * 更新弹窗宽度 = 头部容器宽度
- */
-function updatePanelWidth() {
-    panelWidth.value = headerRef.value?.getBoundingClientRect().width ?? 0
-}
-
-let resizeObserver: ResizeObserver | null = null
-
 /** 路由 query / 父组件 props 变化时同步到本地（含首次进入） */
 function applyInitialFromProps() {
     if (props.ProductSelection) return
@@ -470,182 +444,40 @@ watch(
     () => [props.initialBrand, props.initialModel, props.initialYear, props.initialStyleTag] as const,
     () => {
         applyInitialFromProps()
-        void nextTick(() => updatePanelWidth())
     },
     { deep: true, immediate: true },
 )
-
-// 挂载后量头部宽度（首次 props 同步已由 watch immediate 处理）
-onMounted(async () => {
-    await nextTick()
-    updatePanelWidth()
-
-    if (!headerRef.value || typeof ResizeObserver === 'undefined') return
-
-    resizeObserver = new ResizeObserver(() => {
-        updatePanelWidth()
-    })
-
-    resizeObserver.observe(headerRef.value)
-})
-
-// 销毁前：取消监听
-onBeforeUnmount(() => {
-    resizeObserver?.disconnect()
-})
 </script>
 
 <template>
-    <div ref="headerRef" class="mt-4">
+    <div class="mt-4">
         <div class="flex items-center justify-between gap-3 border-b border-b-[#BBBBBB]">
-            <!-- 汽车选择弹窗 -->
-            <NPopover v-model:show="carPopoverOpen" trigger="manual" :animated="false" display-directive="show"
-                placement="bottom-start" :show-arrow="false" :content-style="popoverPanelStyle"
-                arrow-wrapper-class="p-0">
-                <template #trigger>
-                    <button type="button"
-                        class="flex min-w-0 w-50 max-w-[min(12.5rem,50vw)] items-center justify-between gap-2 px-4 py-3 text-left outline-none transition"
-                        @click.stop="toggleCarPopover">
-                        <div v-if="props.ProductSelection" class="min-w-0 flex-1">
-                            <div class="text-3 text-white/55">{{ props.title }}</div>
-                            <div
-                                class="mt-0.5 truncate text-3.25 text-white/90 font-600 w-full max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">
-                                {{ carHeaderSummary || '' }}
-                            </div>
-                        </div>
-                        <span v-else
-                            class="truncate text-4 font-600 text-white w-full max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">
-                            {{ props.title }}
-                        </span>
-                        <Icon icon="solar:alt-arrow-down-outline" width="18" height="18"
-                            class="shrink-0 transition text-white" :class="carPopoverOpen ? 'rotate-180' : ''" />
-                    </button>
-                </template>
-                <div
-                    class="tg-light-surface z-50 overflow-hidden rounded-[20px] border p-0 shadow-[var(--app-shadow)] outline-none"
-                    style="border-color: var(--tg-theme-section-separator-color)">
-                    <CarSelectionPanel v-model:brand="activeBrand" v-model:model="selectedModel"
-                        v-model:year="selectedYear" :groups="carGroups" @complete="closeCarPopover" />
-                </div>
-            </NPopover>
-
-            <!-- 筛选弹窗 -->
-            <NPopover v-model:show="filterPopoverOpen" trigger="manual" :animated="false" display-directive="if"
-                placement="bottom-end" :show-arrow="false" :content-style="popoverPanelStyle">
-                <template #trigger>
-                    <button type="button"
-                        class="flex w-28 items-center justify-between px-4 py-3 text-4 font-600 text-white outline-none transition"
-                        @click.stop="toggleFilterPopover">
-                        <span>{{ t('headerFilter.filter') }}</span>
-                        <Icon icon="hugeicons:filter-horizontal" width="18" height="18" />
-                    </button>
-                </template>
-                <div
-                    class="tg-light-surface z-50 flex max-h-[min(70vh,40rem)] flex-col overflow-hidden rounded-[20px] border shadow-[var(--app-shadow)] outline-none"
-                    style="border-color: var(--tg-theme-section-separator-color)">
-                    <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-2">
-                        <div class="space-y-5">
-                            <div class="text-5 font-700">
-                                {{ t('headerFilter.filter') }}
-                            </div>
-
-                            <!-- 结构 -->
-                            <div class="space-y-2">
-                                <div class="text-3.5 font-600">{{ t('headerFilter.structure') }}</div>
-                                <TgSelect v-model="filterForm.structure" :options="structureSelectOptions"
-                                    :searchable="false" :placeholder="t('headerFilter.phStructure')" />
-                            </div>
-
-                            <!-- 颜色 -->
-                            <div class="space-y-3">
-                                <div class="text-3.5 font-600">{{ t('headerFilter.color') }}</div>
-                                <div class="relative">
-                                    <span
-                                        class="pointer-events-none absolute left-15 top-1/2 z-1 h-5 w-5 -translate-y-1/2 rounded-full border border-black/10"
-                                        :style="{ backgroundColor: selectedColor.hex }" />
-                                    <TgSelect v-model="filterForm.color" class="color-select"
-                                        :options="colorSelectOptions" :searchable="false" :placeholder="t('headerFilter.phColor')" />
-                                </div>
-
-                                <div class="text-center text-4 font-700">
-                                    {{ selectedColor.code }} {{ selectedColor.label }}
-                                </div>
-
-                                <div class="flex items-center justify-between gap-3">
-                                    <button v-for="item in colors" :key="item.value" type="button"
-                                        class="relative h-12 w-12 rounded-full border transition"
-                                        :class="filterForm.color === item.value
-                                            ? 'border-[color:var(--tg-theme-text-color)] shadow-[0_0_0_3px_var(--tg-theme-secondary-bg-color),0_0_0_4px_var(--tg-theme-text-color)]'
-                                            : 'border-transparent'"
-                                        :style="{ backgroundColor: item.hex }" @click="filterForm.color = item.value" />
-                                </div>
-                            </div>
-
-                            <!-- 产品筛选 -->
-                            <template v-if="props.ProductSelection">
-                                <div class="space-y-2">
-                                    <div class="text-3.5 font-600">{{ t('headerFilter.modelCode') }}</div>
-                                    <input
-                                        v-model="filterForm.modelCode"
-                                        type="text"
-                                        :placeholder="t('headerFilter.phModelCode')"
-                                        class="h-12 w-full rounded-2xl border px-4 text-3.5 outline-none transition focus:border-[color:var(--tg-theme-link-color)] [background:var(--tg-theme-secondary-bg-color)] [color:var(--tg-theme-text-color)] placeholder:text-[color:var(--tg-theme-hint-color)]"
-                                        style="border-color: var(--tg-theme-section-separator-color)"
-                                    />
-                                </div>
-
-                                <div class="space-y-2">
-                                    <div class="text-3.5 font-600">{{ t('headerFilter.stripCount') }}</div>
-                                    <TgSelect v-model="filterForm.stripCount" :options="stripCountOptions"
-                                        :searchable="false" :placeholder="t('headerFilter.phStripCount')" />
-                                </div>
-
-                                <div class="space-y-2">
-                                    <div class="text-3.5 font-600">{{ t('headerFilter.claw') }}</div>
-                                    <TgSelect v-model="filterForm.clawType" :options="clawSelectOptions"
-                                        :searchable="false" :placeholder="t('headerFilter.phClaw')" />
-                                </div>
-
-                                <div class="space-y-2">
-                                    <div class="text-3.5 font-600">{{ t('headerFilter.rotateSupport') }}</div>
-                                    <TgSelect v-model="filterForm.rotateSupport" :options="directionSelectOptions"
-                                        :searchable="false" :placeholder="t('headerFilter.phRotate')" />
-                                </div>
-                                <div class="space-y-2">
-                                    <div class="text-3.5 font-600">{{ t('headerFilter.styleMood') }}</div>
-                                    <TgSelect v-model="styleMoodField" :options="styleMoodSelectOptions"
-                                        :searchable="false" :placeholder="t('headerFilter.phStyleMood')" />
-                                </div>
-                            </template>
-
-                            <template v-if="props.CaseSelection">
-                                <div class="space-y-2">
-                                    <div class="text-3.5 font-600">{{ t('headerFilter.wlCode') }}</div>
-                                    <TgSelect v-model="filterForm.wlCode" :options="wlCodeSelectOptions"
-                                        :searchable="false" :placeholder="t('headerFilter.phWlCode')" />
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                    <!-- 底部固定：不参与中间区域滚动 -->
+            <!-- 汽车选择：底部抽屉 -->
+            <button type="button"
+                class="flex min-w-0 w-50 max-w-[min(12.5rem,50vw)] items-center justify-between gap-2 px-4 py-3 text-left outline-none transition"
+                @click.stop="toggleCarPopover">
+                <div v-if="props.ProductSelection" class="min-w-0 flex-1">
+                    <div class="text-3 text-white/55">{{ props.title }}</div>
                     <div
-                        class="shrink-0 border-t px-4 pt-3 pb-4"
-                        style="border-color: var(--tg-theme-section-separator-color); background: var(--tg-theme-secondary-bg-color)">
-                        <div class="flex gap-4">
-                            <button type="button"
-                                class="tg-btn-outline-light h-12 flex-1 rounded-xl border text-4 font-600"
-                                @click="closeFilterPopover">
-                                {{ t('common.cancel') }}
-                            </button>
-                            <button type="button"
-                                class="tg-btn-primary h-12 flex-1 rounded-xl border text-4 font-700"
-                                @click="applyFilters">
-                                {{ t('common.confirm') }}
-                            </button>
-                        </div>
+                        class="mt-0.5 truncate text-3.25 text-white/90 font-600 w-full max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">
+                        {{ carHeaderSummary || '' }}
                     </div>
                 </div>
-            </NPopover>
+                <span v-else
+                    class="truncate text-4 font-600 text-white w-full max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">
+                    {{ props.title }}
+                </span>
+                <Icon icon="solar:alt-arrow-down-outline" width="18" height="18"
+                    class="shrink-0 transition text-white" :class="carPopoverOpen ? 'rotate-180' : ''" />
+            </button>
+
+            <!-- 筛选：底部抽屉 -->
+            <button type="button"
+                class="flex w-28 items-center justify-between px-4 py-3 text-4 font-600 text-white outline-none transition"
+                @click.stop="toggleFilterPopover">
+                <span>{{ t('headerFilter.filter') }}</span>
+                <Icon icon="hugeicons:filter-horizontal" width="18" height="18" />
+            </button>
         </div>
 
         <!-- 筛选标签 -->
@@ -668,6 +500,147 @@ onBeforeUnmount(() => {
                 <span class="[color:var(--tg-theme-hint-color)]">{{ t('headerFilter.clearFilters') }}</span>
             </TgButton>
         </div>
+
+        <NDrawer
+            v-model:show="carPopoverOpen"
+            :height="'min(88vh, 720px)'"
+            placement="bottom"
+            :trap-focus="false"
+            :block-scroll="true"
+            :native-scrollbar="false"
+            :content-style="{
+                height: '100%',
+                padding: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+            }"
+        >
+            <div
+                class="tg-light-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[20px] border-t shadow-[var(--app-shadow)] outline-none"
+                style="border-color: var(--tg-theme-section-separator-color)">
+                <CarSelectionPanel
+                    class="min-h-0 flex-1"
+                    v-model:brand="activeBrand"
+                    v-model:model="selectedModel"
+                    v-model:year="selectedYear"
+                    @complete="closeCarPopover"
+                />
+            </div>
+        </NDrawer>
+
+        <NDrawer
+            v-model:show="filterPopoverOpen"
+            :height="'min(85vh, 640px)'"
+            placement="bottom"
+            :trap-focus="false"
+            :block-scroll="true"
+        >
+            <div
+                class="tg-light-surface flex h-full min-h-0 flex-col overflow-hidden rounded-t-[20px] border-t shadow-[var(--app-shadow)] outline-none"
+                style="border-color: var(--tg-theme-section-separator-color)">
+                <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-2">
+                    <div class="space-y-5">
+                        <div class="text-5 font-700">
+                            {{ t('headerFilter.filter') }}
+                        </div>
+
+                        <!-- 结构 -->
+                        <div class="space-y-2">
+                            <div class="text-3.5 font-600">{{ t('headerFilter.structure') }}</div>
+                            <TgSelect v-model="filterForm.structure" :options="structureSelectOptions"
+                                :searchable="false" :placeholder="t('headerFilter.phStructure')" />
+                        </div>
+
+                        <!-- 颜色 -->
+                        <div class="space-y-3">
+                            <div class="text-3.5 font-600">{{ t('headerFilter.color') }}</div>
+                            <div class="relative">
+                                <span
+                                    class="pointer-events-none absolute left-15 top-1/2 z-1 h-5 w-5 -translate-y-1/2 rounded-full border border-black/10"
+                                    :style="{ backgroundColor: selectedColor.hex }" />
+                                <TgSelect v-model="filterForm.color" class="color-select"
+                                    :options="colorSelectOptions" :searchable="false" :placeholder="t('headerFilter.phColor')" />
+                            </div>
+
+                            <div class="text-center text-4 font-700">
+                                {{ selectedColor.code }} {{ selectedColor.label }}
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3">
+                                <button v-for="item in colors" :key="item.value" type="button"
+                                    class="relative h-12 w-12 rounded-full border transition"
+                                    :class="filterForm.color === item.value
+                                        ? 'border-[color:var(--tg-theme-text-color)] shadow-[0_0_0_3px_var(--tg-theme-secondary-bg-color),0_0_0_4px_var(--tg-theme-text-color)]'
+                                        : 'border-transparent'"
+                                    :style="{ backgroundColor: item.hex }" @click="filterForm.color = item.value" />
+                            </div>
+                        </div>
+
+                        <!-- 产品筛选 -->
+                        <template v-if="props.ProductSelection">
+                            <div class="space-y-2">
+                                <div class="text-3.5 font-600">{{ t('headerFilter.modelCode') }}</div>
+                                <input
+                                    v-model="filterForm.modelCode"
+                                    type="text"
+                                    :placeholder="t('headerFilter.phModelCode')"
+                                    class="h-12 w-full rounded-2xl border px-4 text-3.5 outline-none transition focus:border-[color:var(--tg-theme-link-color)] [background:var(--tg-theme-secondary-bg-color)] [color:var(--tg-theme-text-color)] placeholder:text-[color:var(--tg-theme-hint-color)]"
+                                    style="border-color: var(--tg-theme-section-separator-color)"
+                                />
+                            </div>
+
+                            <div class="space-y-2">
+                                <div class="text-3.5 font-600">{{ t('headerFilter.stripCount') }}</div>
+                                <TgSelect v-model="filterForm.stripCount" :options="stripCountOptions"
+                                    :searchable="false" :placeholder="t('headerFilter.phStripCount')" />
+                            </div>
+
+                            <div class="space-y-2">
+                                <div class="text-3.5 font-600">{{ t('headerFilter.claw') }}</div>
+                                <TgSelect v-model="filterForm.clawType" :options="clawSelectOptions"
+                                    :searchable="false" :placeholder="t('headerFilter.phClaw')" />
+                            </div>
+
+                            <div class="space-y-2">
+                                <div class="text-3.5 font-600">{{ t('headerFilter.rotateSupport') }}</div>
+                                <TgSelect v-model="filterForm.rotateSupport" :options="directionSelectOptions"
+                                    :searchable="false" :placeholder="t('headerFilter.phRotate')" />
+                            </div>
+                            <div class="space-y-2">
+                                <div class="text-3.5 font-600">{{ t('headerFilter.styleMood') }}</div>
+                                <TgSelect v-model="styleMoodField" :options="styleMoodSelectOptions"
+                                    :searchable="false" :placeholder="t('headerFilter.phStyleMood')" />
+                            </div>
+                        </template>
+
+                        <template v-if="props.CaseSelection">
+                            <div class="space-y-2">
+                                <div class="text-3.5 font-600">{{ t('headerFilter.wlCode') }}</div>
+                                <TgSelect v-model="filterForm.wlCode" :options="wlCodeSelectOptions"
+                                    :searchable="false" :placeholder="t('headerFilter.phWlCode')" />
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div
+                    class="shrink-0 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+                    style="border-color: var(--tg-theme-section-separator-color); background: var(--tg-theme-secondary-bg-color)">
+                    <div class="flex gap-4">
+                        <button type="button"
+                            class="tg-btn-outline-light h-12 flex-1 rounded-xl border text-4 font-600"
+                            @click="closeFilterPopover">
+                            {{ t('common.cancel') }}
+                        </button>
+                        <button type="button"
+                            class="tg-btn-primary h-12 flex-1 rounded-xl border text-4 font-700"
+                            @click="applyFilters">
+                            {{ t('common.confirm') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </NDrawer>
     </div>
 </template>
 

@@ -11,7 +11,7 @@ const o = useCustomOrderContext()
   <div class="outline-none">
     <div class="space-y-3 px-4 py-4">
       <div>
-        <div class="mb-2 text-3.5 font-600">{{ t('customOrder.name') }}</div>
+        <div class="mb-2 text-3.5 font-600">{{ t('customOrder.recipientName') }}</div>
         <input
           v-model="o.addressForm.name"
           type="text"

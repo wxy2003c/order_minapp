@@ -16,11 +16,13 @@ import {
   buildCreateOrderFromCustomOrder,
   parseWheelLibraryStructureSubtypeOffroad,
 } from '@/utils/orderHelpers'
-import { createOrder, updateOrder, fetchOrderDetail } from '@/api/orders'
+import { createOrder, updateOrder, fetchOrderDetail, getCurrentUserRole } from '@/api/rolesApi'
+import { fetchStyleModelDetail } from '@/api/admin/styleModels'
 import {
   applyOrderDetailToCustomOrderForms,
   brandModelLabelsFromDetail,
   findSelectValue,
+  isReorderModeFromRouteQuery,
   orderIdFromRouteQuery,
 } from '@/utils/applyOrderDetailToCustomOrder'
 import { loadMyVehicleSelection } from '@/utils/myVehicleStorage'
@@ -89,6 +91,8 @@ function pickStoreMethods(store: ReturnType<typeof useCustomOrderStore>) {
     onPostSubmitContinue: store.onPostSubmitContinue,
     applyMyVehicleFromProfileCache: store.applyMyVehicleFromProfileCache,
     onMyVehiclePrefillCancel: store.onMyVehiclePrefillCancel,
+    wheelShapeRefMax: store.wheelShapeRefMax,
+    centerCapRefMax: store.centerCapRefMax,
     loadWheelMakes: store.loadWheelMakes,
     loadWheelModels: store.loadWheelModels,
     loadWheelGenerations: store.loadWheelGenerations,
@@ -113,9 +117,11 @@ export function useCustomOrderSetup(
   const router = useRouter()
   const store = useCustomOrderStore()
 
-  const editOrderId = computed(() =>
-    orderIdFromRouteQuery(route.query as Record<string, string | string[] | null | undefined>),
-  )
+  const editOrderId = computed(() => {
+    const q = route.query as Record<string, string | string[] | null | undefined>
+    if (isReorderModeFromRouteQuery(q)) return ''
+    return orderIdFromRouteQuery(q)
+  })
 
   function openStyleModelDrawer() {
     if (!String(store.creativeForm.structure ?? '').trim()) {
@@ -251,30 +257,31 @@ export function useCustomOrderSetup(
     try {
       const d = await fetchOrderDetail(orderId)
       const o = d as Record<string, unknown>
+      const matchOpts = true
       if (store.wheelSizeEnabled) {
         if (!store.wsBrandOptions.length) await store.loadWheelMakes()
         const { brand: bLabel, model: mLabel } = brandModelLabelsFromDetail(d)
-        const bVal = findSelectValue(store.wsBrandOptions, bLabel)
+        const bVal = findSelectValue(store.wsBrandOptions, bLabel, matchOpts)
         if (bVal) {
           await store.onWheelBrandChange(bVal)
-          const mVal = findSelectValue(store.wsModelOptions, mLabel)
+          const mVal = findSelectValue(store.wsModelOptions, mLabel, matchOpts)
           if (mVal) {
             await store.onWheelModelChange(mVal)
             const offParsed = parseWheelLibraryStructureSubtypeOffroad(strU(o.structure_subtype_offroad))
             const genKey = offParsed.gen || strU(o.wheel_generation) || strU(o.structure_subtype_offroad)
             if (genKey) {
-              const gVal = findSelectValue(store.wsGenOptions, genKey)
+              const gVal = findSelectValue(store.wsGenOptions, genKey, matchOpts)
               if (gVal) {
                 await store.onWheelGenerationChange(gVal)
                 const yLabel = strU(o.year)
                 if (yLabel) {
-                  const yVal = findSelectValue(store.wsYearOptions, yLabel)
+                  const yVal = findSelectValue(store.wsYearOptions, yLabel, matchOpts)
                   if (yVal) {
                     await store.onWheelYearChange(yVal)
                     const modKey
                       = strU(o.vehicle_model ?? o.vehicleModel) || offParsed.mod || strU(o.wheel_modification) || strU(o.modification)
                     if (modKey) {
-                      const modVal = findSelectValue(store.wsModOptions, modKey)
+                      const modVal = findSelectValue(store.wsModOptions, modKey, matchOpts)
                       if (modVal) store.onWheelModificationChange(modVal)
                     }
                   }
@@ -283,29 +290,39 @@ export function useCustomOrderSetup(
             }
           }
         }
-        applyOrderDetailToCustomOrderForms(d, {
-          vehicleForm: store.vehicleForm,
-          creativeForm: store.creativeForm,
-          addressForm: store.addressForm,
-          amountForm: store.amountForm,
-        }, store.countryOptions)
+        applyOrderDetailToCustomOrderForms(
+          d,
+          {
+            vehicleForm: store.vehicleForm,
+            creativeForm: store.creativeForm,
+            addressForm: store.addressForm,
+            amountForm: store.amountForm,
+          },
+          store.countryOptions,
+          { skipWheelSizeLinkageFields: true },
+        )
       } else {
         const { brand: bLabel, model: mLabel } = brandModelLabelsFromDetail(d)
         if (bLabel) {
-          const v = findSelectValue(store.staticBrandOptions, bLabel)
+          const v = findSelectValue(store.staticBrandOptions, bLabel, matchOpts)
           if (v) store.vehicleForm.brand = v
         }
         if (mLabel) {
-          const v = findSelectValue(store.staticModelOptions, mLabel)
+          const v = findSelectValue(store.staticModelOptions, mLabel, matchOpts)
           if (v) store.vehicleForm.model = v
         }
-        applyOrderDetailToCustomOrderForms(d, {
-          vehicleForm: store.vehicleForm,
-          creativeForm: store.creativeForm,
-          addressForm: store.addressForm,
-          amountForm: store.amountForm,
-        }, store.countryOptions)
+        applyOrderDetailToCustomOrderForms(
+          d,
+          {
+            vehicleForm: store.vehicleForm,
+            creativeForm: store.creativeForm,
+            addressForm: store.addressForm,
+            amountForm: store.amountForm,
+          },
+          store.countryOptions,
+        )
       }
+      await store.hydrateCreativeFromOrderDetail(d)
     } catch (e) {
       store.orderEditError = e instanceof Error ? e.message : String(e)
     } finally {
@@ -345,21 +362,27 @@ export function useCustomOrderSetup(
       store.orderSubmitError = wheelErr
       return
     }
-    if (!String(store.amountForm.basePrice).trim()) {
-      store.orderSubmitError = t('customOrder.errTotal')
-      return
-    }
-    if (!String(store.amountForm.currency).trim()) {
-      store.orderSubmitError = t('customOrder.errCurrency')
-      return
+    if (getCurrentUserRole() === 'admin') {
+      if (!String(store.amountForm.basePrice).trim()) {
+        store.orderSubmitError = t('customOrder.errTotal')
+        return
+      }
+      if (!String(store.amountForm.currency).trim()) {
+        store.orderSubmitError = t('customOrder.errCurrency')
+        return
+      }
     }
     store.orderSubmitting = true
     try {
-      if (store.creativeForm.wheelShapeFile && !String(store.creativeForm.wheelShapeUrl).trim())
+      if (store.creativeForm.wheelShapeRefFiles?.some((f, i) => {
+        return !!f && !String(store.creativeForm.wheelShapeRefUrls[i] ?? '').trim()
+      }))
         throw new Error(t('customOrder.errWheelUpload'))
       if (store.creativeForm.wheelLipFile && !String(store.creativeForm.wheelLipUrl).trim())
         throw new Error(t('customOrder.errLipUpload'))
-      if (store.creativeForm.centerCapFile && !String(store.creativeForm.centerCapUrl).trim())
+      if (store.creativeForm.centerCapRefFiles?.some((f, i) => {
+        return !!f && !String(store.creativeForm.centerCapRefUrls[i] ?? '').trim()
+      }))
         throw new Error(t('customOrder.errCapUpload'))
 
       const body = buildCreateOrderFromCustomOrder({
@@ -396,17 +419,55 @@ export function useCustomOrderSetup(
 
   onMounted(() => {
     void (async () => {
-      await store.resetPageForNewVisit()
-      if (store.wheelSizeEnabled) await store.loadWheelMakes()
-      await store.loadFinishCards()
       const oid = orderIdFromRouteQuery(route.query as Record<string, string | string[] | null | undefined>)
+      const skipPrefillRaw = route.query.skipVehiclePrefill
+      const skipVehiclePrefill = skipPrefillRaw === '1' || skipPrefillRaw === 'true'
+
+      await store.resetPageForNewVisit()
       if (oid) {
-        await hydrateFromOrderId(oid)
-        return
+        store.orderEditLoading = true
+        store.orderEditError = ''
       }
-      const cached = loadMyVehicleSelection()
-      if (cached && (cached.brand || cached.model || cached.year))
-        store.myVehiclePrefillModalOpen = true
+      try {
+        if (store.wheelSizeEnabled) await store.loadWheelMakes()
+        await store.loadFinishCards()
+        if (oid) {
+          await hydrateFromOrderId(oid)
+        }
+        else {
+          // 从产品详情页跳转时，按 preset_style_id 直接拉详情预填轮毂造型
+          const presetStyleId = String(route.query.preset_style_id ?? '').trim()
+          const qStructure = String(route.query.structure_type ?? '').trim()
+          if (presetStyleId) {
+            try {
+              const detail = await fetchStyleModelDetail(presetStyleId)
+              if (detail) {
+                if (detail.structure_type || qStructure)
+                  store.creativeForm.structure = detail.structure_type || qStructure
+                store.onStyleModelConfirm(detail)
+              }
+            }
+            catch { /* 预填失败静默忽略 */ }
+          }
+        }
+        if (!oid && !skipVehiclePrefill && !String(route.query.preset_style_id ?? '').trim()) {
+          const cached = loadMyVehicleSelection()
+          if (cached && (cached.brand || cached.model || cached.year))
+            store.myVehiclePrefillModalOpen = true
+        }
+      }
+      catch (e) {
+        if (oid) {
+          store.orderEditError = e instanceof Error ? e.message : String(e)
+        }
+        store.orderEditLoading = false
+      }
+
+      if (skipVehiclePrefill) {
+        const q = { ...route.query } as Record<string, string | string[] | null | undefined>
+        delete q.skipVehiclePrefill
+        await router.replace({ path: route.path, query: q })
+      }
     })()
   })
 

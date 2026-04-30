@@ -10,7 +10,7 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { NDrawer, NInput, NSpin } from 'naive-ui'
 import { Icon } from '@iconify/vue'
-import { fetchStyleModels, type StyleCoverImage, type StyleModelItem } from '@/api/styleModels'
+import { fetchStyleModels, type StyleCoverImage, type StyleModelItem } from '@/api/rolesApi'
 import { openPhotoSwipeGallery } from '@/utils/photoswipeGallery'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
 import { t } from '@/i18n/uiI18n'

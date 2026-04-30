@@ -9,9 +9,10 @@ import {
 } from '@/data/orders'
 import TgButton from '@/components/TgButton.vue'
 import type { OrderDetailResponse, OrderListImageItem, OrderListItem } from '@/utils/orderHelpers'
-import { cancelOrder, fetchOrderDetail, mapApiStatusToOrderStatus } from '@/api/orders'
+import { cancelOrder, fetchOrderDetail, mapApiStatusToOrderStatus } from '@/api/rolesApi'
 import { orderIdFromRouteQuery } from '@/utils/applyOrderDetailToCustomOrder'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
+import { openPhotoSwipeGallery } from '@/utils/photoswipeGallery'
 import { getTelegramWebApp } from '@/utils/userTelegram'
 import { t } from '@/i18n/uiI18n'
 import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
@@ -20,11 +21,13 @@ import {
   buildWheelSpecRows,
   collectImgUrlsForSlot,
   coverFallbackUrlsAfterSlots,
+  discoverBillItemsInDetail,
   fieldFromOrder as fieldFromOrderRecord,
   getSlotDescText,
   getSpecialReqFromSpecs,
   isDesignSlotCategory,
   isWheelsIdenticalOrder,
+  normalizeOrderImageItemArray,
   specGet,
   splitWheelSpecHeadRest,
   str,
@@ -44,8 +47,8 @@ const cancelModalOpen = ref(false)
 const cancelSubmitting = ref(false)
 const cancelError = ref('')
 
-/** 车型、轮规、型号库：展开按钮均在各块内容最下方。车辆信息默认收起；轮规在「一致」时一块展开（默认开）；分轮时前/后各一块（默认都展开、各自收放） */
-const vehicleInfoOpen = ref(false)
+/** 车型信息：品牌 + 型号行 + 刹车盘始终展示；VIN/底盘/卡钳/变速箱可折叠。默认展开其余行。 */
+const vehicleInfoOpen = ref(true)
 /** 除「尺寸、数量」外的轮规行；尺寸/数量始终展示 */
 const wheelSpecOpen = ref(false)
 const frontWheelSpecOpen = ref(false)
@@ -148,12 +151,6 @@ const coverDisplayUrls = computed((): string[] => {
   return coverFallbackUrlsAfterSlots(detail.value)
 })
 
-function wheelColorName(code: string): string {
-  const k = `orderDetails.colorName_${code}` as const
-  const s = t(k)
-  return s === k ? code : s
-}
-
 const structureLabel = computed((): string => {
   const raw = str(specs.value?.['结构']).trim()
   if (!raw) return '—'
@@ -179,22 +176,84 @@ const brandModelLine = computed(() => {
   return '—'
 })
 
-const libThumb = computed(() => {
-  const u0 = slotImgUrls.value.color_sample[0]
-  if (u0) return u0
-  const d = detail.value as OrderListItem | null
-  if (d?.design_imgs?.[0]) {
-    return resolveOrderAssetUrl(d.design_imgs[0].url || d.design_imgs[0].path) || null
+/** 顶部大字：仅品牌 */
+const vehicleBrandDisplay = computed(() => {
+  const d = detail.value as Record<string, unknown> | null
+  if (!d) return '—'
+  const b = str(d.car_brand).trim()
+  if (b) return b
+  const car = str(d.car).trim()
+  if (car) {
+    const first = car.split(/[/\s]+/)[0]?.trim()
+    if (first) return first
   }
-  if (d?.imgs?.[0]) return resolveOrderAssetUrl(d.imgs[0].url || d.imgs[0].path) || null
-  return null
+  return specGet(specs.value, '品牌').trim() || '—'
 })
 
+/**
+ * 第二行：型号/世代 + [年款或年区间] + / 配置（与 Wheel-Size 回填空字段对齐）。
+ * 例：A5/F5[2016...2020]/DIESEL 2.0Dti 14 188HP；缺字段则跳过，最后用 `car` 整串兜底。
+ */
+const vehicleModelSpecLine = computed(() => {
+  const d = detail.value as Record<string, unknown> | null
+  if (!d) return '—'
+  const model = str(d.car_model).trim()
+  const gen = str(d.structure_subtype_offroad || d.wheel_generation).trim()
+  const yearRaw = str(d.year).trim()
+  const config = str(
+    d.vehicle_model || d.wheel_modification || (d as { modification?: unknown }).modification,
+  ).trim()
+
+  let yearSeg = ''
+  if (yearRaw) {
+    const y = yearRaw
+    if (y.startsWith('[') && y.endsWith(']')) {
+      yearSeg = y
+    }
+    else if (y.includes('...')) {
+      yearSeg = `[${y.replace(/^\[|\]$/g, '')}]`
+    }
+    else if (/^\d{4}\s*[-–—]\s*\d{4}$/.test(y)) {
+      const [a, b] = y.split(/[-–—]/).map(x => x.trim())
+      yearSeg = `[${a}...${b}]`
+    }
+    else {
+      yearSeg = `[${y}]`
+    }
+  }
+
+  const modelGen = [model, gen].filter(Boolean).join('/')
+  let left = ''
+  if (modelGen && yearSeg)
+    left = `${modelGen}${yearSeg}`
+  else if (modelGen)
+    left = modelGen
+  else if (yearSeg)
+    left = yearSeg
+
+  const out = [left, config].filter(Boolean).join('/')
+  if (out)
+    return out
+
+  const car = str(d.car).trim()
+  if (car)
+    return car
+  return brandModelLine.value !== '—' ? brandModelLine.value : '—'
+})
+
+const libThumb = computed(() => {
+  // 只取 color_sample 槽位，不 fallback 到 imgs[0]（避免与中心盖等其他槽混用）
+  return slotImgUrls.value.color_sample[0] ?? null
+})
+
+const carModelImgsList = computed(() =>
+  normalizeOrderImageItemArray((detail.value as Record<string, unknown> | null)?.car_model_imgs),
+)
+
 const carHeroSrc = computed(() => {
-  const d = detail.value
-  if (!d) return null
-  const a = d.car_model_imgs?.[0] ?? d.imgs?.[0] ?? d.design_imgs?.[0]
-  return resolveOrderAssetUrl(a?.url || a?.path) || null
+  const a = carModelImgsList.value[0]
+  if (!a) return null
+  return resolveOrderAssetUrl(a.url || a.path) || null
 })
 
 const sizeDisplay = computed(() => {
@@ -217,6 +276,7 @@ const transDisplay = computed(
 const surfaceFinish = computed(
   () => specGet(specs.value, '表面处理')
     || str((detail.value as { appearance?: string })?.appearance)
+    || str((detail.value as { r_appearance?: string })?.r_appearance)
     || '—',
 )
 
@@ -268,11 +328,25 @@ const wheelSpecUnifiedRows = computed(() => {
 })
 const wheelSpecFrontRows = computed(() => {
   if (wheelsIdentical.value) return [] as WheelSpecRow[]
-  return buildWheelSpecRows(detail.value, specs.value, 'f')
+  return buildWheelSpecRows(
+    detail.value,
+    specs.value,
+    'f',
+    undefined,
+    undefined,
+    surfaceFinish.value,
+  )
 })
 const wheelSpecRearRows = computed(() => {
   if (wheelsIdentical.value) return [] as WheelSpecRow[]
-  return buildWheelSpecRows(detail.value, specs.value, 'r')
+  return buildWheelSpecRows(
+    detail.value,
+    specs.value,
+    'r',
+    undefined,
+    undefined,
+    surfaceFinish.value,
+  )
 })
 
 const wheelSpecUnifiedHR = computed(() => splitWheelSpecHeadRest(wheelSpecUnifiedRows.value))
@@ -290,6 +364,13 @@ const swatchThumbs = computed(() => {
     return { url, code: str(im?.name || im?.label) || `—${i + 1}` }
   })
 })
+
+async function openOrderThumbGallery(urls: readonly string[], startIndex: number) {
+  const slides = urls.map((src) => String(src ?? '').trim()).filter(Boolean)
+  if (!slides.length) return
+  const i = Math.min(Math.max(0, startIndex), slides.length - 1)
+  await openPhotoSwipeGallery(slides.map((src) => ({ src })), i)
+}
 
 const specialReqLine = computed(() => getSpecialReqFromSpecs(specs.value))
 
@@ -326,15 +407,41 @@ const remarkDisplay = computed(() => {
   )
 })
 
-/** 账单 4 行：与原先版式一致，无数据也占行 */
-const amountRows = computed(() => {
-  const pick = (cn: string) => specGet(specs.value, cn).trim() || '—'
-  return [
-    { labelKey: 'orderDetails.designDeposit' as const, value: pick('设计定金') },
-    { labelKey: 'orderDetails.production' as const, value: pick('生产金') },
-    { labelKey: 'orderDetails.finalPayment' as const, value: pick('尾款') },
-    { labelKey: 'orderDetails.other' as const, value: pick('其他') },
-  ]
+function formatBillLineAmount(amount: unknown, currency: string): string {
+  if (amount == null || amount === '') return '—'
+  if (typeof amount === 'number' && Number.isFinite(amount)) {
+    const cur = currency.trim() || 'USD'
+    return `${new Intl.NumberFormat().format(amount)} ${cur}`
+  }
+  const s = str(amount).trim()
+  if (!s) return '—'
+  const n = Number(s.replace(/[^\d.-]/g, ''))
+  if (Number.isFinite(n) && s.match(/^\s*[\d.,\s-]+\s*$/)) {
+    const cur = currency.trim() || 'USD'
+    return `${new Intl.NumberFormat().format(n)} ${cur}`
+  }
+  return s
+}
+
+/** 账单：在 `details.vue` 展示的明细来自 `discoverBillItemsInDetail`（见 orderDetailHelpers），不写死接口字段名 */
+const billRowsFromApi = computed(() =>
+  discoverBillItemsInDetail(detail.value as Record<string, unknown> | null),
+)
+
+const amountRows = computed((): { label: string; value: string }[] => {
+  const api = billRowsFromApi.value
+  const cur = str((detail.value as OrderListItem | null)?.currency).trim() || 'USD'
+  return api.map(row => ({
+    label: row.label,
+    value: formatBillLineAmount(row.amount, cur),
+  }))
+})
+
+const wheelColorDescDisplay = computed(() => {
+  const d = detail.value as Record<string, unknown> | null
+  const direct = str(d?.wheel_color_desc).trim()
+  if (direct) return direct
+  return slotDescText('wheel_color') || t('orderDetails.noDescription')
 })
 
 const totalDisplay = computed(() => {
@@ -379,8 +486,9 @@ watch(
     if (!d || !staffDeeplink.openedViaTelegramStartParam) return
     const tid = str((d as { telegram_id?: unknown }).telegram_id)
     if (!tid) return
-    const name = str((d as { customer?: unknown }).customer)
-    staffDeeplink.patchCustomerFromOrderDetail(tid, name || undefined)
+    const nick = str((d as { telegram_nickname?: unknown }).telegram_nickname)
+    const recipient = str((d as { customer?: unknown }).customer)
+    staffDeeplink.patchCustomerFromOrderDetail(tid, nick || recipient || undefined)
   },
   { flush: 'post' },
 )
@@ -446,7 +554,15 @@ function handleDetailAction(key: OrderDetailActionKey) {
       void router.push({ path: '/Evaluation' })
       return
     case 'reorder':
-      void router.push({ path: '/CustomOrder' })
+      if (id) {
+        void router.push({
+          path: '/CustomOrder',
+          query: { orderId: id, skipVehiclePrefill: '1', reorder: '1' },
+        })
+      }
+      else {
+        void router.push({ path: '/CustomOrder', query: { skipVehiclePrefill: '1' } })
+      }
       return
     default: {
       const _e: never = key
@@ -508,9 +624,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
           </span>
           <span class="shrink-0 text-3 text-[#8eaef4]">
             UID
-            {{ str((detail as { customer_id?: unknown }).customer_id)
-              || str((detail as { user_id?: unknown }).user_id)
-              || str((detail as { telegram_id?: unknown }).telegram_id) || '—' }}
+            {{ str((detail as { telegram_id?: unknown }).telegram_id) || '—' }}
           </span>
         </div>
       </template>
@@ -566,7 +680,15 @@ function handleDetailAction(key: OrderDetailActionKey) {
         <div class="min-w-0 text-4 font-700">
           {{ t('orderDetails.vehicleInfo') }}
         </div>
-        <div v-if="vehicleInfoRows[0]" class="mt-3">
+        <div class="mt-3">
+          <div class="text-4.5 font-700 leading-snug text-[#111827]">
+            {{ vehicleBrandDisplay }}
+          </div>
+          <div class="mt-2 text-3.5 leading-5.5 text-[#5f6470] break-words whitespace-pre-wrap">
+            {{ vehicleModelSpecLine }}
+          </div>
+        </div>
+        <div v-if="vehicleInfoRows[0]" class="mt-4">
           <div class="flex items-start justify-between gap-3 text-3.5">
             <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
               {{ t(vehicleInfoRows[0].labelKey) }}
@@ -577,29 +699,23 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </span>
           </div>
         </div>
-        <div v-show="vehicleInfoOpen" class="mt-3 border-t border-[#f3f4f6] pt-3">
-          <div class="text-4.5 font-700">
-            {{ brandModelLine }}
-          </div>
-          <div class="mt-1 text-3.5 leading-5.5 text-[#5f6470]">
-            {{ (detail as { car?: string }).car || '—' }}
-          </div>
-          <div class="mt-3 space-y-2.5">
-            <div
-              v-for="(row, vi) in vehicleInfoRowsRest"
-              :key="`vrow-${vi}`"
-              class="flex items-start justify-between gap-3 text-3.5">
-              <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
-                {{ t(row.labelKey) }}
-              </span>
-              <span
-                class="min-w-0 flex-1 text-right font-500 leading-5.5 text-[#333] break-words whitespace-pre-wrap">
-                {{ row.value }}
-              </span>
-            </div>
+        <div
+          v-show="vehicleInfoOpen && vehicleInfoRowsRest.length"
+          class="mt-3 space-y-2.5 border-t border-[#f3f4f6] pt-3">
+          <div
+            v-for="(row, vi) in vehicleInfoRowsRest"
+            :key="`vrow-${vi}`"
+            class="flex items-start justify-between gap-3 text-3.5">
+            <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
+              {{ t(row.labelKey) }}
+            </span>
+            <span
+              class="min-w-0 flex-1 text-right font-500 leading-5.5 text-[#333] break-words whitespace-pre-wrap">
+              {{ row.value }}
+            </span>
           </div>
         </div>
-        <div class="mt-3 flex justify-center border-t border-[#f0f1f4] pt-3">
+        <div v-if="vehicleInfoRowsRest.length" class="mt-3 flex justify-center border-t border-[#f0f1f4] pt-3">
           <button
             type="button"
             :aria-expanded="vehicleInfoOpen"
@@ -790,24 +906,24 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </div>
             <div class="mt-2 flex flex-wrap gap-3">
               <template v-if="slotImgUrls.color_sample.length">
-                <a
+                <button
                   v-for="(u, si) in slotImgUrls.color_sample"
                   :key="`cs-${si}`"
-                  :href="u"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef]">
+                  type="button"
+                  class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
+                  :aria-label="t('common.tapImageEnlarge')"
+                  @click="openOrderThumbGallery(slotImgUrls.color_sample, si)">
                   <img :src="u" class="h-full w-full object-cover" alt="">
-                </a>
+                </button>
               </template>
-              <a
+              <button
                 v-else-if="libThumb"
-                :href="libThumb"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef]">
+                type="button"
+                class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
+                :aria-label="t('common.tapImageEnlarge')"
+                @click="openOrderThumbGallery([libThumb], 0)">
                 <img :src="libThumb" class="h-full w-full object-cover" alt="">
-              </a>
+              </button>
               <div
                 v-else
                 class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[#111216] ring-1 ring-[#e8eaef]">
@@ -828,13 +944,13 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </div>
             <div v-if="swatchThumbs.length" class="mt-2 flex flex-wrap gap-3">
               <div v-for="(item, idx) in swatchThumbs" :key="`api-sw-${idx}`" class="w-12 shrink-0 text-center">
-                <a
-                  :href="item.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="mx-auto block h-10 w-10 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef]">
+                <button
+                  type="button"
+                  class="mx-auto block h-10 w-10 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
+                  :aria-label="t('common.tapImageEnlarge')"
+                  @click="openOrderThumbGallery(swatchThumbs.map(s => s.url), idx)">
                   <img :src="item.url" class="h-full w-full object-cover" alt="">
-                </a>
+                </button>
                 <div class="mt-1.5 text-[10px] leading-4 text-[#6d727c]">
                   {{ item.code }}
                 </div>
@@ -854,11 +970,8 @@ function handleDetailAction(key: OrderDetailActionKey) {
               {{ t('orderDetails.colorDesc') }}
             </div>
             <div class="mt-2 space-y-1 text-3.2 leading-5.3 text-[#333]">
-              <div v-for="item in wheelColors" :key="`t-${item.code}`">
-                {{ t('orderDetails.swatch') }}: {{ item.code }} {{ wheelColorName(item.code) }}
-              </div>
               <p class="whitespace-pre-wrap break-words">
-                {{ slotDescText('wheel_color') || t('orderDetails.noDescription') }}
+                {{ wheelColorDescDisplay }}
               </p>
             </div>
           </div>
@@ -870,15 +983,15 @@ function handleDetailAction(key: OrderDetailActionKey) {
             <div
               v-if="coverDisplayUrls.length"
               class="mt-2 flex flex-wrap gap-3">
-              <a
+              <button
                 v-for="(u, ci) in coverDisplayUrls"
                 :key="`cv-${ci}`"
-                :href="u"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef]">
+                type="button"
+                class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
+                :aria-label="t('common.tapImageEnlarge')"
+                @click="openOrderThumbGallery(coverDisplayUrls, ci)">
                 <img :src="u" class="h-full w-full object-cover" alt="">
-              </a>
+              </button>
             </div>
             <div
               v-else
@@ -898,15 +1011,15 @@ function handleDetailAction(key: OrderDetailActionKey) {
             <div
               v-if="slotImgUrls.front_mark.length"
               class="mt-2 flex flex-wrap gap-3">
-              <a
+              <button
                 v-for="(u, fi) in slotImgUrls.front_mark"
                 :key="`fm-${fi}`"
-                :href="u"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef]">
+                type="button"
+                class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
+                :aria-label="t('common.tapImageEnlarge')"
+                @click="openOrderThumbGallery(slotImgUrls.front_mark, fi)">
                 <img :src="u" class="h-full w-full object-cover" alt="">
-              </a>
+              </button>
             </div>
             <div
               v-else
@@ -948,7 +1061,10 @@ function handleDetailAction(key: OrderDetailActionKey) {
       <div class="text-4 font-700">
         {{ t('orderDetails.shippingAddr') }}
       </div>
-      <div class="mt-3 text-3.5 font-600">
+      <div class="mt-3 text-3 text-[#8a9099]">
+        {{ t('customOrder.recipientName') }}
+      </div>
+      <div class="text-3.5 font-600 text-[#333]">
         {{ addressName }}
       </div>
       <div class="mt-1 text-3 text-[#8a9099]">
@@ -977,13 +1093,18 @@ function handleDetailAction(key: OrderDetailActionKey) {
         {{ t('orderDetails.bill') }}
       </div>
       <div class="mt-4 space-y-3 text-3.5">
-        <div
-          v-for="(item, bi) in amountRows"
-          :key="`am-${bi}`"
-          class="flex items-center justify-between gap-3">
-          <span class="text-[#8f949d]">{{ t(item.labelKey) }}</span>
-          <span class="shrink-0 text-right">{{ item.value }}</span>
-        </div>
+        <template v-if="amountRows.length">
+          <div
+            v-for="(item, bi) in amountRows"
+            :key="`am-${item.label}-${bi}`"
+            class="flex items-center justify-between gap-3">
+            <span class="text-[#8f949d]">{{ item.label }}</span>
+            <span class="shrink-0 text-right">{{ item.value }}</span>
+          </div>
+        </template>
+        <p v-else class="text-3 text-[#9CA3AF] leading-relaxed">
+          {{ t('orderDetails.billEmpty') }}
+        </p>
         <div class="flex items-center justify-between gap-3 border-t border-[#f0f1f4] pt-3 text-4 font-700">
           <span>{{ t('orderDetails.total') }}</span>
           <span class="text-[#da3342]">{{ totalDisplay }}</span>

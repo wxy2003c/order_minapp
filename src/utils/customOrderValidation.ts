@@ -10,7 +10,7 @@ export type CustomOrderTranslate = (key: string) => string
 
 /** 与 `validateWheelSizeAndFinish` 一致：标签上展示必填 * */
 export function isRequiredWheelFieldKey(key: string): boolean {
-  return key === 'frontSize' || key === 'frontPaint' || key === 'rearSize' || key === 'rearPaint'
+  return key === 'frontSize' || key === 'frontPaint' || key === 'rearSize'
 }
 
 export type VehicleRequiredFields = {
@@ -54,13 +54,12 @@ export function validateVehicleRequired(
   return null
 }
 
-/** 尺寸（吋）与表面处理：前轮必填；分轮时后轮同两项必填 */
+/** 尺寸（吋）与表面处理：前轮必填；分轮时后轮仅尺寸必填（表面处理全局一条，同前轮） */
 export function validateWheelSizeAndFinish(v: WheelFinishFields, t: CustomOrderTranslate): string | null {
   if (!String(v.frontSize ?? '').trim()) return t('customOrder.errMissingSize')
   if (!String(v.frontPaint ?? '').trim()) return t('customOrder.errMissingFinish')
   if (!v.mirrorPair) {
     if (!String(v.rearSize ?? '').trim()) return t('customOrder.errMissingRearSize')
-    if (!String(v.rearPaint ?? '').trim()) return t('customOrder.errMissingRearFinish')
   }
   return null
 }

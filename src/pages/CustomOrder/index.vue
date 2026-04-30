@@ -12,21 +12,33 @@ import CreativeTab from "./tabs/CreativeTab.vue";
 import VehicleTab from "./tabs/VehicleTab.vue";
 import { useCustomOrderSetup } from "./useCustomOrderSetup";
 import type { CustomOrderPageInstance } from "./customOrderContext";
-
+import {getCurrentUserRole} from '@/api/rolesApi'
+const isAdminRole = computed(() => getCurrentUserRole() === 'admin')
 const pageRoot = ref<HTMLElement | null>(null);
 const o: CustomOrderPageInstance = useCustomOrderSetup(pageRoot);
 </script>
 
 <template>
   <div ref="pageRoot" class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#FAFAFA] pb-32 text-[#1F2937] pos-relative">
-    <div v-if="o.orderEditLoading" class="py-2 text-3.25 text-[#6B7280]">
-      {{ t("common.loading") }}
-    </div>
-    <div v-else-if="o.orderEditError" class="p y-2 text-3.25 text-[#B91C1C]">
+    <!-- 带订单回填时整段接口较慢：全屏遮罩，含 Wheel-Size / 色卡 / 详情 / 造型列表 -->
+    <Teleport to="body">
+      <div
+        v-if="o.orderEditLoading"
+        class="fixed inset-0 z-[220] flex flex-col items-center justify-center gap-4 bg-[#FAFAFA]/90 backdrop-blur-[3px]"
+        aria-busy="true"
+        aria-live="polite">
+        <div
+          class="h-11 w-11 animate-spin rounded-full border-2 border-[#E5E7EB] border-t-[#4478C8]"
+          role="presentation" />
+        <span class="text-3.75 text-[#6B7280]">{{ t('common.loading') }}</span>
+      </div>
+    </Teleport>
+
+    <div v-if="o.orderEditError && !o.orderEditLoading" class="px-4 py-2 text-3.25 text-[#B91C1C]">
       {{ o.orderEditError }}
     </div>
     <div class="sticky top-0 z-20 border-b border-[#ECECEC] bg-white pb-2 pt-7">
-      <div class="relative mt-3 grid grid-cols-4">
+      <div class="relative mt-3 grid" :class="isAdminRole ? 'grid-cols-4' : 'grid-cols-3' ">
         <button v-for="item in o.tabItems" :key="item.value" type="button" :class="[
           'relative py-3 text-3.5 font-600 outline-none transition-colors',
           o.activeTab === item.value ? 'text-[#111827]' : 'text-[#4B5563]',
@@ -155,16 +167,27 @@ const o: CustomOrderPageInstance = useCustomOrderSetup(pageRoot);
         </TgButton>
       </div>
 
+      <!-- 地址 Tab：管理员 → 去金额；普通用户 → 直接提交 -->
       <div v-else-if="o.activeTab === 'address'" class="grid grid-cols-2 gap-3">
         <TgButton block variant="outline" @click="o.goBackToCreative">
           {{ t("customOrder.footAddr1") }}
         </TgButton>
-        <TgButton block variant="primary" @click="o.goToAmount">
+        <TgButton v-if="isAdminRole" block variant="primary" @click="o.goToAmount">
           {{ t("customOrder.footAddr2") }}
+        </TgButton>
+        <TgButton v-else block variant="primary" :disabled="o.orderSubmitting" @click="o.submitPreorder">
+          {{
+            o.orderSubmitting
+              ? t("common.submitting")
+              : o.editOrderId
+                ? t("customOrder.submitUpdate")
+                : t("customOrder.submit")
+          }}
         </TgButton>
       </div>
 
-      <div v-else class="grid grid-cols-2 gap-3">
+      <!-- 金额 Tab（仅管理员可见） -->
+      <div v-else-if="o.activeTab === 'amount'" class="grid grid-cols-2 gap-3">
         <TgButton block variant="outline" @click="o.goBackToCreative">
           {{ t("customOrder.backEdit") }}
         </TgButton>

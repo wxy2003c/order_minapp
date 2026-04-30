@@ -52,7 +52,8 @@ export const orderStatusMeta: Record<OrderStatus, OrderStatusMeta> = {
     icon: 'solar:pen-bold',
     statusClass: 'text-[#f59e0b]',
     detailActions: [
-      { key: 'contact_support', labelKey: 'orderAction.contact_support', variant: 'primary' },
+      { key: 'edit_order', labelKey: 'orderAction.edit_order', variant: 'primary' },
+      { key: 'contact_support', labelKey: 'orderAction.contact_support', variant: 'outline' },
     ],
   },
   pending_confirm: {
