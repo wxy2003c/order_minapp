@@ -1,0 +1,77 @@
+/*
+ * @Author: wxy2003c 774078984@qq.com
+ * @Date: 2026-04-17 10:48:46
+ * @LastEditors: wxy2003c 774078984@qq.com
+ * @LastEditTime: 2026-04-29 10:44:48
+ * @FilePath: \vite-project\src\router\index.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
+import { createRouter, createWebHashHistory } from 'vue-router'
+
+const router = createRouter({
+  history: createWebHashHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      name: '首页',
+      component: () => import('@/pages/home/index.vue'),
+    },
+    {
+      path: '/product',
+      name: '产品',
+      component: () => import('@/pages/product/index.vue'),
+    },
+    {
+      path: '/cases',
+      name: '案例',
+      component: () => import('@/pages/cases/index.vue'),
+    },
+    {
+      path: '/profile',
+      name: '我的',
+      component: () => import('@/pages/profile/index.vue'),
+    },
+    {
+      path: '/CasesDetails',
+      name: '案例详情',
+      component: () => import('@/pages/cases/details.vue'),
+    },
+    {
+      path: '/ProductDetails',
+      name: '产品详情',
+      component: () => import('@/pages/product/details.vue'),
+    },
+    {
+      path: '/CustomOrder',
+      name: '创建订单',
+      component: () => import('@/pages/CustomOrder/index.vue'),
+    },
+    {
+      path: '/OrderCreate',
+      redirect: { path: '/CustomOrder' },
+    },
+    {
+      path: '/OrderDetails',
+      name: '订单详情',
+      component: () => import('@/pages/order/details.vue'),
+    },
+    {
+      path: '/OrderList',
+      name: '订单列表',
+      component: () => import('@/pages/order/list.vue'),
+    },
+    {
+      path: '/Evaluation',
+      name: '订单评价',
+      component: () => import('@/pages/Evaluation/index.vue'),
+    },
+    // Telegram Mini App 会在 hash 里注入自己的参数（tgWebAppData 等），
+    // 导致 hash 路由无法匹配任何页面 → 兜底重定向到首页
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/',
+    },
+  ],
+})
+
+export default router

@@ -1,0 +1,208 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI',
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --app-bg: var(--tg-theme-bg-color, #f4f4f5);
+  --app-surface: var(--tg-theme-secondary-bg-color, #ffffff);
+  --app-section-bg: var(--tg-theme-section-bg-color, var(--app-surface));
+  --app-header-bg: var(--tg-theme-header-bg-color, var(--app-surface));
+  --app-text: var(--tg-theme-text-color, #111827);
+  --app-subtitle: var(--tg-theme-subtitle-text-color, #707579);
+  --app-hint: var(--tg-theme-hint-color, #707579);
+  --app-link: var(--tg-theme-link-color, #3390ec);
+  --app-accent: var(--tg-theme-button-color, #3390ec);
+  --app-accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --app-accent-soft: color-mix(in srgb, var(--app-accent) 14%, transparent);
+  --app-divider: var(--tg-theme-section-separator-color, rgba(0, 0, 0, 0.08));
+  --app-danger: var(--tg-theme-destructive-text-color, #ff3b30);
+  --app-section-title: var(--tg-theme-section-header-text-color, #6d7883);
+  --app-bottom-bar: var(--tg-theme-bottom-bar-bg-color, var(--app-surface));
+  --app-shadow:
+    0 8px 24px color-mix(in srgb, var(--app-text) 10%, transparent);
+  /** 白底/浅底上的字色：勿用 --app-text（TG 暗色主题下常为浅色，会白底看不见） */
+  --app-on-light: #1a1d24;
+}
+
+:root[data-color-scheme='dark'] {
+  color-scheme: dark;
+  --app-shadow:
+    0 10px 28px color-mix(in srgb, var(--app-text) 18%, transparent);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+/**
+ * 选车 / 筛选等浮层：与 Telegram 主题一致（secondary 底 + 正文字色）
+ */
+.tg-light-surface {
+  isolation: isolate;
+  position: relative;
+  z-index: 0;
+  color: var(--tg-theme-text-color);
+  background-color: var(--tg-theme-secondary-bg-color);
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-secondary-bg-color),
+    var(--tg-theme-secondary-bg-color)
+  );
+}
+
+.tg-light-surface :where(button, input, textarea, select) {
+  font: inherit;
+}
+
+/** 深色页上一块区域：用 TG 副标题色 */
+.tg-on-dark-surface {
+  color: var(--tg-theme-subtitle-text-color);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.tg-tab-active {
+  color: var(--app-accent-text);
+  background: var(--app-accent);
+}
+
+/**
+ * 主/次按钮：勿用 #242730/#2d2f36 等炭黑实色
+ * Telegram iOS/Android WebView 上「纯色实底」常合成成透明，但 1px 实线描边仍正常（镂空/描边可辨）。
+ * 用 TG 主题色 + 与底色相同的 linear-gradient 叠层 + 独立合成层 (isolate / translateZ) 兜底实底；
+ * !important 防主题/继承盖掉。TgButton 实心主/白/危亦复用下述类。
+ */
+.tg-btn-primary {
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  color: var(--app-accent-text) !important;
+  background-color: var(--app-accent) !important;
+  background-image: linear-gradient(0deg, var(--app-accent), var(--app-accent)) !important;
+  border: 1px solid var(--app-accent) !important;
+}
+
+.tg-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.tg-btn-outline-light {
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  color: var(--tg-theme-text-color) !important;
+  background-color: var(--tg-theme-secondary-bg-color) !important;
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-secondary-bg-color),
+    var(--tg-theme-secondary-bg-color)
+  ) !important;
+  border: 1px solid var(--tg-theme-link-color) !important;
+}
+
+.tg-btn-white {
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  color: var(--tg-theme-text-color) !important;
+  background-color: var(--tg-theme-secondary-bg-color) !important;
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-secondary-bg-color),
+    var(--tg-theme-secondary-bg-color)
+  ) !important;
+  border: 1px solid var(--tg-theme-section-separator-color) !important;
+}
+
+.tg-btn-danger {
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  color: var(--tg-theme-button-text-color) !important;
+  background-color: var(--tg-theme-destructive-text-color) !important;
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-destructive-text-color),
+    var(--tg-theme-destructive-text-color)
+  ) !important;
+  border: 1px solid var(--tg-theme-destructive-text-color) !important;
+}
+
+.n-popover-shared {
+  padding: 0 !important;
+  margin-top: 0 !important;
+  /* 不要强制透明：否则暗色下整段与深色页叠色，选车内容像「全透明/看不见」 */
+}
+
+/**
+ * 禁用态：Naive 会给 .n-select 或内部 selection 加低 opacity，与半透明底相乘会接近全透明
+ */
+.tg-nselect.n-select--disabled,
+.tg-nselect.n-select--disabled .n-base-selection,
+.tg-nselect .n-base-selection--disabled,
+.tg-nselect .n-base-selection[aria-disabled='true'] {
+  opacity: 1 !important;
+}
+
+.tg-nselect .n-base-selection--disabled,
+.tg-nselect .n-base-selection[aria-disabled='true'] {
+  --n-color: var(--tg-theme-secondary-bg-color) !important;
+  --n-text-color: var(--tg-theme-hint-color) !important;
+  --n-arrow-color: var(--tg-theme-hint-color) !important;
+  --n-placeholder-color: var(--tg-theme-hint-color) !important;
+  --n-border: 1px solid var(--tg-theme-section-separator-color) !important;
+  color: var(--tg-theme-hint-color) !important;
+  background: var(--tg-theme-secondary-bg-color) !important;
+  background-color: var(--tg-theme-secondary-bg-color) !important;
+  background-image: linear-gradient(
+    0deg,
+    var(--tg-theme-secondary-bg-color),
+    var(--tg-theme-secondary-bg-color)
+  ) !important;
+}
+
+.tg-nselect .n-base-selection--disabled .n-base-selection-label,
+.tg-nselect .n-base-selection--disabled .n-base-selection-input,
+.tg-nselect .n-base-selection[aria-disabled='true'] .n-base-selection-label,
+.tg-nselect .n-base-selection[aria-disabled='true'] .n-base-selection-input {
+  color: var(--tg-theme-hint-color) !important;
+  opacity: 1 !important;
+}
+
+/** 全局返回：背景/描边/字色走 Telegram 主题，勿写死灰黑 rgba */
+.tg-floating-back {
+  border: 1px solid color-mix(in srgb, var(--tg-theme-section-separator-color) 60%, transparent);
+  background: color-mix(in srgb, var(--tg-theme-secondary-bg-color) 90%, transparent);
+  color: var(--tg-theme-text-color);
+  box-shadow: 0 4px 16px
+    color-mix(in srgb, var(--tg-theme-bg-color) 55%, var(--tg-theme-text-color));
+  backdrop-filter: blur(8px);
+}
