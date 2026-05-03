@@ -8,6 +8,7 @@ import {
   type OrderStatus,
 } from '@/data/orders'
 import TgButton from '@/components/TgButton.vue'
+import TgLoadingState from '@/components/TgLoadingState.vue'
 import type { OrderDetailResponse, OrderListImageItem, OrderListItem } from '@/utils/orderHelpers'
 import { cancelOrder, ensureOrderApiRoutingReady, fetchOrderDetail, mapApiStatusToOrderStatus } from '@/api/rolesApi'
 import { orderIdFromRouteQuery } from '@/utils/applyOrderDetailToCustomOrder'
@@ -16,6 +17,7 @@ import { openPhotoSwipeGallery } from '@/utils/photoswipeGallery'
 import { getTelegramWebApp } from '@/utils/userTelegram'
 import { t } from '@/i18n/uiI18n'
 import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
+import { orderRowDisplayName } from '@/utils/orderListCardDisplay'
 import {
   asPlainText,
   buildWheelSpecRows,
@@ -164,6 +166,7 @@ const structureLabel = computed((): string => {
 const avatarUrl = computed(
   () => resolveOrderAssetUrl(detail.value?.telegram_avatar as string | undefined) || null,
 )
+const customerDisplayName = computed(() => orderRowDisplayName(listRow.value))
 
 const brandModelLine = computed(() => {
   const d = detail.value
@@ -574,22 +577,26 @@ function handleDetailAction(key: OrderDetailActionKey) {
 </script>
 
 <template>
-  <div class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#f7f7f7] pb-28 text-[#22252b]">
+  <div class="h-full min-h-0 w-full overflow-x-hidden overflow-y-auto bg-[#f7f7f7] pb-28 text-[#22252b]">
     <div class="bg-white px-4 pb-5 pt-4">
       <div class="flex items-center justify-between gap-3">
         <img src="@/assets/image/navLogo.png" class="h-8 w-34 object-contain" alt="">
       </div>
 
-      <div
+      <TgLoadingState
         v-if="loading"
-        class="mt-4 py-6 text-center text-3.5 text-[#9CA3AF]">
-        {{ t('common.loading') }}
-      </div>
-      <div
+        tone="light"
+        compact
+        spinning
+        :title="t('common.loading')"
+      />
+      <TgLoadingState
         v-else-if="loadError"
-        class="mt-4 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-3 text-3.25 text-[#B91C1C]">
-        {{ loadError }}
-      </div>
+        tone="light"
+        :title="loadError"
+        :action-label="t('common.retry')"
+        @action="load"
+      />
 
       <template v-else-if="detail">
         <div class="mt-4 flex items-center justify-between gap-3 border-b border-[#f0f1f4] pb-3">
@@ -621,7 +628,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
               alt="">
           </div>
           <span class="flex-1 truncate text-3.5 text-[#555b67]">
-            {{ listRow.telegram_nickname || listRow.customer || '—' }}
+            {{ customerDisplayName }}
           </span>
           <span class="shrink-0 text-3 text-[#8eaef4]">
             UID

@@ -23,7 +23,10 @@ declare module 'vue' {
     TgBackButton: typeof import('./src/components/TgBackButton.vue')['default']
     TgButton: typeof import('./src/components/TgButton.vue')['default']
     TgFilepond: typeof import('./src/components/TgFilepond.vue')['default']
+    TgImage: typeof import('./src/components/TgImage.vue')['default']
     TgLimitedImageUpload: typeof import('./src/components/TgLimitedImageUpload.vue')['default']
+    TgListSkeleton: typeof import('./src/components/TgListSkeleton.vue')['default']
+    TgLoadingState: typeof import('./src/components/TgLoadingState.vue')['default']
     TgSelect: typeof import('./src/components/TgSelect.vue')['default']
     TgSwitch: typeof import('./src/components/TgSwitch.vue')['default']
   }

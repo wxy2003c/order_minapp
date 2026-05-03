@@ -4,8 +4,10 @@ import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import OrderListCard from '@/components/OrderListCard.vue'
 import NoPermissionModal from '@/components/NoPermissionModal.vue'
+import TgListSkeleton from '@/components/TgListSkeleton.vue'
+import TgLoadingState from '@/components/TgLoadingState.vue'
 import type { OrderListItem, OrderListStatusTab } from '@/utils/orderHelpers'
-import { ensureOrderApiRoutingReady, fetchOrdersList } from '@/api/rolesApi'
+import { ensureOrderApiRoutingReady, fetchOrdersList, getCurrentUserRole } from '@/api/rolesApi'
 import { t } from '@/i18n/uiI18n'
 import { getTelegramUserId } from '@/utils/userTelegram'
 import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
@@ -25,6 +27,9 @@ const loading = ref(false)
 const errorMsg = ref('')
 const data = ref<Awaited<ReturnType<typeof fetchOrdersList>> | null>(null)
 let searchTimer: ReturnType<typeof setTimeout> | null = null
+const canShowCreateShortcut = computed(() =>
+  getCurrentUserRole() === 'admin' || staffDeeplink.openedViaTelegramStartParam,
+)
 
 const tabItems = computed<OrderListStatusTab[]>(() => {
   const s = data.value?.statuses
@@ -97,10 +102,6 @@ function goDetail(row: OrderListItem) {
   router.push({ path: '/OrderDetails', query: { orderId: String(row.id) } })
 }
 
-function goBack() {
-  router.push('/profile')
-}
-
 function goToCreateOrder() {
   staffDeeplink.prepareCreateOrderFromList()
   void router.push('/CustomOrder')
@@ -133,14 +134,9 @@ function applySearchNow() {
 </script>
 
 <template>
-  <div class="min-h-full w-full overflow-x-hidden bg-[#F4F4F5] pb-24 text-[#1F2937] pos-relative">
+  <div class="h-full min-h-0 w-full overflow-x-hidden overflow-y-auto bg-[#F4F4F5] pb-28 text-[#1F2937] pos-relative">
     <header
       class="sticky top-0 z-10 flex items-center gap-2 border-b border-[#E5E7EB] bg-white/95 px-3 py-3 backdrop-blur">
-      <button v-if="staffDeeplink.allowHistoryBack" type="button"
-        class="flex h-9 w-9 items-center justify-center rounded-lg text-[#4B5563] active:bg-[#F3F4F6]"
-        :aria-label="t('common.back')" @click="goBack">
-        <Icon icon="mdi:chevron-left" width="26" height="26" />
-      </button>
       <h1 class="text-4 font-700 text-[#111827]">
         {{ t('orderList.title') }}
       </h1>
@@ -157,11 +153,6 @@ function applySearchNow() {
       </div>
     </div>
 
-    <p v-if="errorMsg"
-      class="mx-3 mt-1 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-3 text-[#B91C1C]">
-      {{ errorMsg }}
-    </p>
-
     <div class="mx-3 mt-2">
       <div class="flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2">
         <Icon icon="mdi:magnify" class="shrink-0 text-[#9CA3AF]" width="20" height="20" />
@@ -171,31 +162,48 @@ function applySearchNow() {
       </div>
     </div>
 
-    <div v-if="loading" class="py-10 text-center text-3.5 text-[#9CA3AF]">
-      {{ t('common.loading') }}
+    <div v-if="loading" class="mt-3 px-3">
+      <TgListSkeleton tone="light" image-class="h-28 rounded-2xl" :rows="3" />
     </div>
 
-    <ul v-else class="mt-3 list-none space-y-3 px-3">
-      <OrderListCard v-for="row in (data?.items ?? [])" :key="row.id" as="li" :row="row" @click="goDetail" />
+    <TgLoadingState
+      v-else-if="errorMsg"
+      tone="light"
+      :title="errorMsg"
+      :action-label="t('common.retry')"
+      @action="load"
+    />
+
+    <ul v-else class="tg-fade-list mt-3 list-none space-y-3 px-3">
+      <OrderListCard
+        v-for="row in (data?.items ?? [])"
+        :key="row.id"
+        as="li"
+        :row="row"
+        show-customer-id
+        @click="goDetail" />
     </ul>
 
-    <p v-if="!loading && (data?.items?.length === 0)" class="px-3 py-10 text-center text-3.5 text-[#9CA3AF]">
-      {{ t('orderList.empty') }}
-    </p>
+    <TgLoadingState
+      v-if="!loading && !errorMsg && (data?.items?.length === 0)"
+      tone="light"
+      :title="t('orderList.empty')"
+    />
 
     <div v-if="data && (data.last_page > 1)" class="mt-4 flex items-center justify-center gap-3 px-3 pb-6">
-      <button type="button" class="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-3.25 disabled:opacity-40"
+      <button type="button" class="tg-interactive rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-3.25 disabled:opacity-40"
         :disabled="!canPrev" @click="prevPage">
         {{ t('orderList.prev') }}
       </button>
       <span class="text-3 text-[#6B7280]">{{ data.page }} / {{ data.last_page }}</span>
-      <button type="button" class="rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-3.25 disabled:opacity-40"
+      <button type="button" class="tg-interactive rounded-xl border border-[#E5E7EB] bg-white px-4 py-2 text-3.25 disabled:opacity-40"
         :disabled="!canNext" @click="nextPage">
         {{ t('orderList.next') }}
       </button>
     </div>
 
     <div
+      v-if="canShowCreateShortcut"
       class="pos-fixed right-5 top-1/2 h-12 w-12 flex flex-items-center justify-center rounded-50% border -translate-y-1/2"
       style="border-color: var(--tg-theme-section-separator-color); background: var(--tg-theme-secondary-bg-color)"
       @click="goToCreateOrder">

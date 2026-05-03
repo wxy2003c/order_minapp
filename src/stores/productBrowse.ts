@@ -10,6 +10,9 @@ export const useProductBrowseStore = defineStore('productBrowse', () => {
   const brand = ref('')
   const model = ref('')
   const year = ref('')
+  const wheelGeneration = ref('')
+  const wheelYear = ref('')
+  const wheelModification = ref('')
   /** 与产品页筛选里「风格标签」同字段 */
   const styleMood = ref('')
 
@@ -17,10 +20,24 @@ export const useProductBrowseStore = defineStore('productBrowse', () => {
     [brand.value, model.value, year.value].filter(Boolean).join(' · '),
   )
 
-  function setCar(b: string, m: string, y: string) {
+  function setCar(
+    b: string,
+    m: string,
+    y: string,
+    opts?: { wheelGeneration?: string; wheelYear?: string; wheelModification?: string },
+  ) {
     brand.value = b
     model.value = m
     year.value = y
+    wheelGeneration.value = opts?.wheelGeneration ?? ''
+    wheelYear.value = opts?.wheelYear ?? ''
+    wheelModification.value = opts?.wheelModification ?? ''
+  }
+
+  function setWheelSizeSelection(g: string, y: string, m: string) {
+    wheelGeneration.value = g
+    wheelYear.value = y
+    wheelModification.value = m
   }
 
   function setStyleMood(s: string) {
@@ -32,6 +49,9 @@ export const useProductBrowseStore = defineStore('productBrowse', () => {
     brand.value = ''
     model.value = ''
     year.value = ''
+    wheelGeneration.value = ''
+    wheelYear.value = ''
+    wheelModification.value = ''
   }
 
   function clearStyleMood() {
@@ -48,9 +68,13 @@ export const useProductBrowseStore = defineStore('productBrowse', () => {
     brand,
     model,
     year,
+    wheelGeneration,
+    wheelYear,
+    wheelModification,
     styleMood,
     carLine,
     setCar,
+    setWheelSizeSelection,
     setStyleMood,
     clearCarSelection,
     clearStyleMood,

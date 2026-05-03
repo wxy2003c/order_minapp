@@ -49,11 +49,12 @@ export const updateOrder: typeof adminApi.updateOrder =
 export const cancelOrder: typeof adminApi.cancelOrder =
   (...args) => orderApi().cancelOrder(...args)
 
+// 线上 `/orders` 读接口当前会验签失败；列表/详情本身都带目标 user_id，走用户端读接口即可覆盖代客管理场景。
 export const fetchOrdersList: typeof adminApi.fetchOrdersList =
-  (...args) => orderApi().fetchOrdersList(...args)
+  (...args) => userOrdersApi.fetchOrdersList(...args)
 
 export const fetchOrderDetail: typeof adminApi.fetchOrderDetail =
-  (...args) => orderApi().fetchOrderDetail(...args)
+  (...args) => userOrdersApi.fetchOrderDetail(...args)
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 共享接口 — 两种角色走同一端

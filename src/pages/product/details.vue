@@ -73,14 +73,14 @@ function goCustomOrder() {
 </script>
 
 <template>
-  <div class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#F7F6F2] pb-34 text-[#1F2937]">
+  <div class="h-full min-h-0 w-full overflow-x-hidden overflow-y-auto bg-[#F7F6F2] pb-34 text-[#1F2937]">
     <!-- 骨架 -->
     <template v-if="loading">
-      <div class="h-45 w-full animate-pulse bg-white/20" />
+      <div class="tg-skeleton h-45 w-full bg-white/20" />
       <section class="bg-white px-4 pt-4 pb-5">
-        <div class="mt-4 h-10 animate-pulse rounded-2xl bg-[#F3F4F6]" />
+        <div class="tg-skeleton mt-4 h-10 rounded-2xl bg-[#F3F4F6]" />
         <div class="mt-3 grid grid-cols-3 gap-3">
-          <div v-for="n in 6" :key="n" class="h-16 animate-pulse rounded-2xl bg-[#F3F4F6]" />
+          <div v-for="n in 6" :key="n" class="tg-skeleton h-16 rounded-2xl bg-[#F3F4F6]" />
         </div>
       </section>
     </template>

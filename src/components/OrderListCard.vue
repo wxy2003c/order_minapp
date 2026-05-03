@@ -22,6 +22,8 @@ const props = defineProps<{
   row: OrderListItem
   /** 列表页 `li`、个人中心 `article` 等 */
   as?: 'li' | 'article' | 'div'
+  /** 订单管理页展示客户在系统内的 customer_id；个人中心等场景默认不显示 */
+  showCustomerId?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -31,6 +33,11 @@ const emit = defineEmits<{
 const rootTag = computed(() => props.as ?? 'div')
 
 const specsText = computed(() => orderRowSpecsText(props.row))
+const customerSystemId = computed(() => {
+  const id = props.row.customer_id
+  if (id === null || id === undefined || String(id).trim() === '') return ''
+  return String(id).trim()
+})
 
 function structureLabel(row: OrderListItem): string {
   const raw = String((row.specs as Record<string, unknown> | undefined)?.['结构'] ?? '').trim()
@@ -91,7 +98,12 @@ function onClick() {
               class="h-full w-full object-cover"
               alt="">
           </div>
-          <span class="truncate text-3">{{ orderRowDisplayName(row) }}</span>
+          <span class="min-w-0 truncate text-3">{{ orderRowDisplayName(row) }}</span>
+          <span
+            v-if="showCustomerId && customerSystemId"
+            class="shrink-0 rounded-full bg-[#F3F4F6] px-2 py-0.75 text-2.5 leading-none text-[#6B7280]">
+            客户ID {{ customerSystemId }}
+          </span>
         </div>
         <time class="shrink-0 text-2.75 text-[#9CA3AF]">{{ orderRowDateText(row) }}</time>
       </div>

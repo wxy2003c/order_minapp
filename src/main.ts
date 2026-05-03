@@ -39,7 +39,7 @@ router.afterEach((to) => {
 
 ;(async () => {
   await router.isReady()
-  tryApplyTelegramStaffDeepLink(router)
+  await tryApplyTelegramStaffDeepLink(router)
   void fetchUserDetail().catch(() => {})
   app.mount('#app')
 })()

@@ -6,6 +6,9 @@ import { useRouter } from 'vue-router'
 import TgSelect from '@/components/TgSelect.vue'
 import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import StyleModelPickerDrawer from '@/components/StyleModelPickerDrawer.vue'
+import TgListSkeleton from '@/components/TgListSkeleton.vue'
+import TgLoadingState from '@/components/TgLoadingState.vue'
+import TgImage from '@/components/TgImage.vue'
 import { fetchCasesList, fetchFinishCards } from '@/api/rolesApi'
 import type { CaseItem } from '@/api/rolesApi'
 import type { FinishCardItem } from '@/api/admin/finishCards'
@@ -119,9 +122,12 @@ function removeTag(key: TagKey) {
 // ── 列表数据 ──────────────────────────────────────────────────────────────────
 const cases = ref<CaseItem[]>([])
 const loading = ref(false)
+const loadError = ref('')
 const total = ref(0)
 const page = ref(1)
 const PAGE_SIZE = 20
+
+const hasMore = computed(() => cases.value.length < total.value)
 
 async function loadCases(reset = false) {
   if (reset) {
@@ -129,6 +135,7 @@ async function loadCases(reset = false) {
     cases.value = []
   }
   loading.value = true
+  loadError.value = ''
   try {
     const res = await fetchCasesList({
       car_brand: selectedBrand.value || undefined,
@@ -144,6 +151,8 @@ async function loadCases(reset = false) {
       cases.value.push(...(res.items ?? []))
     }
     total.value = res.total ?? 0
+  } catch (e) {
+    loadError.value = e instanceof Error ? e.message : t('common.loadFailed')
   } finally {
     loading.value = false
   }
@@ -154,9 +163,17 @@ function applyAndLoad() {
 }
 
 async function loadMore() {
-  if (loading.value || cases.value.length >= total.value) return
+  if (loading.value || !hasMore.value) return
   page.value++
   await loadCases(false)
+}
+
+function handleCasesScroll(event: Event) {
+  const el = event.currentTarget as HTMLElement | null
+  if (!el || loading.value || !hasMore.value) return
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 160) {
+    void loadMore()
+  }
 }
 
 onMounted(async () => {
@@ -191,7 +208,10 @@ function specSummary(item: CaseItem): string[] {
 </script>
 
 <template>
-  <div class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#202126] pb-6 text-white">
+  <div
+    class="tg-browse-adaptive h-full min-h-0 w-full overflow-x-hidden overflow-y-auto pb-28 text-white"
+    @scroll.passive="handleCasesScroll"
+  >
     <div class="px-4 pt-4">
       <img src="@/assets/image/navLogo.png" class="h-14 w-65" alt="">
 
@@ -250,31 +270,30 @@ function specSummary(item: CaseItem): string[] {
 
     <!-- 案例列表 -->
     <div class="mt-5 flex flex-col gap-5 px-4">
-      <!-- 骨架 -->
-      <template v-if="loading && cases.length === 0">
-        <div v-for="n in 4" :key="n" class="animate-pulse">
-          <div class="h-48 w-full rounded-2xl bg-white/10" />
-          <div class="mt-3 h-4 w-40 rounded bg-white/10" />
-        </div>
-      </template>
+      <TgListSkeleton v-if="loading && cases.length === 0" tone="dark" />
+      <TgLoadingState
+        v-else-if="loadError && cases.length === 0"
+        tone="dark"
+        :title="loadError"
+        :action-label="t('common.retry')"
+        @action="applyAndLoad"
+      />
       <template v-else>
         <button
           v-for="item in cases"
           :key="item.id"
           type="button"
-          class="w-full text-left transition active:opacity-80"
+          class="tg-interactive group w-full rounded-3xl bg-white/[0.035] p-2 text-left shadow-[0_12px_30px_rgba(0,0,0,0.16)] ring-1 ring-white/8"
           @click="goDetail(item)"
         >
           <div class="relative h-48 w-full overflow-hidden rounded-2xl bg-white/5">
-            <img
-              v-if="item.cover_image"
+            <TgImage
               :src="item.cover_image"
-              class="h-full w-full object-cover"
-              alt=""
-            >
-            <div v-else class="flex h-full w-full items-center justify-center text-white/20">
-              <Icon icon="mdi:image-outline" width="48" height="48" />
-            </div>
+              :alt="item.display_title"
+              img-class="transition-transform duration-300 group-active:scale-[1.01]"
+              placeholder-class="text-white/35"
+            />
+            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-18 bg-gradient-to-t from-black/40 to-transparent" />
           </div>
           <div class="mt-3 flex items-start justify-between gap-3">
             <div class="text-4 font-700 text-[#F3F4F6]">{{ item.display_title }}</div>
@@ -288,25 +307,34 @@ function specSummary(item: CaseItem): string[] {
           </div>
         </button>
 
-        <!-- 空状态 -->
-        <div v-if="!loading && cases.length === 0" class="py-16 text-center text-3.5 text-white/40">
-          <Icon icon="mdi:folder-open-outline" width="48" height="48" class="mx-auto mb-3" />
-          <p>{{ t('common.noData') }}</p>
-        </div>
+        <TgLoadingState v-if="!loading && cases.length === 0" tone="dark" :title="t('common.noData')" />
       </template>
     </div>
 
     <!-- 加载更多 -->
-    <div v-if="cases.length > 0 && cases.length < total" class="mt-6 px-4">
+    <div v-if="cases.length > 0 && hasMore" class="mt-6 px-4">
       <button
         type="button"
-        class="w-full rounded-xl bg-white/10 py-3 text-3.5 text-white/70 active:opacity-70"
+        class="tg-interactive w-full rounded-xl bg-white/10 py-3 text-3.5 text-white/70"
         :disabled="loading"
         @click="loadMore"
       >
         {{ loading ? t('common.loading') : t('common.loadMore') }}
       </button>
     </div>
+    <TgLoadingState
+      v-else-if="cases.length > 0 && loading"
+      tone="dark"
+      compact
+      spinning
+      :title="t('common.loading')"
+    />
+    <TgLoadingState
+      v-else-if="cases.length > 0 && !hasMore"
+      tone="dark"
+      compact
+      :title="t('common.noMore')"
+    />
 
     <!-- 汽车品牌/车型 选择抽屉（只展示品牌 + 车型） -->
     <NDrawer

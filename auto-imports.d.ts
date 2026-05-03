@@ -157,6 +157,7 @@ declare global {
   const useRoute: typeof import('vue-router').useRoute
   const useRouter: typeof import('vue-router').useRouter
   const useSlots: typeof import('vue').useSlots
+  const useTelegramNativeOrderControls: typeof import('./src/composables/useTelegramNativeOrderControls').useTelegramNativeOrderControls
   const useTelegramTheme: typeof import('./src/composables/useTelegramTheme').useTelegramTheme
   const useTemplateRef: typeof import('vue').useTemplateRef
   const validateVehicleRequired: typeof import('./src/utils/customOrderValidation').validateVehicleRequired
@@ -340,6 +341,7 @@ declare module 'vue' {
     readonly useRoute: UnwrapRef<typeof import('vue-router')['useRoute']>
     readonly useRouter: UnwrapRef<typeof import('vue-router')['useRouter']>
     readonly useSlots: UnwrapRef<typeof import('vue')['useSlots']>
+    readonly useTelegramNativeOrderControls: UnwrapRef<typeof import('./src/composables/useTelegramNativeOrderControls')['useTelegramNativeOrderControls']>
     readonly useTelegramTheme: UnwrapRef<typeof import('./src/composables/useTelegramTheme')['useTelegramTheme']>
     readonly useTemplateRef: UnwrapRef<typeof import('vue')['useTemplateRef']>
     readonly validateVehicleRequired: UnwrapRef<typeof import('./src/utils/customOrderValidation')['validateVehicleRequired']>

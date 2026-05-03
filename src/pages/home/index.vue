@@ -4,11 +4,12 @@ import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { NDrawer } from 'naive-ui'
 import TgButton from '@/components/TgButton.vue'
+import TgImage from '@/components/TgImage.vue'
 import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import { STYLE_MOOD_TAGS } from '@/constants/styleMoodTags'
 import { useProductBrowseStore } from '@/stores/productBrowse'
 import { t } from '@/i18n/uiI18n'
-import { fetchHomePage } from '@/api/rolesApi'
+import { fetchHomePage, getCurrentUserRole } from '@/api/rolesApi'
 import type { HomePageData } from '@/api/rolesApi'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
 
@@ -21,6 +22,7 @@ const homeData = ref<HomePageData>({
   customer_cases: [],
 })
 const loading = ref(true)
+const canShowQuickOrder = computed(() => getCurrentUserRole() === 'admin')
 
 onMounted(async () => {
   try {
@@ -34,6 +36,9 @@ onMounted(async () => {
 const carBrand = ref('')
 const carModel = ref('')
 const carYear = ref('')
+const carWheelGeneration = ref('')
+const carWheelYear = ref('')
+const carWheelModification = ref('')
 
 function selectStyleTag(tag: string) {
   browse.setStyleMood(tag)
@@ -50,7 +55,11 @@ function toggleCarPopover() { carPopoverOpen.value = !carPopoverOpen.value }
 function closeCarPopover() { carPopoverOpen.value = false }
 
 function goToProduct() {
-  browse.setCar(carBrand.value, carModel.value, carYear.value)
+  browse.setCar(carBrand.value, carModel.value, carYear.value, {
+    wheelGeneration: carWheelGeneration.value,
+    wheelYear: carWheelYear.value,
+    wheelModification: carWheelModification.value,
+  })
   router.push({ path: '/product' })
 }
 
@@ -60,7 +69,7 @@ function img(path: string | null | undefined): string | null {
 </script>
 
 <template>
-  <div class="pos-relative min-h-full w-full overflow-hidden bg-[#202126] p-4">
+  <div class="tg-browse-adaptive pos-relative h-full min-h-0 w-full overflow-x-hidden overflow-y-auto p-4 pb-28">
     <img src="@/assets/image/navLogo.png" class="h-14 w-65" alt="">
 
     <!-- 轮播图 random_style_models -->
@@ -70,7 +79,7 @@ function img(path: string | null | undefined): string | null {
     <div class="mt-3 flex-items-center flex gap-2">
       <div class="flex-1">
         <button type="button"
-          class="flex h-full flex-items-center min-h-12 w-full items-center justify-between gap-2 border border-white/20 rounded-2xl bg-white/5 px-4 py-2.5 text-left text-3.5 text-white/95 outline-none transition active:bg-white/10"
+          class="tg-interactive flex h-full flex-items-center min-h-12 w-full items-center justify-between gap-2 border border-white/20 rounded-2xl bg-white/5 px-4 py-2.5 text-left text-3.5 text-white/95 outline-none active:bg-white/10"
           @click.stop="toggleCarPopover">
           <div class="min-w-0 flex-1">
             <div class="text-3 text-white/50">{{ t('home.selectCar') }}</div>
@@ -94,7 +103,8 @@ function img(path: string | null | undefined): string | null {
         class="tg-light-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[20px] border-t shadow-[var(--app-shadow)] outline-none"
         style="border-color: var(--tg-theme-section-separator-color)">
         <CarSelectionPanel class="min-h-0 flex-1" v-model:brand="carBrand" v-model:model="carModel"
-          v-model:year="carYear" @complete="closeCarPopover" />
+          v-model:year="carYear" v-model:wheel-generation="carWheelGeneration" v-model:wheel-year="carWheelYear"
+          v-model:wheel-modification="carWheelModification" @complete="closeCarPopover" />
       </div>
     </NDrawer>
 
@@ -102,7 +112,7 @@ function img(path: string | null | undefined): string | null {
     <div
       class="mt-3 flex w-full flex-nowrap items-stretch gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <button v-for="tag in STYLE_MOOD_TAGS" :key="tag" type="button"
-        class="shrink-0 rounded-2xl border px-3.5 py-2.5 text-3.5 font-600 leading-none transition border-[#ECECEC] bg-white text-[#4F5869]"
+        class="tg-interactive shrink-0 rounded-2xl border px-3.5 py-2.5 text-3.5 font-600 leading-none border-[#ECECEC] bg-white text-[#4F5869]"
         @click="selectStyleTag(tag)">
         {{ tag }}
       </button>
@@ -120,15 +130,14 @@ function img(path: string | null | undefined): string | null {
       <!-- 骨架屏 -->
       <div v-if="loading" class="grid grid-cols-2 gap-3">
         <div v-for="i in 4" :key="i" class="w-full">
-          <div class="h-21 w-full rounded-lg bg-white/10 animate-pulse" />
-          <div class="mt-1.5 h-3 w-16 rounded bg-white/10 animate-pulse" />
+          <div class="tg-skeleton h-21 w-full rounded-lg bg-white/10" />
+          <div class="tg-skeleton mt-1.5 h-3 w-16 rounded bg-white/10" />
         </div>
       </div>
       <div v-else class="grid grid-cols-2 gap-3">
-        <div v-for="item in homeData.popular_style_models" :key="item.id" class="w-full">
-          <div class="relative h-21 w-full overflow-hidden rounded-lg bg-white/5">
-            <img v-if="img(item.effect_image)" :src="img(item.effect_image)!" :alt="item.style_name"
-              class="h-full w-full object-cover" />
+        <div v-for="item in homeData.popular_style_models" :key="item.id" class="tg-interactive w-full rounded-2xl bg-white/[0.035] p-1.5 ring-1 ring-white/8">
+          <div class="relative h-21 w-full overflow-hidden rounded-xl bg-white/5">
+            <TgImage :src="img(item.effect_image)" :alt="item.style_name" placeholder-class="text-white/35" />
           </div>
           <div class="mt-1.5 text-3 color-[#BCCAE4]">{{ item.style_no }}</div>
           <div class="text-2.75 text-white/50">{{ item.style_name }}</div>
@@ -147,15 +156,15 @@ function img(path: string | null | undefined): string | null {
       </div>
       <div v-if="loading" class="flex flex-col gap-3">
         <div v-for="i in 2" :key="i">
-          <div class="h-42 w-full rounded-xl bg-white/10 animate-pulse" />
-          <div class="mt-2 h-4 w-32 rounded bg-white/10 animate-pulse" />
+          <div class="tg-skeleton h-42 w-full rounded-xl bg-white/10" />
+          <div class="tg-skeleton mt-2 h-4 w-32 rounded bg-white/10" />
         </div>
       </div>
       <div v-else class="flex flex-col gap-5">
-        <div v-for="c in homeData.customer_cases" :key="c.id">
-          <div class="relative h-42 w-full overflow-hidden rounded-xl bg-white/5">
-            <img v-if="img(c.cover_image)" :src="img(c.cover_image)!" :alt="c.display_title"
-              class="h-full w-full object-cover" />
+        <div v-for="c in homeData.customer_cases" :key="c.id" class="tg-interactive rounded-3xl bg-white/[0.035] p-2 ring-1 ring-white/8">
+          <div class="relative h-42 w-full overflow-hidden rounded-2xl bg-white/5">
+            <TgImage :src="img(c.cover_image)" :alt="c.display_title" placeholder-class="text-white/35" />
+            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/35 to-transparent" />
           </div>
           <div class="mt-2 text-4 font-600 color-[#BCCAE4]">{{ c.display_title }}</div>
           <div class="mt-1 text-3 text-white/50">
@@ -167,6 +176,7 @@ function img(path: string | null | undefined): string | null {
 
     <!-- 快捷下单按钮 -->
     <div
+      v-if="canShowQuickOrder"
       class="pos-fixed right-5 top-1/2 h-12 w-12 flex flex-items-center justify-center rounded-50% border -translate-y-1/2"
       style="border-color: var(--tg-theme-section-separator-color); background: var(--tg-theme-secondary-bg-color)"
       @click="router.push('/CustomOrder')">

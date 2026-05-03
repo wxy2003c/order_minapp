@@ -206,3 +206,216 @@ select {
     color-mix(in srgb, var(--tg-theme-bg-color) 55%, var(--tg-theme-text-color));
   backdrop-filter: blur(8px);
 }
+
+/**
+ * Telegram Mini App 体验层：轻反馈、短时长、主题自适应。
+ * 避免页面级大转场，只在网络等待和按压态中给出低干扰提示。
+ */
+.tg-interactive {
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.tg-interactive:active {
+  transform: scale(0.985);
+  opacity: 0.88;
+}
+
+.tg-skeleton {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--tg-theme-hint-color, #9ca3af) 12%, transparent),
+      color-mix(in srgb, var(--tg-theme-hint-color, #9ca3af) 22%, transparent),
+      color-mix(in srgb, var(--tg-theme-hint-color, #9ca3af) 12%, transparent)
+    );
+  background-size: 220% 100%;
+  animation: tg-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.tg-list-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.tg-list-skeleton--dark .tg-skeleton {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.07),
+      rgba(255, 255, 255, 0.14),
+      rgba(255, 255, 255, 0.07)
+    );
+  background-size: 220% 100%;
+}
+
+.tg-list-skeleton--light .tg-skeleton {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(17, 24, 39, 0.06),
+      rgba(17, 24, 39, 0.11),
+      rgba(17, 24, 39, 0.06)
+    );
+  background-size: 220% 100%;
+}
+
+.tg-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 8rem;
+  padding: 1.75rem 1rem;
+  text-align: center;
+}
+
+.tg-state--compact {
+  min-height: auto;
+  padding: 0.75rem 1rem;
+}
+
+.tg-state--light {
+  color: var(--tg-theme-hint-color, #707579);
+}
+
+.tg-state--dark {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.tg-state-title {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: currentColor;
+}
+
+.tg-state-desc {
+  max-width: 18rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  opacity: 0.82;
+}
+
+.tg-state-action {
+  margin-top: 0.25rem;
+  min-height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--app-accent) 42%, transparent);
+  padding: 0 1rem;
+  color: var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 9%, transparent);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    background-color 160ms ease;
+}
+
+.tg-state-action:active {
+  transform: scale(0.985);
+  opacity: 0.86;
+}
+
+.tg-state-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.38;
+}
+
+.tg-spinner {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  animation: tg-spin 760ms linear infinite;
+}
+
+.tg-fade-list > * {
+  animation: tg-content-in 180ms ease both;
+}
+
+@keyframes tg-skeleton-shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+@keyframes tg-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes tg-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tg-interactive,
+  .tg-state-action {
+    transition: none;
+  }
+
+  .tg-interactive:active,
+  .tg-state-action:active {
+    transform: none;
+  }
+
+  .tg-skeleton,
+  .tg-spinner,
+  .tg-fade-list > * {
+    animation: none;
+  }
+}
+
+/**
+ * 普通客户浏览页：暗色主题保留视觉冲击，Telegram 明亮模式下切到浅底，
+ * 避免用户明明使用 light mode 却首屏仍是整页黑色。
+ */
+.tg-browse-adaptive {
+  background: #202126;
+  color: #ffffff;
+}
+
+:root[data-color-scheme='light'] .tg-browse-adaptive {
+  background: #202126 !important;
+  color: #ffffff !important;
+}
+
+:root[data-color-scheme='light'] .tg-browse-adaptive :where(.text-white, .text-\[\#F3F4F6\]) {
+  color: #ffffff !important;
+}
+
+:root[data-color-scheme='light'] .tg-browse-adaptive :where(.text-white\/95, .text-white\/90, .text-white\/70, .text-white\/60, .text-white\/55, .text-white\/50, .text-white\/40, .color-\[\#BCCAE4\]) {
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+:root[data-color-scheme='light'] .tg-browse-adaptive :where(.bg-white\/5, .bg-white\/\[0\.035\], .bg-white\/10) {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+:root[data-color-scheme='light'] .tg-browse-adaptive :where(.border-white\/20, .border-\[\#BBBBBB\], .ring-white\/8) {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  --un-ring-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+:root[data-color-scheme='light'] .tg-browse-adaptive :where(.shadow-\[0_12px_30px_rgba\(0\,0\,0\,0\.16\)\]) {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16) !important;
+}

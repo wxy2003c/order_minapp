@@ -12,6 +12,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { t, uiLocale } from '@/i18n/uiI18n'
 import { useCustomOrderStore } from '@/stores/customOrder'
+import { useProductBrowseStore } from '@/stores/productBrowse'
 import {
   buildCreateOrderFromCustomOrder,
   parseWheelLibraryStructureSubtypeOffroad,
@@ -117,6 +118,7 @@ export function useCustomOrderSetup(
   const route = useRoute()
   const router = useRouter()
   const store = useCustomOrderStore()
+  const browse = useProductBrowseStore()
 
   const editOrderId = computed(() => {
     const q = route.query as Record<string, string | string[] | null | undefined>
@@ -219,6 +221,51 @@ export function useCustomOrderSetup(
   function goToAmount() {
     store.activeTab = 'amount'
     scrollToPageRoot(pageRoot)
+  }
+
+  async function applyBrowseVehiclePrefill(): Promise<boolean> {
+    const b = String(browse.brand ?? '').trim()
+    const m = String(browse.model ?? '').trim()
+    if (!b && !m) return false
+
+    const relaxed = true
+    if (store.wheelSizeEnabled) {
+      if (!store.wsBrandOptions.length) await store.loadWheelMakes()
+      const bVal = findSelectValue(store.wsBrandOptions, b, relaxed)
+      if (bVal) {
+        await store.onWheelBrandChange(bVal)
+        const mVal = findSelectValue(store.wsModelOptions, m, relaxed)
+        if (mVal) {
+          await store.onWheelModelChange(mVal)
+          const g = String(browse.wheelGeneration ?? '').trim()
+          if (g) {
+            const gVal = findSelectValue(store.wsGenOptions, g, relaxed)
+            if (gVal) {
+              await store.onWheelGenerationChange(gVal)
+              const y = String(browse.wheelYear ?? '').trim()
+              if (y) {
+                const yVal = findSelectValue(store.wsYearOptions, y, relaxed)
+                if (yVal) {
+                  await store.onWheelYearChange(yVal)
+                  const mod = String(browse.wheelModification ?? '').trim()
+                  if (mod) {
+                    const modVal = findSelectValue(store.wsModOptions, mod, relaxed)
+                    if (modVal) store.onWheelModificationChange(modVal)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      return Boolean(bVal)
+    }
+
+    const bVal = findSelectValue(store.staticBrandOptions, b, relaxed)
+    if (bVal) store.vehicleForm.brand = bVal
+    const mVal = findSelectValue(store.staticModelOptions, m, relaxed)
+    if (mVal) store.vehicleForm.model = mVal
+    return Boolean(bVal || mVal)
   }
 
   const tabOrder: OrderTab[] = ['vehicle', 'creative', 'address', 'amount']
@@ -431,6 +478,7 @@ export function useCustomOrderSetup(
         store.orderEditLoading = true
         store.orderEditError = ''
       }
+      let usedBrowseVehicle = false
       try {
         if (store.wheelSizeEnabled) await store.loadWheelMakes()
         await store.loadFinishCards()
@@ -438,6 +486,7 @@ export function useCustomOrderSetup(
           await hydrateFromOrderId(oid)
         }
         else {
+          usedBrowseVehicle = await applyBrowseVehiclePrefill()
           // 从产品详情页跳转时，按 preset_style_id 直接拉详情预填轮毂造型
           const presetStyleId = String(route.query.preset_style_id ?? '').trim()
           const qStructure = String(route.query.structure_type ?? '').trim()
@@ -453,7 +502,7 @@ export function useCustomOrderSetup(
             catch { /* 预填失败静默忽略 */ }
           }
         }
-        if (!oid && !skipVehiclePrefill && !String(route.query.preset_style_id ?? '').trim()) {
+        if (!oid && !skipVehiclePrefill && !String(route.query.preset_style_id ?? '').trim() && !usedBrowseVehicle) {
           const cached = loadMyVehicleSelection()
           if (cached && (cached.brand || cached.model || cached.year))
             store.myVehiclePrefillModalOpen = true

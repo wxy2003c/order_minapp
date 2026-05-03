@@ -43,6 +43,35 @@ export interface TelegramBackButton {
   offClick?(callback: () => void): void
 }
 
+export interface TelegramBottomButton {
+  isVisible?: boolean
+  isActive?: boolean
+  isProgressVisible?: boolean
+  text?: string
+  show(): void
+  hide(): void
+  enable?(): void
+  disable?(): void
+  showProgress?(leaveActive?: boolean): void
+  hideProgress?(): void
+  setText?(text: string): void
+  setParams?(params: {
+    text?: string
+    color?: string
+    text_color?: string
+    is_active?: boolean
+    is_visible?: boolean
+  }): void
+  onClick(callback: () => void): void
+  offClick?(callback: () => void): void
+}
+
+export interface TelegramHapticFeedback {
+  impactOccurred?(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void
+  notificationOccurred?(type: 'error' | 'success' | 'warning'): void
+  selectionChanged?(): void
+}
+
 export interface TelegramWebApp {
   ready(): void
   /** 展开到最大高度（不隐藏顶栏） */
@@ -61,8 +90,18 @@ export interface TelegramWebApp {
   initDataUnsafe?: TelegramInitDataUnsafe
   colorScheme?: 'light' | 'dark'
   themeParams?: TelegramThemeParams
+  setHeaderColor?(color: string): void
+  setBackgroundColor?(color: string): void
+  setBottomBarColor?(color: string): void
   /** 原生左上角返回，与站内 Router 的返回按钮是两套 UI */
   BackButton?: TelegramBackButton
+  /** Telegram 底部主按钮；适合提交/下一步等主动作 */
+  MainButton?: TelegramBottomButton
+  /** Telegram 底部次按钮；适合上一步/取消等次动作，旧客户端可能不存在 */
+  SecondaryButton?: TelegramBottomButton
+  HapticFeedback?: TelegramHapticFeedback
+  enableClosingConfirmation?(): void
+  disableClosingConfirmation?(): void
   onEvent?(eventType: 'themeChanged' | 'close' | 'fullscreen_changed' | 'fullscreen_failed', callback: () => void): void
   offEvent?(eventType: 'themeChanged' | 'close' | 'fullscreen_changed' | 'fullscreen_failed', callback: () => void): void
 

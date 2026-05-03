@@ -85,6 +85,31 @@ const modOptions = ref<WheelSizeOption[]>([])
 const generationsCache = ref<WheelSizeGenerationRow[]>([])
 const genUiOptions = ref<WheelSizeOption[]>([])
 
+const selectedPath = computed(() =>
+  [makeLabel.value, modelLabel.value, genLabel.value, yearLabel.value, modLabel.value]
+    .slice(0, effectiveStepCount.value)
+    .filter(Boolean),
+)
+
+const activeStepTitle = computed(() => apiSteps.value[apiActiveStep.value]?.title ?? '')
+
+const activeStepHint = computed(() => {
+  const i = apiActiveStep.value
+  if (i === 0) return t('carSelection.hintBrand')
+  if (i === 1) return t('carSelection.hintModel')
+  if (i === 2) return t('carSelection.hintGeneration')
+  if (i === 3) return t('carSelection.hintYear')
+  return t('carSelection.hintModification')
+})
+
+function selectedLabelForStep(idx: number): string {
+  if (idx === 0) return makeLabel.value
+  if (idx === 1) return modelLabel.value
+  if (idx === 2) return genLabel.value
+  if (idx === 3) return yearLabel.value
+  return modLabel.value
+}
+
 function generationRowsToOptions(rows: WheelSizeGenerationRow[]): WheelSizeOption[] {
   return rows.map(g => ({
     id: g.slug,
@@ -422,10 +447,6 @@ function isApiOptionSelected(opt: WheelSizeOption) {
   return modId.value === id
 }
 
-function apiRightTitle() {
-  return apiSteps.value[apiActiveStep.value]?.title ?? ''
-}
-
 function onPickFromRight(opt: WheelSizeOption) {
   const i = apiActiveStep.value
   if (i === 0) void onPickMake(opt)
@@ -678,37 +699,66 @@ watch(
 </script>
 
 <template>
-  <div
-    class="tg-light-surface grid h-full min-h-0 grid-cols-[minmax(0,7.75rem)_1fr] overflow-hidden">
-    <div class="flex min-h-0 flex-col border-r border-[color:var(--tg-theme-section-separator-color)]">
-      <div class="shrink-0 border-b border-[color:var(--tg-theme-section-separator-color)] px-3 py-3 text-3.5 font-600 text-[color:var(--tg-theme-hint-color)]">
-        {{ t('carSelection.category') }}
+  <div class="tg-light-surface flex h-full min-h-0 flex-col overflow-hidden">
+    <div class="shrink-0 border-b border-[color:var(--tg-theme-section-separator-color)] px-4 pb-3 pt-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="text-4 font-700 text-[color:var(--tg-theme-text-color)]">
+            {{ t('carSelection.title') }}
+          </div>
+          <div class="mt-1 text-3 leading-relaxed text-[color:var(--tg-theme-hint-color)]">
+            {{ activeStepHint }}
+          </div>
+        </div>
+        <div class="shrink-0 rounded-full bg-[color:var(--app-accent-soft)] px-3 py-1 text-3 font-700 text-[color:var(--app-accent)]">
+          {{ apiActiveStep + 1 }} / {{ effectiveStepCount }}
+        </div>
       </div>
-      <div class="min-h-0 flex-1 overflow-y-auto py-2">
-        <button v-for="(step, idx) in apiSteps" :key="step.key" type="button" :disabled="!apiStepUnlocked(idx)"
-          class="mx-2 mb-1 flex w-[calc(100%-1rem)] flex-col items-start rounded-xl px-2 py-2 text-left text-3 transition disabled:cursor-not-allowed disabled:opacity-40"
-          :class="apiActiveStep === idx ? '!bg-[color:var(--app-accent)] !text-[color:var(--app-accent-text)]' : 'text-[color:var(--tg-theme-text-color)] hover:bg-[color-mix(in_srgb,var(--tg-theme-section-separator-color)_35%,transparent)]'"
-          @click="onApiStepClick(idx)">
-          <span class="font-600">{{ step.title }}</span>
-          <span v-if="idx === 0 && makeLabel" class="mt-0.5 max-w-full truncate text-2.75 opacity-80">{{ makeLabel
-            }}</span>
-          <span v-else-if="idx === 1 && modelLabel" class="mt-0.5 max-w-full truncate text-2.75 opacity-80">{{
-            modelLabel }}</span>
-          <span v-else-if="idx === 2 && genLabel" class="mt-0.5 max-w-full truncate text-2.75 opacity-80">{{ genLabel
-            }}</span>
-          <span v-else-if="idx === 3 && yearLabel" class="mt-0.5 max-w-full truncate text-2.75 opacity-80">{{ yearLabel
-            }}</span>
-          <span v-else-if="idx === 4 && modLabel" class="mt-0.5 max-w-full truncate text-2.75 opacity-80">{{ modLabel
-            }}</span>
+
+      <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <button
+          v-for="(step, idx) in apiSteps"
+          :key="step.key"
+          type="button"
+          :disabled="!apiStepUnlocked(idx)"
+          class="tg-interactive flex min-w-[92px] shrink-0 flex-col rounded-2xl border px-3 py-2 text-left disabled:cursor-not-allowed disabled:opacity-45"
+          :class="apiActiveStep === idx
+            ? 'border-[color:var(--app-accent)] bg-[color:var(--app-accent)] text-[color:var(--app-accent-text)]'
+            : 'border-[color:var(--tg-theme-section-separator-color)] bg-[color:var(--tg-theme-secondary-bg-color)] text-[color:var(--tg-theme-text-color)]'"
+          @click="onApiStepClick(idx)"
+        >
+          <span class="text-2.75 opacity-75">{{ idx + 1 }}</span>
+          <span class="mt-0.5 text-3 font-700">{{ step.title }}</span>
+          <span class="mt-0.5 max-w-full truncate text-2.75 opacity-75">
+            {{ selectedLabelForStep(idx) || t('carSelection.pending') }}
+          </span>
         </button>
+      </div>
+
+      <div
+        v-if="selectedPath.length"
+        class="mt-3 flex flex-wrap gap-1.5 text-2.75 text-[color:var(--tg-theme-hint-color)]"
+      >
+        <span
+          v-for="(item, idx) in selectedPath"
+          :key="`${idx}-${item}`"
+          class="max-w-full rounded-full bg-[color-mix(in_srgb,var(--tg-theme-section-separator-color)_35%,transparent)] px-2 py-1"
+        >
+          {{ item }}
+        </span>
       </div>
     </div>
 
-    <div class="min-h-0 min-w-0 flex flex-col">
-      <div class="shrink-0 border-b border-[color:var(--tg-theme-section-separator-color)] px-4 py-3 text-3.5 font-600 text-[color:var(--tg-theme-hint-color)]">
-        {{ apiRightTitle() }}
+    <div class="min-h-0 min-w-0 flex flex-1 flex-col">
+      <div class="shrink-0 border-b border-[color:var(--tg-theme-section-separator-color)] bg-[color-mix(in_srgb,var(--tg-theme-secondary-bg-color)_94%,var(--tg-theme-text-color))] px-4 py-3">
+        <div class="text-3.5 font-700 text-[color:var(--tg-theme-text-color)]">
+          {{ t('carSelection.pickCurrent').replace('{step}', activeStepTitle) }}
+        </div>
+        <div class="mt-0.5 text-2.75 text-[color:var(--tg-theme-hint-color)]">
+          {{ t('carSelection.autoNext') }}
+        </div>
       </div>
-      <div class="min-h-0 flex-1 overflow-y-auto py-2">
+      <div class="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         <div v-if="!useApi" class="px-4 py-8 text-center text-3.5 leading-relaxed text-[color:var(--tg-theme-hint-color)]">
           {{ t('carSelection.needWheelSizeEnv') }}
           <code class="rounded bg-[color-mix(in_srgb,var(--tg-theme-section-separator-color)_35%,transparent)] px-1 py-0.5 text-3 text-[color:var(--tg-theme-text-color)]">VITE_WHEEL_SIZE_API_KEY</code>
@@ -725,10 +775,16 @@ watch(
           <template v-else>
             <button v-for="opt in apiRightOptions" :key="`${apiActiveStep}-${opt.id}`" type="button"
               :disabled="!canPickCurrentStep"
-              class="mx-2 mb-1 flex w-[calc(100%-1rem)] items-center rounded-xl p-1.5 text-left text-3 transition disabled:cursor-not-allowed disabled:opacity-40"
-              :class="isApiOptionSelected(opt) ? '!bg-[color:var(--app-accent)] !text-[color:var(--app-accent-text)]' : 'text-[color:var(--tg-theme-text-color)] hover:bg-[color-mix(in_srgb,var(--tg-theme-section-separator-color)_35%,transparent)]'"
+              class="tg-interactive mb-1.5 flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left text-3.25 disabled:cursor-not-allowed disabled:opacity-40"
+              :class="isApiOptionSelected(opt) ? 'border-[color:var(--app-accent)] bg-[color:var(--app-accent-soft)] text-[color:var(--tg-theme-text-color)]' : 'border-[color:var(--tg-theme-section-separator-color)] bg-[color:var(--tg-theme-secondary-bg-color)] text-[color:var(--tg-theme-text-color)]'"
               @click="onPickFromRight(opt)">
               <span class="line-clamp-2 text-3">{{ opt.label }}</span>
+              <span
+                v-if="isApiOptionSelected(opt)"
+                class="shrink-0 rounded-full bg-[color:var(--app-accent)] px-2 py-0.5 text-2.5 font-700 text-[color:var(--app-accent-text)]"
+              >
+                {{ t('carSelection.selected') }}
+              </span>
             </button>
             <div v-if="!apiRightOptions.length && !rightPanelLoading"
               class="px-4 py-8 text-center text-3.5 text-[color:var(--tg-theme-hint-color)]">

@@ -351,7 +351,7 @@ function commitStaffDeepLinkAndLanding(
   displayName: string | undefined,
   replaceTo: { path: string; query?: Record<string, string> },
   requiresStaffAccess: boolean,
-) {
+): Promise<void> {
   const store = useStaffDeeplinkStore()
   store.setStaffContext(
     {
@@ -362,7 +362,7 @@ function commitStaffDeepLinkAndLanding(
     { fromTelegramStartParam: true, requiresStaffAccess },
   )
   markDeepLinkNavigated()
-  void router.replace(replaceTo).then(() => {
+  return router.replace(replaceTo).then(() => {
     store.setLandingRoute(router.currentRoute.value.fullPath)
   })
 }
@@ -382,15 +382,15 @@ function hasStaffDeepLinkToken(start: string): boolean {
   return false
 }
 
-function applyManageDeepLink(router: Router, uid: string, customerTgId: string) {
-  commitStaffDeepLinkAndLanding(router, uid, customerTgId, undefined, { path: '/OrderList' }, true)
+function applyManageDeepLink(router: Router, uid: string, customerTgId: string): Promise<void> {
+  return commitStaffDeepLinkAndLanding(router, uid, customerTgId, undefined, { path: '/OrderList' }, true)
 }
 
-function applyCreateDeepLink(router: Router, customerTgId: string, displayName?: string) {
+function applyCreateDeepLink(router: Router, customerTgId: string, displayName?: string): Promise<void> {
   const selfId = getTelegramUserId().trim()
   const requiresStaffAccess = Boolean(customerTgId && customerTgId !== selfId)
   // uid = 客户 telegram_id；用户自己打开时等同本人，管理员代客时要求 staff 权限。
-  commitStaffDeepLinkAndLanding(router, '', customerTgId, displayName, { path: '/CustomOrder' }, requiresStaffAccess)
+  return commitStaffDeepLinkAndLanding(router, '', customerTgId, displayName, { path: '/CustomOrder' }, requiresStaffAccess)
 }
 
 const DEEPLINK_NAVIGATED_KEY = 'wl_deeplink_navigated'
@@ -411,7 +411,7 @@ function hasDeepLinkNavigatedThisSession(): boolean {
  * - `create` → `/CustomOrder`（无返回键；`telegram_id`=uid；`user_id`=SDK）
  * - `order` → `/CustomOrder`
  */
-export function tryApplyTelegramStaffDeepLink(router: Router): void {
+export async function tryApplyTelegramStaffDeepLink(router: Router): Promise<void> {
   if (import.meta.env.DEV) {
     logTelegramLinkParams('tryApplyTelegramStaffDeepLink', { routeQuery: { ...router.currentRoute.value.query } })
   }
@@ -422,7 +422,7 @@ export function tryApplyTelegramStaffDeepLink(router: Router): void {
     // Telegram hash 参数（tgWebAppData 等）会导致 hash 路由无法匹配任何页面，
     // 此时主动跳到首页，避免空白
     if (!router.currentRoute.value.name) {
-      void router.replace('/')
+      await router.replace('/')
     }
     return
   }
@@ -433,15 +433,15 @@ export function tryApplyTelegramStaffDeepLink(router: Router): void {
 
   // — start_param 路径 —
   const manage = parseManageStaffToken(start)
-  if (manage) { applyManageDeepLink(router, manage.platformUid, manage.telegramCustomerId); return }
+  if (manage) { await applyManageDeepLink(router, manage.platformUid, manage.telegramCustomerId); return }
 
   const createStaff = parseCreateStaffToken(start)
-  if (createStaff) { applyCreateDeepLink(router, createStaff.uid, createStaff.displayName || undefined); return }
+  if (createStaff) { await applyCreateDeepLink(router, createStaff.uid, createStaff.displayName || undefined); return }
 
   const orderStart = parseOrderStartParam(start)
   if (orderStart) {
     const selfId = getTelegramUserId().trim()
-    commitStaffDeepLinkAndLanding(
+    await commitStaffDeepLinkAndLanding(
       router,
       orderStart.uid,
       selfId,
@@ -460,12 +460,12 @@ export function tryApplyTelegramStaffDeepLink(router: Router): void {
 
   if (manageQuery) {
     const mq = parseManageStaffToken(manageQuery)
-    if (mq) { applyManageDeepLink(router, mq.platformUid, mq.telegramCustomerId); return }
+    if (mq) { await applyManageDeepLink(router, mq.platformUid, mq.telegramCustomerId); return }
   }
   if (createQuery) {
     const cqManage = parseManageStaffToken(createQuery)
-    if (cqManage) { applyManageDeepLink(router, cqManage.platformUid, cqManage.telegramCustomerId); return }
+    if (cqManage) { await applyManageDeepLink(router, cqManage.platformUid, cqManage.telegramCustomerId); return }
     const cqCreate = parseCreateStaffToken(createQuery)
-    if (cqCreate) applyCreateDeepLink(router, cqCreate.uid, cqCreate.displayName || undefined)
+    if (cqCreate) await applyCreateDeepLink(router, cqCreate.uid, cqCreate.displayName || undefined)
   }
 }

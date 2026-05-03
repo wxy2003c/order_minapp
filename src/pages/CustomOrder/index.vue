@@ -8,6 +8,8 @@ import NoPermissionModal from "@/components/NoPermissionModal.vue";
 import { useDeepLinkAuthGuard } from "@/composables/useDeepLinkAuthGuard";
 import StyleModelPickerDrawer from "@/components/StyleModelPickerDrawer.vue";
 import TgButton from "@/components/TgButton.vue";
+import TgLoadingState from "@/components/TgLoadingState.vue";
+import { useTelegramNativeOrderControls } from "@/composables/useTelegramNativeOrderControls";
 import AmountTab from "./tabs/AmountTab.vue";
 import AddressTab from "./tabs/AddressTab.vue";
 import CreativeTab from "./tabs/CreativeTab.vue";
@@ -19,21 +21,19 @@ const isAdminRole = computed(() => getCurrentUserRole() === 'admin')
 const { noPermission, goHome, guardCheck } = useDeepLinkAuthGuard()
 const pageRoot = ref<HTMLElement | null>(null);
 const o: CustomOrderPageInstance = useCustomOrderSetup(pageRoot, guardCheck);
+const { useNativeOrderFooter } = useTelegramNativeOrderControls(o, isAdminRole)
 </script>
 
 <template>
-  <div ref="pageRoot" class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#FAFAFA] pb-32 text-[#1F2937] pos-relative">
+  <div ref="pageRoot" class="h-full min-h-0 w-full overflow-x-hidden overflow-y-auto bg-[#FAFAFA] pb-32 text-[#1F2937] pos-relative">
     <!-- 带订单回填时整段接口较慢：全屏遮罩，含 Wheel-Size / 色卡 / 详情 / 造型列表 -->
     <Teleport to="body">
       <div
         v-if="o.orderEditLoading"
-        class="fixed inset-0 z-[220] flex flex-col items-center justify-center gap-4 bg-[#FAFAFA]/90 backdrop-blur-[3px]"
+        class="fixed inset-0 z-[220] flex items-center justify-center bg-[#FAFAFA]/90 backdrop-blur-[3px]"
         aria-busy="true"
         aria-live="polite">
-        <div
-          class="h-11 w-11 animate-spin rounded-full border-2 border-[#E5E7EB] border-t-[#4478C8]"
-          role="presentation" />
-        <span class="text-3.75 text-[#6B7280]">{{ t('common.loading') }}</span>
+        <TgLoadingState tone="light" spinning :title="t('common.loading')" />
       </div>
     </Teleport>
 
@@ -154,6 +154,7 @@ const o: CustomOrderPageInstance = useCustomOrderSetup(pageRoot, guardCheck);
       @confirm="o.onStyleModelConfirm" />
 
     <div
+      v-if="!useNativeOrderFooter"
       class="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 border-t border-[#ECECEC] bg-white px-4 py-4">
       <div v-if="o.activeTab === 'vehicle'">
         <TgButton block @click="o.goNextFromVehicle">

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRoute, useRouter } from 'vue-router'
 import Swiper from '@/components/Swiper.vue'
+import TgLoadingState from '@/components/TgLoadingState.vue'
 import { fetchCaseDetail, fetchFinishCards } from '@/api/rolesApi'
 import type { CaseDetailData, CaseWheelAxisDetail } from '@/api/rolesApi'
 import type { FinishCardItem } from '@/api/admin/finishCards'
@@ -133,17 +134,17 @@ const subtitleLine = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-full w-full overflow-x-hidden overflow-y-auto bg-[#f5f5f2] pb-28 text-[#1F2937]">
+  <div class="h-full min-h-0 w-full overflow-x-hidden overflow-y-auto bg-[#f5f5f2] pb-28 text-[#1F2937]">
     <!-- 骨架 -->
     <template v-if="loading">
-      <div class="h-45 animate-pulse bg-[#E5E7EB]" />
+      <div class="tg-skeleton h-45 bg-[#E5E7EB]" />
       <div class="mt-2 bg-white p-4">
-        <div class="h-5 w-2/3 rounded bg-[#E5E7EB]" />
-        <div class="mt-2 h-3.5 w-1/2 rounded bg-[#E5E7EB]" />
+        <div class="tg-skeleton h-5 w-2/3 rounded bg-[#E5E7EB]" />
+        <div class="tg-skeleton mt-2 h-3.5 w-1/2 rounded bg-[#E5E7EB]" />
       </div>
     </template>
 
-    <div v-else-if="error" class="px-4 py-10 text-center text-3.5 text-[#DC2626]">{{ error }}</div>
+    <TgLoadingState v-else-if="error" tone="light" :title="error" />
 
     <template v-else>
       <Swiper :items="swiperItems" />

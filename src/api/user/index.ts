@@ -32,9 +32,9 @@ export function isElevatedStaffRole(role: UserRoleSnapshot | null | undefined): 
   return role.id === 1 && ELEVATED_ROLE_NAMES.has(role.name)
 }
 
-let usesAdminOrderEndpoints = true
+let usesAdminOrderEndpoints = false
 /** Vue ref — computed() 可追踪变化，fetchUserDetail 回调后 UI 自动更新 */
-const currentUserRoleRef = ref<CurrentUserRole>('admin')
+const currentUserRoleRef = ref<CurrentUserRole>('user')
 let userDetailPromise: Promise<unknown> | null = null
 
 function applyRoleRoutingFromDetailRaw(raw: unknown) {

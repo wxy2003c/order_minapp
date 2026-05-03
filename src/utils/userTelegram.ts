@@ -87,26 +87,15 @@ export function isTelegramMobilePlatform(): boolean {
 
 /**
  * 在应用入口调用一次：
- * - `expand()` 先兜底展开到最大高度（所有版本均支持，确保小程序正常显示）
- * - **手机端**（android / ios / weba）：额外尝试 `requestFullscreen()` 去掉 Telegram 头部（Bot API 9.0+）；
- *   旧版客户端不支持时 try-catch 静默跳过，不影响小程序正常打开
- * - 不禁用下滑手势，向下拖拽可正常关闭小程序
+ * - 仅 `expand()` 到最大高度，保留 Telegram 原生顶栏的返回/关闭能力。
+ * - 不自动 `requestFullscreen()`，避免关闭入口被折叠到下拉层里。
  */
 export function initTelegramAppDisplay(): void {
   const tg = getTelegramWebApp()
   if (!tg) return
 
-  // 先 expand 兜底，保证小程序任何情况下都能正常打开
+  // 保持 Telegram 顶栏可见，让原生关闭按钮和 BackButton 不被全屏模式隐藏。
   tg.expand?.()
-
-  // 手机端再尝试全屏去头部，失败不影响主流程
-  if (isTelegramMobilePlatform()) {
-    try {
-      tg.requestFullscreen?.()
-    } catch {
-      // 旧版 Telegram 客户端不支持，静默忽略
-    }
-  }
 }
 
 export const DEFAULT_TELEGRAM_USER_ID = ''

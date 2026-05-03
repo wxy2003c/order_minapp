@@ -49,7 +49,7 @@ export function orderRowAvatarSrc(row: OrderListItem): string | null {
 }
 
 export function orderRowDisplayName(row: OrderListItem): string {
-  return String(row.telegram_nickname || row.customer || '—').trim() || '—'
+  return String(row.customer || row.telegram_nickname || '—').trim() || '—'
 }
 
 export function orderRowDateText(row: OrderListItem): string {
