@@ -110,6 +110,7 @@ declare global {
   const parseCreateToken: typeof import('./src/composables/TelegramParams').parseCreateToken
   const parseManageStaffToken: typeof import('./src/composables/TelegramParams').parseManageStaffToken
   const parseOrderStartParam: typeof import('./src/composables/TelegramParams').parseOrderStartParam
+  const parseStartParam: typeof import('./src/composables/TelegramParams').parseStartParam
   const parseWheelColorFinishLookupName: typeof import('./src/utils/orderDetailHelpers').parseWheelColorFinishLookupName
   const parseWheelLibraryStructureSubtypeOffroad: typeof import('./src/utils/orderHelpers').parseWheelLibraryStructureSubtypeOffroad
   const persistStaffDeepLinkContext: typeof import('./src/utils/deeplinkStaffContext').persistStaffDeepLinkContext
@@ -172,7 +173,7 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
-  export type { OrderDeepLinkPayload, StaffCreateDeepLink } from './src/composables/TelegramParams'
+  export type { TelegramStartParamPayload, OrderDeepLinkPayload, StaffCreateDeepLink } from './src/composables/TelegramParams'
   import('./src/composables/TelegramParams')
   // @ts-ignore
   export type { TgSelectOption } from './src/utils/applyOrderDetailToCustomOrder'
@@ -297,6 +298,7 @@ declare module 'vue' {
     readonly parseCreateStaffToken: UnwrapRef<typeof import('./src/composables/TelegramParams')['parseCreateStaffToken']>
     readonly parseManageStaffToken: UnwrapRef<typeof import('./src/composables/TelegramParams')['parseManageStaffToken']>
     readonly parseOrderStartParam: UnwrapRef<typeof import('./src/composables/TelegramParams')['parseOrderStartParam']>
+    readonly parseStartParam: UnwrapRef<typeof import('./src/composables/TelegramParams')['parseStartParam']>
     readonly parseWheelColorFinishLookupName: UnwrapRef<typeof import('./src/utils/orderDetailHelpers')['parseWheelColorFinishLookupName']>
     readonly parseWheelLibraryStructureSubtypeOffroad: UnwrapRef<typeof import('./src/utils/orderHelpers')['parseWheelLibraryStructureSubtypeOffroad']>
     readonly pickTgColor: UnwrapRef<typeof import('./src/utils/userTelegram')['pickTgColor']>

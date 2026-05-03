@@ -35,8 +35,8 @@ export function readStaffCustomerDisplayName(): string {
 
 /**
  * 全局 Axios query 默认 `user_id`：
- * - 无深链 / `create_` 深链：`user_id` = 当前 Telegram（SDK）
- * - `manage_` 深链：`user_id` = 链接 uid（列表、详情页 API 均使用）；
+ * - 无深链 / `create` 深链：`user_id` = 当前 Telegram（SDK）
+ * - `manage` 深链：`user_id` = 链接 uid（列表、详情页 API 均使用）；
  *   从列表进入创建订单后 uid 已转为 `customerTelegramId`，`user_id` 回退至 SDK
  */
 export function resolveHttpDefaultUserId(): string {

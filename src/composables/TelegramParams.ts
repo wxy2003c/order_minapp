@@ -116,13 +116,13 @@ export function logTelegramLinkParams(
     initDataUnsafeDecoded = tg?.initDataUnsafe ?? null
   }
 
-  /** 无 start 打开时与「带 order_ 深链」时的对照说明 */
+  /** 无 start 打开时的对照说明 */
   const note
     = !startResolved
       && !collected
       && !Object.keys(allQuery).length
       ? '无 start 时 start_param 为空是正常现象（从菜单/聊天按钮直接打开、未用 t.me/bot?startapp=…）。'
-        + ' hash 里多为 user、auth、theme。深链：`manage_平台uid_客户telegram`、`create_…`、`order_…`（start_param / ?create=）。'
+        + ' hash 里多为 user、auth、theme。深链值为 base64url("action|uid|chatId|name|username")（start_param / ?create= / ?manage=）。'
       : undefined
 
   // eslint-disable-next-line no-console
@@ -223,6 +223,47 @@ function base64UrlToUtf8(s: string): string {
   }
 }
 
+export interface TelegramStartParamPayload {
+  action: string
+  uid: string
+  chatId: string
+  name: string
+  username: string
+}
+
+/**
+ * 新版 start_param：base64url(UTF-8 "action|uid|chatId|name|username")
+ * 例：create|123|456|张三|zhangsan
+ */
+export function parseStartParam(startParam: string): TelegramStartParamPayload | null {
+  const encoded = String(startParam || '').trim()
+  if (!encoded) return null
+
+  const pad = encoded.length % 4 ? '='.repeat(4 - (encoded.length % 4)) : ''
+  const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/') + pad
+
+  let raw = ''
+  try {
+    // 与现有 Bot 侧示例保持一致：atob -> UTF-8 还原
+    raw = decodeURIComponent(escape(atob(base64)))
+  }
+  catch {
+    raw = base64UrlToUtf8(encoded)
+  }
+  if (!raw) return null
+
+  const [action = '', uid = '', chatId = '', name = '', username = ''] = raw.split('|')
+  if (!action || !uid) return null
+
+  return {
+    action: action.trim(),
+    uid: uid.trim(),
+    chatId: chatId.trim(),
+    name: name.trim(),
+    username: username.trim(),
+  }
+}
+
 export interface OrderDeepLinkPayload {
   /** 业务侧用户 ID（十进制数字串） */
   uid: string
@@ -231,60 +272,46 @@ export interface OrderDeepLinkPayload {
 }
 
 /**
- * `startapp` 单段参数，建议由 Bot 生成：
- * - `order_<uid>` — 仅用户 ID
- * - `order_<uid>_<base64url(UTF-8 姓名)>` — 带姓名（避免 `_` 与冲突，姓名走 base64url）
- * 例：`order_12345`、`order_12345_5Y2g5LqM`（“张三” 的 base64url）
+ * 新协议：`base64url("order|uid|chatId|name|username")`
  */
 export function parseOrderStartParam(startParam: string): OrderDeepLinkPayload | null {
-  const m = /^order_(\d+)(?:_(.+))?$/.exec((startParam || '').trim())
-  if (!m)
+  const next = parseStartParam(startParam)
+  if (!next || next.action !== 'order')
     return null
-  const uid = m[1]!
-  let name = ''
-  if (m[2]) {
-    const decoded = base64UrlToUtf8(m[2])
-    name = decoded || m[2]
+  return {
+    uid: next.uid,
+    name: next.name || next.username,
   }
-  return { uid, name }
 }
 
 /**
- * 解析 `create_<customer_id>_<chat_id>[_<base64url昵称>]`（第三段可选，UTF-8 base64url）。
- *
- * 字段语义：
- * - `platformUid`        → 第一段，客户的 Telegram ID（即表单 `telegram_id`；`user_id` 由 SDK 提供）
- * - `telegramCustomerId` → 第二段，chat_id，不使用
- * - `displayName`        → 第三段，base64url 编码的客户昵称（Bot 生成链接时可携带）
+ * 新协议：`base64url("create|uid|chatId|name|username")`
  */
 export interface StaffCreateDeepLink {
-  platformUid: string
-  telegramCustomerId: string
+  uid: string
+  chatId: string
   displayName: string
 }
 
 export function parseCreateStaffToken(raw: string): StaffCreateDeepLink | null {
-  const m = /^create_(\d+)_(\d+)(?:_(.+))?$/.exec((raw || '').trim())
-  if (!m) return null
-  let displayName = ''
-  if (m[3]) {
-    const decoded = base64UrlToUtf8(m[3])
-    displayName = decoded || m[3]
-  }
+  const next = parseStartParam(raw)
+  if (!next || next.action !== 'create')
+    return null
   return {
-    platformUid: m[1]!,
-    telegramCustomerId: m[2]!,
-    displayName,
+    uid: next.uid,
+    chatId: next.chatId,
+    displayName: next.name || next.username,
   }
 }
 
-/** `manage_<平台user_id>_<客户telegram_id>` → 订单列表用平台 user_id，客户 id 写入 session 供 telegram_id */
+/** 新协议：`base64url("manage|uid|chatId|name|username")` */
 export function parseManageStaffToken(
   raw: string,
 ): { platformUid: string; telegramCustomerId: string } | null {
-  const m = /^manage_(\d+)_(\d+)$/.exec((raw || '').trim())
-  if (!m) return null
-  return { platformUid: m[1]!, telegramCustomerId: m[2]! }
+  const next = parseStartParam(raw)
+  if (!next || next.action !== 'manage' || !next.chatId)
+    return null
+  return { platformUid: next.uid, telegramCustomerId: next.chatId }
 }
 
 function collectOrderDeepLinkFromLocation(): OrderDeepLinkPayload | null {
@@ -293,8 +320,8 @@ function collectOrderDeepLinkFromLocation(): OrderDeepLinkPayload | null {
   const fromCreateStart = parseCreateStaffToken(start)
   if (fromCreateStart) {
     return {
-      uid: fromCreateStart.platformUid,
-      name: fromCreateStart.telegramCustomerId,
+      uid: fromCreateStart.uid,
+      name: fromCreateStart.displayName,
     }
   }
 
@@ -304,8 +331,8 @@ function collectOrderDeepLinkFromLocation(): OrderDeepLinkPayload | null {
       const fromCreateQuery = parseCreateStaffToken(createQuery)
       if (fromCreateQuery) {
         return {
-          uid: fromCreateQuery.platformUid,
-          name: fromCreateQuery.telegramCustomerId,
+          uid: fromCreateQuery.uid,
+          name: fromCreateQuery.displayName,
         }
       }
     }
@@ -339,7 +366,7 @@ function commitStaffDeepLinkAndLanding(
   })
 }
 
-/** 当前环境是否带有任一代客深链（不含纯 `order_` 遗留；无任一则视为「普通入口」仅用本人 Telegram）。 */
+/** 当前环境是否带有任一代客深链；无任一则视为「普通入口」仅用本人 Telegram。 */
 function hasStaffDeepLinkToken(start: string): boolean {
   if (parseManageStaffToken(start) || parseCreateStaffToken(start))
     return true
@@ -376,9 +403,10 @@ function hasDeepLinkNavigatedThisSession(): boolean {
 /**
  * `start_param` / `tgWebAppStartParam` / `?create=` / `?manage=`：
  * - **无深链**：清空代客会话，`user_id` 仅为当前 Telegram。
- * - `manage_<uid>_<chat_id>` → `/OrderList`（`user_id`=uid；从列表点「+」进创建订单时 uid 转为客户 telegram_id，`user_id` 切回 SDK）
- * - `create_<uid>_<chat_id>[_<base64昵称>]` → `/CustomOrder`（无返回键；`telegram_id`=uid；`user_id`=SDK）
- * - `order_<uid>[_…]` → `/CustomOrder`（兼容旧格式）
+ * - deep link 值统一为 `base64url("action|uid|chatId|name|username")`
+ * - `manage` → `/OrderList`（`user_id`=uid；从列表点「+」进创建订单时 uid 转为客户 telegram_id，`user_id` 切回 SDK）
+ * - `create` → `/CustomOrder`（无返回键；`telegram_id`=uid；`user_id`=SDK）
+ * - `order` → `/CustomOrder`
  */
 export function tryApplyTelegramStaffDeepLink(router: Router): void {
   if (import.meta.env.DEV) {
@@ -405,11 +433,11 @@ export function tryApplyTelegramStaffDeepLink(router: Router): void {
   if (manage) { applyManageDeepLink(router, manage.platformUid, manage.telegramCustomerId); return }
 
   const createStaff = parseCreateStaffToken(start)
-  if (createStaff) { applyCreateDeepLink(router, createStaff.platformUid, createStaff.displayName || undefined); return }
+  if (createStaff) { applyCreateDeepLink(router, createStaff.uid, createStaff.displayName || undefined); return }
 
-  const orderLegacy = parseOrderStartParam(start)
-  if (orderLegacy) {
-    commitStaffDeepLinkAndLanding(router, orderLegacy.uid, getTelegramUserId().trim(), orderLegacy.name || undefined, { path: '/CustomOrder' })
+  const orderStart = parseOrderStartParam(start)
+  if (orderStart) {
+    commitStaffDeepLinkAndLanding(router, orderStart.uid, getTelegramUserId().trim(), orderStart.name || undefined, { path: '/CustomOrder' })
     return
   }
 
@@ -427,6 +455,6 @@ export function tryApplyTelegramStaffDeepLink(router: Router): void {
     const cqManage = parseManageStaffToken(createQuery)
     if (cqManage) { applyManageDeepLink(router, cqManage.platformUid, cqManage.telegramCustomerId); return }
     const cqCreate = parseCreateStaffToken(createQuery)
-    if (cqCreate) applyCreateDeepLink(router, cqCreate.platformUid, cqCreate.displayName || undefined)
+    if (cqCreate) applyCreateDeepLink(router, cqCreate.uid, cqCreate.displayName || undefined)
   }
 }
