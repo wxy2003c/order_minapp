@@ -50,8 +50,9 @@ function applyRoleRoutingFromDetailRaw(raw: unknown) {
 
 /** 单例：拉用户详情并更新角色路由；可安全多处 await */
 export function fetchUserDetail(): Promise<unknown> {
+  const selfId = getTelegramUserId().trim()
   userDetailPromise ??= httpApi
-    .get('/users/detail')
+    .get('/users/detail', selfId ? { params: { user_id: selfId } } : undefined)
     .then((raw) => {
       applyRoleRoutingFromDetailRaw(raw)
       return raw

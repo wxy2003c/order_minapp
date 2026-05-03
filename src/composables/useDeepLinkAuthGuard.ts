@@ -21,7 +21,7 @@ export function useDeepLinkAuthGuard() {
     if (_checked) return _allowed
     _checked = true
 
-    if (!staffDeeplink.openedViaTelegramStartParam) {
+    if (!staffDeeplink.requiresStaffAccess) {
       _allowed = true
       return true
     }

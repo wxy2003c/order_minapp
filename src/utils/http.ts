@@ -240,16 +240,12 @@ function applyGlobalQueryAndLang(config: InternalAxiosRequestConfig): void {
 httpApi.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   applyGlobalQueryAndLang(config);
 
-  console.log('[sign] config.params after applyGlobalQueryAndLang:', JSON.stringify(config.params));
-
   const method = (config.method || 'GET').toUpperCase();
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce = genNonce(32);
 
   const path = resolveRequestPath(config);
   const realQuery = collectUrlQuery(config);
-
-  console.log('[sign] collectUrlQuery result:', JSON.stringify(realQuery));
 
   let bodyStr = '';
   let normalizedParams = '';

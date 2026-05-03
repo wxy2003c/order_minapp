@@ -350,6 +350,7 @@ function commitStaffDeepLinkAndLanding(
   telegramCustomerId: string,
   displayName: string | undefined,
   replaceTo: { path: string; query?: Record<string, string> },
+  requiresStaffAccess: boolean,
 ) {
   const store = useStaffDeeplinkStore()
   store.setStaffContext(
@@ -358,7 +359,7 @@ function commitStaffDeepLinkAndLanding(
       customerTelegramId: telegramCustomerId,
       customerDisplayName: displayName,
     },
-    { fromTelegramStartParam: true },
+    { fromTelegramStartParam: true, requiresStaffAccess },
   )
   markDeepLinkNavigated()
   void router.replace(replaceTo).then(() => {
@@ -382,12 +383,14 @@ function hasStaffDeepLinkToken(start: string): boolean {
 }
 
 function applyManageDeepLink(router: Router, uid: string, customerTgId: string) {
-  commitStaffDeepLinkAndLanding(router, uid, customerTgId, undefined, { path: '/OrderList' })
+  commitStaffDeepLinkAndLanding(router, uid, customerTgId, undefined, { path: '/OrderList' }, true)
 }
 
 function applyCreateDeepLink(router: Router, customerTgId: string, displayName?: string) {
-  // uid = 客户 telegram_id，platformUid 留空使 user_id 走 SDK
-  commitStaffDeepLinkAndLanding(router, '', customerTgId, displayName, { path: '/CustomOrder' })
+  const selfId = getTelegramUserId().trim()
+  const requiresStaffAccess = Boolean(customerTgId && customerTgId !== selfId)
+  // uid = 客户 telegram_id；用户自己打开时等同本人，管理员代客时要求 staff 权限。
+  commitStaffDeepLinkAndLanding(router, '', customerTgId, displayName, { path: '/CustomOrder' }, requiresStaffAccess)
 }
 
 const DEEPLINK_NAVIGATED_KEY = 'wl_deeplink_navigated'
@@ -437,7 +440,15 @@ export function tryApplyTelegramStaffDeepLink(router: Router): void {
 
   const orderStart = parseOrderStartParam(start)
   if (orderStart) {
-    commitStaffDeepLinkAndLanding(router, orderStart.uid, getTelegramUserId().trim(), orderStart.name || undefined, { path: '/CustomOrder' })
+    const selfId = getTelegramUserId().trim()
+    commitStaffDeepLinkAndLanding(
+      router,
+      orderStart.uid,
+      selfId,
+      orderStart.name || undefined,
+      { path: '/CustomOrder' },
+      Boolean(orderStart.uid && orderStart.uid !== selfId),
+    )
     return
   }
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { Icon } from '@iconify/vue'
 import { NDrawer } from 'naive-ui'
 import { useRouter } from 'vue-router'
@@ -10,13 +11,14 @@ import { fetchStyleModels } from '@/api/admin/styleModels'
 import type { StyleModelItem } from '@/api/admin/styleModels'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
 import { t } from '@/i18n/uiI18n'
+import { useProductBrowseStore } from '@/stores/productBrowse'
 
 const router = useRouter()
+const browse = useProductBrowseStore()
+const { brand: selectedBrand, model: selectedModel, styleMood: selectedStyleMood } = storeToRefs(browse)
 
 // ── 汽车选择弹层（只展示品牌 + 车型）────────────────────────────────────────
 const carOpen = ref(false)
-const selectedBrand = ref('')
-const selectedModel = ref('')
 
 function onCarComplete() {
   carOpen.value = false
@@ -89,6 +91,7 @@ const styleNoLabel = computed(() => {
 function applyFilter() {
   Object.assign(applied, pending)
   appliedStyleModel.value = pendingStyleModel.value
+  selectedStyleMood.value = applied.style_tag
   filterOpen.value = false
   applyAndLoad()
 }
@@ -154,6 +157,8 @@ function removeTag(key: TagKey) {
       appliedStyleModel.value = null
       pendingStyleModel.value = null
     }
+    if (key === 'style_tag')
+      selectedStyleMood.value = ''
   }
   applyAndLoad()
 }
@@ -164,8 +169,10 @@ const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
 const PAGE_SIZE = 20
+let loadSeq = 0
 
 async function loadProducts(reset = false) {
+  const seq = ++loadSeq
   if (reset) {
     page.value = 1
     items.value = []
@@ -184,6 +191,7 @@ async function loadProducts(reset = false) {
       page: page.value,
       page_size: PAGE_SIZE,
     }) as { items?: StyleModelItem[]; total?: number }
+    if (seq !== loadSeq) return
     if (reset) {
       items.value = res.items ?? []
     } else {
@@ -191,7 +199,7 @@ async function loadProducts(reset = false) {
     }
     total.value = res.total ?? 0
   } finally {
-    loading.value = false
+    if (seq === loadSeq) loading.value = false
   }
 }
 
@@ -205,7 +213,13 @@ async function loadMore() {
   await loadProducts(false)
 }
 
-onMounted(() => loadProducts(true))
+onMounted(() => {
+  if (selectedStyleMood.value && !applied.style_tag) {
+    pending.style_tag = selectedStyleMood.value
+    applied.style_tag = selectedStyleMood.value
+  }
+  loadProducts(true)
+})
 
 function goDetail(item: StyleModelItem) {
   router.push({ path: '/ProductDetails', query: { id: String(item.id) } })

@@ -10,7 +10,7 @@ export const useProductBrowseStore = defineStore('productBrowse', () => {
   const brand = ref('')
   const model = ref('')
   const year = ref('')
-  /** 与 HeaderFilter 筛选里「风格标签」同字段 */
+  /** 与产品页筛选里「风格标签」同字段 */
   const styleMood = ref('')
 
   const carLine = computed(() =>

@@ -12,7 +12,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CarSelectionPanel: typeof import('./src/components/CarSelectionPanel.vue')['default']
-    HeaderFilter: typeof import('./src/components/HeaderFilter.vue')['default']
     NavBar: typeof import('./src/components/NavBar.vue')['default']
     NModal: typeof import('naive-ui')['NModal']
     NoPermissionModal: typeof import('./src/components/NoPermissionModal.vue')['default']

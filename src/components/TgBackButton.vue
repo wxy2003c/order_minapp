@@ -7,16 +7,18 @@
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRoute, useRouter } from 'vue-router'
 import { isNavBarTabRoute } from '@/constants/navBarRoutes'
 import { t } from '@/i18n/uiI18n'
 import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
+import { getTelegramWebApp } from '@/utils/userTelegram'
 
 const route = useRoute()
 const router = useRouter()
 const staffDeeplink = useStaffDeeplinkStore()
+const hasNativeBackButton = ref(false)
 
 const visible = computed(
   () => !isNavBarTabRoute(route.path) && staffDeeplink.allowHistoryBack,
@@ -28,11 +30,34 @@ function goBack() {
   else
     void router.push('/')
 }
+
+function syncNativeBackButton() {
+  const backButton = getTelegramWebApp()?.BackButton
+  hasNativeBackButton.value = Boolean(backButton)
+  if (!backButton) return
+  if (visible.value) backButton.show()
+  else backButton.hide()
+}
+
+onMounted(() => {
+  const backButton = getTelegramWebApp()?.BackButton
+  hasNativeBackButton.value = Boolean(backButton)
+  backButton?.onClick(goBack)
+  syncNativeBackButton()
+})
+
+onUnmounted(() => {
+  const backButton = getTelegramWebApp()?.BackButton
+  backButton?.offClick?.(goBack)
+  backButton?.hide()
+})
+
+watch(visible, syncNativeBackButton)
 </script>
 
 <template>
   <button
-    v-if="visible"
+    v-if="visible && !hasNativeBackButton"
     type="button"
     class="tg-floating-back fixed left-3 top-3 z-[38] flex h-10 w-10 items-center justify-center rounded-full transition [isolation:isolate] [transform:translateZ(0)] active:scale-95"
     :aria-label="t('backButton.aria')"

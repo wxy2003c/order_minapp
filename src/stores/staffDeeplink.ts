@@ -4,12 +4,14 @@ import { computed, ref } from 'vue'
 const K_PLATFORM_UID = 'wl_deeplink_platform_uid'
 const K_CUSTOMER_TELEGRAM_ID = 'wl_deeplink_customer_telegram_id'
 const K_CUSTOMER_DISPLAY_NAME = 'wl_deeplink_customer_display_name'
+const K_REQUIRES_STAFF_ACCESS = 'wl_deeplink_requires_staff_access'
 
 /** 与 Pinia 状态同步写入 session，供无 Vue 上下文处读取 */
 export function persistStaffDeepLinkContext(
   platformUid: string,
   telegramCustomerId: string,
   displayName?: string | null,
+  requiresStaffAccess?: boolean,
 ): void {
   if (typeof sessionStorage === 'undefined') return
   try {
@@ -22,6 +24,8 @@ export function persistStaffDeepLinkContext(
     const n = String(displayName ?? '').trim()
     if (n) sessionStorage.setItem(K_CUSTOMER_DISPLAY_NAME, n)
     else sessionStorage.removeItem(K_CUSTOMER_DISPLAY_NAME)
+    if (requiresStaffAccess) sessionStorage.setItem(K_REQUIRES_STAFF_ACCESS, '1')
+    else sessionStorage.removeItem(K_REQUIRES_STAFF_ACCESS)
   } catch {
     /* ignore */
   }
@@ -31,18 +35,20 @@ export function readStaffSnapshotFromSession(): {
   platformUid: string
   customerTelegramId: string
   customerDisplayName: string
+  requiresStaffAccess: boolean
 } {
   if (typeof sessionStorage === 'undefined') {
-    return { platformUid: '', customerTelegramId: '', customerDisplayName: '' }
+    return { platformUid: '', customerTelegramId: '', customerDisplayName: '', requiresStaffAccess: false }
   }
   try {
     return {
       platformUid: String(sessionStorage.getItem(K_PLATFORM_UID) ?? '').trim(),
       customerTelegramId: String(sessionStorage.getItem(K_CUSTOMER_TELEGRAM_ID) ?? '').trim(),
       customerDisplayName: String(sessionStorage.getItem(K_CUSTOMER_DISPLAY_NAME) ?? '').trim(),
+      requiresStaffAccess: sessionStorage.getItem(K_REQUIRES_STAFF_ACCESS) === '1',
     }
   } catch {
-    return { platformUid: '', customerTelegramId: '', customerDisplayName: '' }
+    return { platformUid: '', customerTelegramId: '', customerDisplayName: '', requiresStaffAccess: false }
   }
 }
 
@@ -55,6 +61,7 @@ export const useStaffDeeplinkStore = defineStore('staffDeeplink', () => {
   const platformUid = ref(s0.platformUid)
   const customerTelegramId = ref(s0.customerTelegramId)
   const customerDisplayName = ref(s0.customerDisplayName)
+  const requiresStaffAccess = ref(s0.requiresStaffAccess)
 
   /** 本次会话是否由带 `tgWebAppStartParam` 的深链写入 */
   const openedViaTelegramStartParam = ref(false)
@@ -73,16 +80,18 @@ export const useStaffDeeplinkStore = defineStore('staffDeeplink', () => {
       platformUid.value,
       customerTelegramId.value,
       customerDisplayName.value || null,
+      requiresStaffAccess.value,
     )
   }
 
   function setStaffContext(
     p: { platformUid: string; customerTelegramId: string; customerDisplayName?: string | null },
-    opts?: { fromTelegramStartParam?: boolean },
+    opts?: { fromTelegramStartParam?: boolean; requiresStaffAccess?: boolean },
   ) {
     platformUid.value = String(p.platformUid ?? '').trim()
     customerTelegramId.value = String(p.customerTelegramId ?? '').trim()
     customerDisplayName.value = String(p.customerDisplayName ?? '').trim()
+    requiresStaffAccess.value = Boolean(opts?.requiresStaffAccess)
     syncSessionFromState()
     if (opts?.fromTelegramStartParam) {
       openedViaTelegramStartParam.value = true
@@ -127,10 +136,11 @@ export const useStaffDeeplinkStore = defineStore('staffDeeplink', () => {
     platformUid.value = ''
     customerTelegramId.value = ''
     customerDisplayName.value = ''
+    requiresStaffAccess.value = false
     openedViaTelegramStartParam.value = false
     landingFullPath.value = null
     navigatedPastLanding.value = false
-    persistStaffDeepLinkContext('', '', null)
+    persistStaffDeepLinkContext('', '', null, false)
     try { sessionStorage.removeItem('wl_deeplink_navigated') } catch { /* ignore */ }
   }
 
@@ -148,6 +158,7 @@ export const useStaffDeeplinkStore = defineStore('staffDeeplink', () => {
     platformUid,
     customerTelegramId,
     customerDisplayName,
+    requiresStaffAccess,
     openedViaTelegramStartParam,
     landingFullPath,
     navigatedPastLanding,

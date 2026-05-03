@@ -43,14 +43,6 @@ export function useTelegramTheme() {
     }
   }
 
-  const onTelegramBackButtonClick = () => {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.log('Telegram BackButton clicked, closing Mini App')
-    }
-    getTelegramWebApp()?.close?.()
-  }
-
   onMounted(() => {
     const tg = getTelegramWebApp()
 
@@ -72,20 +64,12 @@ export function useTelegramTheme() {
     tg.expand?.()
     tg.onEvent?.('themeChanged', onTelegramThemeChanged)
     tg.onEvent?.('close', onTelegramMiniAppClose)
-
-    const bb = tg.BackButton
-    if (bb) {
-      bb.show?.()
-      bb.onClick?.(onTelegramBackButtonClick)
-    }
   })
 
   onUnmounted(() => {
     const tgw = getTelegramWebApp()
     tgw?.offEvent?.('themeChanged', onTelegramThemeChanged)
     tgw?.offEvent?.('close', onTelegramMiniAppClose)
-    tgw?.BackButton?.offClick?.(onTelegramBackButtonClick)
-    tgw?.BackButton?.hide?.()
   })
 
   const isDark = computed(() => colorScheme.value === 'dark')
