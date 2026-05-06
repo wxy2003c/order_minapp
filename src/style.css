@@ -156,6 +156,15 @@ select {
   border: 1px solid var(--tg-theme-destructive-text-color) !important;
 }
 
+.tg-collapse-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #528fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
 .n-popover-shared {
   padding: 0 !important;
   margin-top: 0 !important;

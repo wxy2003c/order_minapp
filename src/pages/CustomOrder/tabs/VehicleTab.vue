@@ -313,9 +313,9 @@ async function openCarModelLargeView() {
 
       <button
         type="button"
-        class="mx-auto flex items-center gap-1 text-3.5 font-600 text-[#3487FF]"
+        class="tg-collapse-toggle mx-auto"
         @click="o.vehicleExpanded = !o.vehicleExpanded">
-        <Icon :icon="o.vehicleExpanded ? 'mdi:chevron-up' : 'mdi:chevron-down'" color="#3487FF" width="16" height="16" />
+        <Icon :icon="o.vehicleExpanded ? 'mdi:chevron-up' : 'mdi:chevron-down'" width="16" height="16" />
         <span>{{ o.vehicleExpanded ? t('common.collapse') : t('common.expand') }}</span>
       </button>
 

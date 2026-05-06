@@ -190,7 +190,6 @@ const { useNativeOrderFooter } = useTelegramNativeOrderControls(o, isAdminRole)
         </TgButton>
       </div>
 
-      <!-- 金额 Tab（仅管理员可见） -->
       <div v-else-if="o.activeTab === 'amount'" class="grid grid-cols-2 gap-3">
         <TgButton block variant="outline" @click="o.goBackToCreative">
           {{ t("customOrder.backEdit") }}

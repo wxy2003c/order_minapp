@@ -6,11 +6,16 @@
 
 import * as adminApi from '@/api/admin/index'
 import * as userOrdersApi from '@/api/user/orders'
-import { getCurrentUserRole } from '@/api/user/index'
+import { ensureOrderApiRoutingReady, getCurrentUserRole } from '@/api/user/index'
 
 // 调用时取角色，确保 fetchUserDetail 已完成
 const orderApi = () =>
   (getCurrentUserRole() === 'admin' ? adminApi : userOrdersApi) as typeof adminApi
+
+async function readyOrderApi(): Promise<typeof adminApi> {
+  await ensureOrderApiRoutingReady()
+  return orderApi()
+}
 
 // ── 类型透传 ────────────────────────────────────────────────────────────────
 export type {
@@ -41,20 +46,19 @@ export {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export const createOrder: typeof adminApi.createOrder =
-  (...args) => orderApi().createOrder(...args)
+  async (...args) => (await readyOrderApi()).createOrder(...args)
 
 export const updateOrder: typeof adminApi.updateOrder =
-  (...args) => orderApi().updateOrder(...args)
+  async (...args) => (await readyOrderApi()).updateOrder(...args)
 
 export const cancelOrder: typeof adminApi.cancelOrder =
-  (...args) => orderApi().cancelOrder(...args)
+  async (...args) => (await readyOrderApi()).cancelOrder(...args)
 
-// 线上 `/orders` 读接口当前会验签失败；列表/详情本身都带目标 user_id，走用户端读接口即可覆盖代客管理场景。
 export const fetchOrdersList: typeof adminApi.fetchOrdersList =
-  (...args) => userOrdersApi.fetchOrdersList(...args)
+  async (...args) => (await readyOrderApi()).fetchOrdersList(...args)
 
 export const fetchOrderDetail: typeof adminApi.fetchOrderDetail =
-  (...args) => userOrdersApi.fetchOrderDetail(...args)
+  async (...args) => (await readyOrderApi()).fetchOrderDetail(...args)
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 共享接口 — 两种角色走同一端

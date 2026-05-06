@@ -31,7 +31,6 @@ onMounted(async () => {
   }
 })
 
-/** 首页「草稿」：仅选车/点风格，不写入 Pinia；点 Go 再写入并进产品页 */
 const carBrand = ref('')
 const carModel = ref('')
 const carYear = ref('')
@@ -41,7 +40,7 @@ const carWheelModification = ref('')
 
 function selectStyleTag(tag: string) {
   browse.setStyleMood(tag)
-  router.push({ path: '/product' })
+  router.push({ path: '/product', query: { style_tag: tag } })
 }
 
 const carSelectionSummary = computed(() => {
@@ -65,113 +64,119 @@ function goToProduct() {
 function img(path: string | null | undefined): string | null {
   return resolveOrderAssetUrl(path)
 }
+
+const handelNavtoUrl = (url: string) => {
+  router.push({
+    path: url
+  })
+}
 </script>
 
 <template>
   <div class="tg-browse-adaptive pos-relative h-full min-h-0 w-full overflow-x-hidden overflow-y-auto p-4 pb-28">
     <img src="@/assets/image/navLogo.png" class="h-14 w-65" alt="">
 
-    <!-- 轮播图 random_style_models -->
-    <Swiper class="mt-3" :items="homeData.random_style_models" />
+      <Swiper class="mt-3" :items="homeData.random_style_models" />
 
-    <!-- 选车 + Go -->
-    <div class="mt-3 flex-items-center flex gap-2">
-      <div class="flex-1">
-        <button type="button"
-          class="tg-interactive flex h-full flex-items-center min-h-12 w-full items-center justify-between gap-2 border border-white/20 rounded-2xl bg-white/5 px-4 py-2.5 text-left text-3.5 text-white/95 outline-none active:bg-white/10"
-          @click.stop="toggleCarPopover">
-          <div class="min-w-0 flex-1">
-            <div class="text-3 text-white/50">{{ t('home.selectCar') }}</div>
-            <div class="mt-0.5 truncate text-2.75 text-white/70 max-w-50 overflow-hidden text-ellipsis whitespace-nowrap">
-              {{ carSelectionSummary }}
+      <div class="mt-3 flex-items-center flex gap-2">
+        <div class="flex-1">
+          <button type="button"
+            class="tg-interactive flex h-full flex-items-center min-h-12 w-full items-center justify-between gap-2 border border-white/20 rounded-2xl bg-white/5 px-4 py-2.5 text-left text-3.5 text-white/95 outline-none active:bg-white/10"
+            @click.stop="toggleCarPopover">
+            <div class="min-w-0 flex-1">
+              <div class="text-3 text-white/50">{{ t('home.selectCar') }}</div>
+              <div
+                class="mt-0.5 truncate text-2.75 text-white/70 max-w-50 overflow-hidden text-ellipsis whitespace-nowrap">
+                {{ carSelectionSummary }}
+              </div>
             </div>
-          </div>
-          <Icon icon="solar:alt-arrow-down-outline" class="shrink-0 text-white/60 transition" width="18" height="18"
-            :class="carPopoverOpen ? 'rotate-180' : ''" />
+            <Icon icon="solar:alt-arrow-down-outline" class="shrink-0 text-white/60 transition" width="18" height="18"
+              :class="carPopoverOpen ? 'rotate-180' : ''" />
+          </button>
+        </div>
+        <TgButton type="button" variant="white" shape="pill" @click="goToProduct">
+          <span>{{ t('common.go') }}</span>
+        </TgButton>
+      </div>
+
+      <NDrawer v-model:show="carPopoverOpen" :height="'min(88vh, 720px)'" placement="bottom" :trap-focus="false"
+        :block-scroll="true" :native-scrollbar="false"
+        :content-style="{ height: '100%', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }">
+        <div
+          class="tg-light-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[20px] border-t shadow-[var(--app-shadow)] outline-none"
+          style="border-color: var(--tg-theme-section-separator-color)">
+          <CarSelectionPanel class="min-h-0 flex-1" v-model:brand="carBrand" v-model:model="carModel"
+            v-model:year="carYear" v-model:wheel-generation="carWheelGeneration" v-model:wheel-year="carWheelYear"
+            v-model:wheel-modification="carWheelModification" @complete="closeCarPopover" />
+        </div>
+      </NDrawer>
+
+      <div
+        class="mt-3 flex w-full flex-nowrap items-stretch gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <button v-for="tag in STYLE_MOOD_TAGS" :key="tag" type="button"
+          class="tg-interactive shrink-0 rounded-2xl border px-3.5 py-2.5 text-3.5 font-600 leading-none border-[#ECECEC] bg-white text-[#4F5869]"
+          @click="selectStyleTag(tag)">
+          {{ tag }}
         </button>
       </div>
-      <TgButton type="button" variant="white" shape="pill" @click="goToProduct">
-        <span>{{ t('common.go') }}</span>
-      </TgButton>
-    </div>
 
-    <NDrawer v-model:show="carPopoverOpen" :height="'min(88vh, 720px)'" placement="bottom" :trap-focus="false"
-      :block-scroll="true" :native-scrollbar="false"
-      :content-style="{ height: '100%', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }">
-      <div
-        class="tg-light-surface flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[20px] border-t shadow-[var(--app-shadow)] outline-none"
-        style="border-color: var(--tg-theme-section-separator-color)">
-        <CarSelectionPanel class="min-h-0 flex-1" v-model:brand="carBrand" v-model:model="carModel"
-          v-model:year="carYear" v-model:wheel-generation="carWheelGeneration" v-model:wheel-year="carWheelYear"
-          v-model:wheel-modification="carWheelModification" @complete="closeCarPopover" />
-      </div>
-    </NDrawer>
-
-    <!-- 风格标签 -->
-    <div
-      class="mt-3 flex w-full flex-nowrap items-stretch gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <button v-for="tag in STYLE_MOOD_TAGS" :key="tag" type="button"
-        class="tg-interactive shrink-0 rounded-2xl border px-3.5 py-2.5 text-3.5 font-600 leading-none border-[#ECECEC] bg-white text-[#4F5869]"
-        @click="selectStyleTag(tag)">
-        {{ tag }}
-      </button>
-    </div>
-
-    <!-- 产品推荐 popular_style_models -->
-    <div class="mt-5">
-      <div class="flex flex-items-center mb-3">
-        <div class="flex-1 text-3 color-[#BCCAE4]">{{ t('home.productRec') }}</div>
-        <div class="flex flex-items-center">
-          <span class="text-3 color-[#BCCAE4]">{{ t('common.all') }}</span>
-          <Icon icon="cuida:caret-right-outline" width="18" height="18" color="#BCCAE4" />
-        </div>
-      </div>
-      <!-- 骨架屏 -->
-      <div v-if="loading" class="grid grid-cols-2 gap-3">
-        <div v-for="i in 4" :key="i" class="w-full">
-          <div class="tg-skeleton h-21 w-full rounded-lg bg-white/10" />
-          <div class="tg-skeleton mt-1.5 h-3 w-16 rounded bg-white/10" />
-        </div>
-      </div>
-      <div v-else class="grid grid-cols-2 gap-3">
-        <div v-for="item in homeData.popular_style_models" :key="item.id" class="tg-interactive w-full rounded-2xl bg-white/[0.035] p-1.5 ring-1 ring-white/8">
-          <div class="relative h-21 w-full overflow-hidden rounded-xl bg-white/5">
-            <TgImage :src="img(item.effect_image)" :alt="item.style_name" placeholder-class="text-white/35" />
+      <div class="mt-5">
+        <div class="flex flex-items-center mb-3">
+          <div class="flex-1 text-3 color-[#BCCAE4]">{{ t('home.productRec') }}</div>
+          <div class="flex flex-items-center" @click="handelNavtoUrl('/product')">
+            <span class="text-3 color-[#BCCAE4]">{{ t('common.all') }}</span>
+            <Icon icon="cuida:caret-right-outline" width="18" height="18" color="#BCCAE4" />
           </div>
-          <div class="mt-1.5 text-3 color-[#BCCAE4]">{{ item.style_no }}</div>
-          <div class="text-2.75 text-white/50">{{ item.style_name }}</div>
         </div>
-      </div>
-    </div>
-
-    <!-- 客户案例 customer_cases -->
-    <div class="mt-5">
-      <div class="flex flex-items-center mb-3">
-        <div class="flex-1 text-3 color-[#BCCAE4]">{{ t('home.customerCases') }}</div>
-        <div class="flex flex-items-center">
-          <span class="text-3 color-[#BCCAE4]">{{ t('common.all') }}</span>
-          <Icon icon="cuida:caret-right-outline" width="18" height="18" color="#BCCAE4" />
-        </div>
-      </div>
-      <div v-if="loading" class="flex flex-col gap-3">
-        <div v-for="i in 2" :key="i">
-          <div class="tg-skeleton h-42 w-full rounded-xl bg-white/10" />
-          <div class="tg-skeleton mt-2 h-4 w-32 rounded bg-white/10" />
-        </div>
-      </div>
-      <div v-else class="flex flex-col gap-5">
-        <div v-for="c in homeData.customer_cases" :key="c.id" class="tg-interactive rounded-3xl bg-white/[0.035] p-2 ring-1 ring-white/8">
-          <div class="relative h-42 w-full overflow-hidden rounded-2xl bg-white/5">
-            <TgImage :src="img(c.cover_image)" :alt="c.display_title" placeholder-class="text-white/35" />
-            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/35 to-transparent" />
+        <div v-if="loading" class="grid grid-cols-2 gap-3">
+          <div v-for="i in 4" :key="i" class="w-full">
+            <div class="tg-skeleton h-21 w-full rounded-lg bg-white/10" />
+            <div class="tg-skeleton mt-1.5 h-3 w-16 rounded bg-white/10" />
           </div>
-          <div class="mt-2 text-4 font-600 color-[#BCCAE4]">{{ c.display_title }}</div>
-          <div class="mt-1 text-3 text-white/50">
-            {{ c.car_brand }} {{ c.car_model }} {{ c.car_year }} · {{ c.style_no }}
+        </div>
+        <div v-else class="grid grid-cols-2 gap-3">
+          <div v-for="item in homeData.popular_style_models" :key="item.id"
+            class="tg-interactive w-full rounded-2xl bg-white/[0.035] p-1.5 ring-1 ring-white/8"
+            @click="router.push({ path: '/productDetails', query: { id: item.id } })">
+            <div class="relative h-21 w-full overflow-hidden rounded-xl bg-white/5">
+              <TgImage :src="img(item.effect_image)" :alt="item.style_name" placeholder-class="text-white/35" />
+            </div>
+            <div class="mt-1.5 text-3 color-[#BCCAE4]">{{ item.style_no }}</div>
+            <div class="text-2.75 text-white/50">{{ item.style_name }}</div>
           </div>
         </div>
       </div>
-    </div>
+
+      <div class="mt-5">
+        <div class="flex flex-items-center mb-3">
+          <div class="flex-1 text-3 color-[#BCCAE4]">{{ t('home.customerCases') }}</div>
+          <div class="flex flex-items-center" @click="handelNavtoUrl('/cases')">
+            <span class="text-3 color-[#BCCAE4]">{{ t('common.all') }}</span>
+            <Icon icon="cuida:caret-right-outline" width="18" height="18" color="#BCCAE4" />
+          </div>
+        </div>
+        <div v-if="loading" class="flex flex-col gap-3">
+          <div v-for="i in 2" :key="i">
+            <div class="tg-skeleton h-42 w-full rounded-xl bg-white/10" />
+            <div class="tg-skeleton mt-2 h-4 w-32 rounded bg-white/10" />
+          </div>
+        </div>
+        <div v-else class="flex flex-col gap-5">
+          <div v-for="c in homeData.customer_cases" :key="c.id"
+            class="tg-interactive rounded-3xl bg-white/[0.035] p-2 ring-1 ring-white/8"
+            @click="router.push({ path: '/CasesDetails', query: { caseId: c.id } })">
+            <div class="relative h-42 w-full overflow-hidden rounded-2xl bg-white/5">
+              <TgImage :src="img(c.cover_image)" :alt="c.display_title" placeholder-class="text-white/35" />
+              <div
+                class="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/35 to-transparent" />
+            </div>
+            <div class="mt-2 text-4 font-600 color-[#BCCAE4]">{{ c.display_title }}</div>
+            <div class="mt-1 text-3 text-white/50">
+              {{ c.car_brand }} {{ c.car_model }} {{ c.car_year }} · {{ c.style_no }}
+            </div>
+          </div>
+        </div>
+      </div>
 
   </div>
 </template>

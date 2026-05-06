@@ -148,7 +148,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
   )
 
   const creativeForm = reactive({
-    designMode: 'creative',
+    design_type: 'creative',
     structure: '' as string,
     finishCardId: null as number | null,
     finishCardCode: '' as string,
@@ -218,7 +218,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
     { value: '24', label: t('wheel.inch24') },
   ])
 
-  const designModeOptions = computed(() => [
+  const designTypeOptions = computed(() => [
     { id: 'creative' as const, title: t('customOrder.designModeCreative'), icon: 'mdi:shape-outline' },
     { id: 'custom' as const, title: t('customOrder.designModeCustom'), icon: 'mdi:palette-outline' },
   ])
@@ -498,7 +498,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
     applyingFitmentPreset.value = true
     Object.assign(vehicleForm, getDefaultVehicleFormState())
     Object.assign(creativeForm, {
-      designMode: 'creative' as const,
+      design_type: 'creative' as const,
       structure: '',
       finishCardId: null as number | null,
       finishCardCode: '',
@@ -553,7 +553,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
     applyingFitmentPreset.value = true
     Object.assign(vehicleForm, getDefaultVehicleFormState())
     Object.assign(creativeForm, {
-      designMode: 'creative' as const,
+      design_type: 'creative' as const,
       structure: '',
       finishCardId: null as number | null,
       finishCardCode: '',
@@ -743,7 +743,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
   const types = ref(0)
 
   function handelOutline(values: unknown, type: number) {
-    if (type === 0 && creativeForm.designMode === (values as { id?: string }).id)
+    if (type === 0 && creativeForm.design_type === (values as { id?: string }).id)
       return
     if (type === 1) {
       // 结构类型：直接切换，无需弹窗确认
@@ -762,7 +762,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
   function handelSublitOutline() {
     openOutline.value = false
     if (types.value === 0) {
-      creativeForm.designMode = (OutlineValue.value as { id: typeof creativeForm.designMode }).id
+      creativeForm.design_type = (OutlineValue.value as { id: typeof creativeForm.design_type }).id
       creativeForm.selectedStyleModel = null
     }
     else {
@@ -857,7 +857,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
     preorderBrandOptions,
     preorderModelOptions,
     sizeOptions,
-    designModeOptions,
+    designTypeOptions,
     structureValues,
     structureLabel,
     finishSectionLabel,

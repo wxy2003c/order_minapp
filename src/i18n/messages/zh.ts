@@ -490,7 +490,7 @@ export const zh: MessageSchema = {
     noActiveFilters: '暂无已筛选项',
     clearFilters: '清空筛选',
     titleProduct: '车型',
-    titleCase: '汽车品牌',
+    titleCase: '车型',
   },
   wheel: {
     inch16: '16英寸',

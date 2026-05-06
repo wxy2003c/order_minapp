@@ -709,7 +709,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
         </div>
         <div
           v-show="vehicleInfoOpen && vehicleInfoRowsRest.length"
-          class="mt-3 space-y-2.5 border-t border-[#f3f4f6] pt-3">
+          class="mt-3 space-y-2.5 pt-1">
           <div
             v-for="(row, vi) in vehicleInfoRowsRest"
             :key="`vrow-${vi}`"
@@ -723,11 +723,11 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </span>
           </div>
         </div>
-        <div v-if="vehicleInfoRowsRest.length" class="mt-3 flex justify-center border-t border-[#f0f1f4] pt-3">
+        <div v-if="vehicleInfoRowsRest.length" class="mt-3 flex justify-center pt-1">
           <button
             type="button"
             :aria-expanded="vehicleInfoOpen"
-            class="inline-flex items-center gap-0.5 text-3.25 text-[#528FFF]"
+            class="tg-collapse-toggle"
             @click="vehicleInfoOpen = !vehicleInfoOpen">
             <span class="font-700">{{ vehicleInfoOpen ? t('common.collapse') : t('common.expand') }}</span>
             <Icon
@@ -737,7 +737,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
           </button>
         </div>
 
-        <div class="mt-4 border-t border-[#f0f1f4] pt-4">
+        <div class="mt-4 pt-2">
           <div class="mb-3 flex min-w-0 items-center gap-2 text-3.5 text-[#a0a4ae]">
             <span class="h-px flex-1 shrink-0 bg-[#e5e7eb]" />
             <span class="shrink-0 text-center">{{
@@ -777,11 +777,11 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </div>
             <div
               v-if="wheelSpecUnifiedHR.rest.length"
-              class="mt-3 flex justify-center border-t border-[#f0f1f4] pt-3">
+              class="mt-3 flex justify-center pt-1">
               <button
                 type="button"
                 :aria-expanded="wheelSpecOpen"
-                class="inline-flex items-center gap-0.5 text-3.25 text-[#528FFF]"
+                class="tg-collapse-toggle"
                 @click="wheelSpecOpen = !wheelSpecOpen">
                 <span class="font-700">{{ wheelSpecOpen ? t('common.collapse') : t('common.expand') }}</span>
                 <Icon
@@ -826,17 +826,17 @@ function handleDetailAction(key: OrderDetailActionKey) {
               </div>
               <div
                 v-if="wheelSpecFrontHR.rest.length"
-                class="mt-3 flex justify-end border-t border-[#f0f1f4] pt-3">
+                class="mt-3 flex justify-center pt-1">
                 <button
                   type="button"
                   :aria-expanded="frontWheelSpecOpen"
-                  class="inline-flex items-center gap-0.5 text-3.25 text-[#3487FF]"
+                  class="tg-collapse-toggle"
                   @click="frontWheelSpecOpen = !frontWheelSpecOpen">
                   <span class="font-700">{{ frontWheelSpecOpen ? t('common.collapse') : t('common.expand') }}</span>
                   <Icon
                     :icon="frontWheelSpecOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
                     width="16"
-                    height="16" color="#3487FF"/>
+                    height="16" />
                 </button>
               </div>
             </div>
@@ -874,11 +874,11 @@ function handleDetailAction(key: OrderDetailActionKey) {
               </div>
               <div
                 v-if="wheelSpecRearHR.rest.length"
-                class="mt-3 flex justify-end border-t border-[#f0f1f4] pt-3">
+                class="mt-3 flex justify-center pt-1">
                 <button
                   type="button"
                   :aria-expanded="rearWheelSpecOpen"
-                  class="inline-flex items-center gap-0.5 text-3.25 text-[#528FFF]"
+                  class="tg-collapse-toggle"
                   @click="rearWheelSpecOpen = !rearWheelSpecOpen">
                   <span>{{ rearWheelSpecOpen ? t('common.collapse') : t('common.expand') }}</span>
                   <Icon
@@ -1049,11 +1049,11 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </p>
           </div>
         </div>
-        <div class="mt-3 flex justify-end border-t border-[#e5e7eb] pt-3">
+        <div class="mt-3 flex justify-center pt-1">
           <button
             type="button"
             :aria-expanded="designCustomOpen"
-            class="inline-flex items-center gap-0.5 text-3.25 text-[#528FFF]"
+            class="tg-collapse-toggle"
             @click="designCustomOpen = !designCustomOpen">
             <span>{{ designCustomOpen ? t('common.collapse') : t('common.expand') }}</span>
             <Icon

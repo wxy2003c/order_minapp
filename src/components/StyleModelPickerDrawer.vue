@@ -43,6 +43,7 @@ const lastPage = ref(1)
 
 const selectedId = ref<number | null>(null)
 const pending = ref<StyleModelItem | null>(null)
+const previewLoading = ref(false)
 
 const listScrollEl = ref<HTMLElement | null>(null)
 
@@ -107,7 +108,8 @@ function coverImagesForItem(it: StyleModelItem): StyleCoverImage[] {
   return c ? [{ url: c }] : []
 }
 
-function openImagePreview(it: StyleModelItem) {
+async function openImagePreview(it: StyleModelItem) {
+  if (previewLoading.value) return
   const slides = coverImagesForItem(it)
   if (!slides.length) return
   const resolved = slides
@@ -123,7 +125,12 @@ function openImagePreview(it: StyleModelItem) {
     const i = resolved.findIndex((s) => s.src === thumb)
     if (i >= 0) start = i
   }
-  void openPhotoSwipeGallery(resolved, start)
+  previewLoading.value = true
+  try {
+    await openPhotoSwipeGallery(resolved, start)
+  } finally {
+    previewLoading.value = false
+  }
 }
 
 watch(
@@ -352,6 +359,23 @@ function pageIndicator() {
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="previewLoading"
+        class="fixed inset-0 z-[280] flex items-center justify-center bg-black/45 backdrop-blur-[2px]"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div class="rounded-2xl bg-white px-5 py-4 shadow-[0_12px_32px_rgba(0,0,0,0.18)]">
+          <NSpin size="small">
+            <div class="pl-2 text-3.5 font-600 text-[#1F2937]">
+              {{ t('common.loading') }}
+            </div>
+          </NSpin>
+        </div>
+      </div>
+    </Teleport>
 
   </NDrawer>
 </template>

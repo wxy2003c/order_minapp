@@ -2,7 +2,7 @@
  * @Author: error: error: git config user.name & please set dead value or install git && error: git config user.email & please set dead value or install git & please set dead value or install git
  * @Date: 2026-04-16 14:04:06
  * @LastEditors: wxy2003c 774078984@qq.com
- * @LastEditTime: 2026-04-30 09:22:50
+ * @LastEditTime: 2026-05-06 17:33:13
  * @FilePath: \vite-project\src\utils\userTelegram.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -106,7 +106,10 @@ export const DEFAULT_TELEGRAM_USER_ID = ''
  */
 export function getTelegramUserId(): string {
   const id = getTelegramWebApp()?.initDataUnsafe?.user?.id
-  return id != null ? String(id) : DEFAULT_TELEGRAM_USER_ID
+  if (id != null) return String(id)
+  // 开发兜底：在 .env 里配置 VITE_DEV_USER_ID 供本地/TG 环境无法取到 SDK id 时使用
+  const devId = (import.meta.env.VITE_DEV_USER_ID ?? '').toString().trim()
+  return devId || DEFAULT_TELEGRAM_USER_ID
 }
 
 /** Telegram 用户头像 URL（`photo_url`），无则返回空字符串 */

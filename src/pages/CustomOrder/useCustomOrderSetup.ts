@@ -17,7 +17,7 @@ import {
   buildCreateOrderFromCustomOrder,
   parseWheelLibraryStructureSubtypeOffroad,
 } from '@/utils/orderHelpers'
-import { createOrder, updateOrder, fetchOrderDetail, getCurrentUserRole } from '@/api/rolesApi'
+import { createOrder, updateOrder, fetchOrderDetail, getCurrentUserRole, ensureOrderApiRoutingReady } from '@/api/rolesApi'
 import { fetchStyleModelDetail } from '@/api/admin/styleModels'
 import {
   applyOrderDetailToCustomOrderForms,
@@ -410,6 +410,7 @@ export function useCustomOrderSetup(
       store.orderSubmitError = wheelErr
       return
     }
+    await ensureOrderApiRoutingReady()
     if (getCurrentUserRole() === 'admin') {
       if (!String(store.amountForm.basePrice).trim()) {
         store.orderSubmitError = t('customOrder.errTotal')

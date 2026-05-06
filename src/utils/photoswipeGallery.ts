@@ -92,6 +92,7 @@ export async function openPhotoSwipeGallery(
     loop: true,
     /** 完整图落在视口内（object-fit: contain 观感），可双指/双击适度放大 */
     initialZoomLevel: 'fit',
+    bgClickAction: 'close',
     pinchToClose: false,
     wheelToZoom: false,
   })

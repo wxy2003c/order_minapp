@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { Icon } from '@iconify/vue'
 import { NDrawer } from 'naive-ui'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import TgSelect from '@/components/TgSelect.vue'
 import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import StyleModelPickerDrawer from '@/components/StyleModelPickerDrawer.vue'
@@ -17,6 +17,7 @@ import { t } from '@/i18n/uiI18n'
 import { useProductBrowseStore } from '@/stores/productBrowse'
 
 const router = useRouter()
+const route = useRoute()
 const browse = useProductBrowseStore()
 const {
   brand: selectedBrand,
@@ -109,7 +110,6 @@ function applyFilter() {
 
 // ── 选项 ──────────────────────────────────────────────────────────────────────
 const structureOptions = computed(() => [
-  { label: t('headerFilter.all'), value: '' },
   { label: t('customOrder.structureSingle'), value: '单片' },
   { label: t('customOrder.structureDual'), value: '双片' },
   { label: t('customOrder.structureTriple'), value: '三片' },
@@ -117,7 +117,6 @@ const structureOptions = computed(() => [
 ])
 
 const spokeTypeOptions = [
-  { label: t('headerFilter.all'), value: '' },
   { label: 'V型', value: 'V型' },
   { label: 'Y型', value: 'Y型' },
   { label: '刀锋', value: '刀锋' },
@@ -128,7 +127,6 @@ const spokeTypeOptions = [
 ]
 
 const styleTagOptions = [
-  { label: t('headerFilter.all'), value: '' },
   { label: '运动', value: '运动' },
   { label: '性能赛道', value: '性能赛道' },
   { label: '越野', value: '越野' },
@@ -138,7 +136,6 @@ const styleTagOptions = [
 ]
 
 const directionalOptions = [
-  { label: t('headerFilter.all'), value: '' },
   { label: '是', value: '1' },
   { label: '否', value: '0' },
 ]
@@ -226,6 +223,14 @@ function applyAndLoad() {
   void loadProducts(true)
 }
 
+function syncFiltersFromRouteQuery() {
+  const routeStyleTag = typeof route.query.style_tag === 'string' ? route.query.style_tag.trim() : ''
+  if (!routeStyleTag) return
+  pending.style_tag = routeStyleTag
+  applied.style_tag = routeStyleTag
+  selectedStyleMood.value = routeStyleTag
+}
+
 async function loadMore() {
   if (loading.value || !hasMore.value) return
   page.value++
@@ -241,6 +246,7 @@ function handleProductScroll(event: Event) {
 }
 
 onMounted(() => {
+  syncFiltersFromRouteQuery()
   if (selectedStyleMood.value && !applied.style_tag) {
     pending.style_tag = selectedStyleMood.value
     applied.style_tag = selectedStyleMood.value
@@ -266,7 +272,7 @@ function coverUrl(item: StyleModelItem): string | null {
       <img src="@/assets/image/navLogo.png" class="h-14 w-65" alt="">
 
       <!-- 顶部栏：汽车选择 + 筛选 -->
-      <div class="mt-4 flex items-center justify-between gap-3 border-b border-b-[#BBBBBB]">
+      <div class="mt-4 flex items-center justify-between gap-3">
         <!-- 汽车品牌/车型 按钮 -->
         <button
           type="button"

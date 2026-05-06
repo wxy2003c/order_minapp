@@ -35,7 +35,9 @@ export function isElevatedStaffRole(role: UserRoleSnapshot | null | undefined): 
 let usesAdminOrderEndpoints = false
 /** Vue ref — computed() 可追踪变化，fetchUserDetail 回调后 UI 自动更新 */
 const currentUserRoleRef = ref<CurrentUserRole>('user')
+/** 单例 Promise：只在「没有 user_id 时的首次」或「显式调用 refreshUserRole」时才重新请求 */
 let userDetailPromise: Promise<unknown> | null = null
+let lastFetchedUserId = ''
 
 function applyRoleRoutingFromDetailRaw(raw: unknown) {
   try {
@@ -48,18 +50,30 @@ function applyRoleRoutingFromDetailRaw(raw: unknown) {
   }
 }
 
-/** 单例：拉用户详情并更新角色路由；可安全多处 await */
+/**
+ * 拉取用户详情并缓存角色结果。
+ * 同一个 user_id 只请求一次；切换用户（user_id 变化）时自动重新请求。
+ */
 export function fetchUserDetail(): Promise<unknown> {
   const selfId = getTelegramUserId().trim()
+  // user_id 改变时（如深链切换用户）或首次，重新请求
+  if (selfId !== lastFetchedUserId) {
+    userDetailPromise = null
+    lastFetchedUserId = selfId
+  }
   userDetailPromise ??= httpApi
     .get('/users/detail', selfId ? { params: { user_id: selfId } } : undefined)
     .then((raw) => {
       applyRoleRoutingFromDetailRaw(raw)
       return raw
     })
-    .catch(() => {
+    .catch((err) => {
+      // 失败时重置缓存，下次调用会重新请求
+      userDetailPromise = null
+      lastFetchedUserId = ''
       usesAdminOrderEndpoints = false
       currentUserRoleRef.value = 'user'
+      console.warn('[auth] /users/detail failed, defaulting to user role:', err?.message ?? err)
       return null
     })
   return userDetailPromise
@@ -74,9 +88,9 @@ export function getCurrentUserRole(): CurrentUserRole {
   return currentUserRoleRef.value
 }
 
-/** 订单等模块在发起分支请求前 await，避免先走默认再切路由 */
+/** 订单等模块在发起分支请求前 await，确保 fetchUserDetail 完成后再分发 */
 export async function ensureOrderApiRoutingReady(): Promise<void> {
-  if (userDetailPromise) await userDetailPromise
+  await fetchUserDetail()
 }
 
 /** 是否使用管理员端订单接口（否则用 `@/api/user/orders`） */

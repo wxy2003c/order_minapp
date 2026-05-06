@@ -200,7 +200,7 @@ const ORDER_CREATE_ALLOWED_KEYS = new Set([
   'vehicle_model',
   'appearance', 'special_req', 'factory_name', 'factory_po', 'color_sample', 'color_sample_desc',
   'cover_image', 'center_cap', 'front_marking', 'front_mark_image', 'wheel_color_desc', 'wheel_color_image',
-  'order_date', 'coupon', 'spec_mode', 'imgs',
+  'order_date', 'coupon', 'spec_mode', 'design_type', 'imgs',
 ])
 
 function pickCreateOrderPayload(raw: Record<string, unknown>): Record<string, unknown> {
@@ -291,6 +291,10 @@ function wheelStyleFromCreative(c: Record<string, unknown>): { styleNo: string; 
     styleNo: String(sm.style_no ?? '').trim(),
     styleName: String(sm.style_name ?? '').trim(),
   }
+}
+
+function normalizeDesignType(value: unknown): 'creative' | 'custom' {
+  return value === 'custom' ? 'custom' : 'creative'
 }
 
 const WHEEL_LIBRARY_OFFROAD_SEP = ' / '
@@ -401,6 +405,7 @@ export function buildCreateOrderFromCustomOrder(s: CustomOrderFormsSnapshot): Re
     style_name: wheelStyleName,
     brake_disc: String(v.brakeDisc ?? ''),
     caliper: String(v.rimThickness ?? ''),
+    design_type: normalizeDesignType(c.design_type),
     structure: String(c.structure ?? ''),
     structure_subtype_single: '',
     f_width: String(v.frontWidth ?? ''),

@@ -40,7 +40,8 @@ router.afterEach((to) => {
 ;(async () => {
   await router.isReady()
   await tryApplyTelegramStaffDeepLink(router)
-  void fetchUserDetail().catch(() => {})
+  // 启动时请求一次用户权限，挂载前完成角色判断，后续所有接口直接复用缓存结果
+  await fetchUserDetail().catch(() => null)
   app.mount('#app')
 })()
 

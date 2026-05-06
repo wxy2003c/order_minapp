@@ -317,12 +317,6 @@ httpApi.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
 
   if (import.meta.env.DEV) {
     hdr.set('X-Debug-Sign', '1');
-    console.group(`[sign] ${method} ${path}`);
-    console.log('normalizedParams :', normalizedParams);
-    console.log('bodySha256       :', bodySha256);
-    console.log('bodyStr          :', bodyStr || '(empty)');
-    console.log('canonical ↓\n' + canonical);
-    console.groupEnd();
   }
 
   return config;

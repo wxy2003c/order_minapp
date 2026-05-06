@@ -488,8 +488,8 @@ export const ru: MessageSchema = {
     phWlCode: 'Выберите WL',
     noActiveFilters: 'Нет фильтров',
     clearFilters: 'Сбросить',
-    titleProduct: 'Авто',
-    titleCase: 'Марка',
+    titleProduct: 'Модель автомобиля',
+    titleCase: 'Модель автомобиля',
   },
   wheel: {
     inch16: '16 дюйм',

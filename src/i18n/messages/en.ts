@@ -487,8 +487,8 @@ export const en = {
     phWlCode: 'Select WL model',
     noActiveFilters: 'No filters yet',
     clearFilters: 'Clear all',
-    titleProduct: 'Vehicle',
-    titleCase: 'Car brand',
+    titleProduct: 'Vehicle model',
+    titleCase: 'Vehicle model',
   },
   wheel: {
     inch16: '16 in',

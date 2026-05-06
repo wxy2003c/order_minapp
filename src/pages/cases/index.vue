@@ -11,7 +11,7 @@ import TgLoadingState from '@/components/TgLoadingState.vue'
 import TgImage from '@/components/TgImage.vue'
 import { fetchCasesList, fetchFinishCards } from '@/api/rolesApi'
 import type { CaseItem } from '@/api/rolesApi'
-import type { FinishCardItem } from '@/api/admin/finishCards'
+import type { FinishCardGroup, FinishCardItem } from '@/api/admin/finishCards'
 import type { StyleModelItem } from '@/api/admin/styleModels'
 import { t } from '@/i18n/uiI18n'
 
@@ -35,8 +35,8 @@ const carLabel = computed(() => {
 
 // ── 筛选抽屉 ──────────────────────────────────────────────────────────────────
 const filterOpen = ref(false)
-const pending = reactive({ structure_type: '', color_code: '', style_no: '' })
-const applied = reactive({ structure_type: '', color_code: '', style_no: '' })
+const pending = reactive({ structure_type: '', color_group_key: '', color_code: '', style_no: '' })
+const applied = reactive({ structure_type: '', color_group_key: '', color_code: '', style_no: '' })
 
 // WL 型号：用 StyleModelPickerDrawer 选取，结构切换时清空
 const stylePickerOpen = ref(false)
@@ -50,6 +50,8 @@ watch(() => pending.structure_type, () => {
 function openFilter() {
   Object.assign(pending, applied)
   pendingStyleModel.value = appliedStyleModel.value
+  if (!pending.color_group_key && finishGroups.value.length)
+    pending.color_group_key = finishGroupKey(finishGroups.value[0])
   filterOpen.value = true
 }
 
@@ -68,27 +70,45 @@ const styleNoLabel = computed(() => {
 })
 
 const structureOptions = computed(() => [
-  { label: t('headerFilter.all'), value: '' },
   { label: t('customOrder.structureSingle'), value: '单片' },
   { label: t('customOrder.structureDual'), value: '双片' },
   { label: t('customOrder.structureTriple'), value: '三片' },
   { label: t('customOrder.structureOffroad'), value: '越野' },
 ])
 
-// 色卡：从 /finish-cards 接口取
+// 色卡：从 /finish-cards 接口取；接口按 group.items 返回，顶部选择分组，下方展示该分组小分类。
+const finishGroups = ref<FinishCardGroup[]>([])
 const finishItems = ref<FinishCardItem[]>([])
-const colorOptions = computed(() => {
-  const opts = [{ label: t('headerFilter.all'), value: '' }]
-  for (const item of finishItems.value) {
-    const label = [item.code, item.name_cn].filter(Boolean).join(' ')
-    opts.push({ label, value: item.code })
+function finishGroupKey(group: FinishCardGroup) {
+  return `${group.group_name || ''}::${group.section_name || ''}::${group.sort}`
+}
+
+const colorGroupOptions = computed(() => {
+  const opts: { label: string; value: string }[] = []
+  for (const group of finishGroups.value) {
+    const label = [group.group_name, group.section_name].filter(Boolean).join(' / ')
+    opts.push({ label, value: finishGroupKey(group) })
   }
   return opts
 })
 
+const selectedFinishGroup = computed(() =>
+  finishGroups.value.find(group => finishGroupKey(group) === pending.color_group_key) ?? null,
+)
+
+const visibleFinishItems = computed(() =>
+  selectedFinishGroup.value?.items ?? [],
+)
+
 const selectedColorItem = computed(() =>
   finishItems.value.find(x => x.code === pending.color_code) ?? null,
 )
+
+watch(() => pending.color_group_key, () => {
+  const items = visibleFinishItems.value
+  if (pending.color_code && !items.some(item => item.code === pending.color_code))
+    pending.color_code = ''
+})
 
 function applyFilter() {
   Object.assign(applied, pending)
@@ -115,6 +135,10 @@ function removeTag(key: TagKey) {
   } else {
     applied[key] = ''
     pending[key] = ''
+    if (key === 'color_code') {
+      applied.color_group_key = ''
+      pending.color_group_key = ''
+    }
   }
   applyAndLoad()
 }
@@ -189,6 +213,9 @@ onMounted(async () => {
         if (!seen.has(item.code)) { seen.add(item.code); all.push(item) }
       }
     }
+    finishGroups.value = fc.value.groups ?? []
+    if (!pending.color_group_key && finishGroups.value.length)
+      pending.color_group_key = finishGroupKey(finishGroups.value[0])
     finishItems.value = all
   }
 })
@@ -216,7 +243,7 @@ function specSummary(item: CaseItem): string[] {
       <img src="@/assets/image/navLogo.png" class="h-14 w-65" alt="">
 
       <!-- 顶部栏：汽车选择 + 筛选 -->
-      <div class="mt-4 flex items-center justify-between gap-3 border-b border-b-[#BBBBBB]">
+      <div class="mt-4 flex items-center justify-between gap-3">
         <!-- 汽车品牌/车型 按钮 -->
         <button
           type="button"
@@ -408,9 +435,9 @@ function specSummary(item: CaseItem): string[] {
                   <img :src="selectedColorItem.image_url" class="h-full w-full object-cover" alt="">
                 </span>
                 <TgSelect
-                  v-model="pending.color_code"
+                  v-model="pending.color_group_key"
                   :class="selectedColorItem?.image_url ? 'pl-10' : ''"
-                  :options="colorOptions"
+                  :options="colorGroupOptions"
                   :searchable="false"
                   :placeholder="t('headerFilter.phColor')"
                 />
@@ -424,7 +451,7 @@ function specSummary(item: CaseItem): string[] {
               <!-- 色样圆点快速选择 -->
               <div class="flex flex-wrap gap-3 justify-center">
                 <button
-                  v-for="item in finishItems.slice(0, 12)"
+                  v-for="item in visibleFinishItems"
                   :key="item.code"
                   type="button"
                   class="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-full border-2 transition"

@@ -175,7 +175,7 @@ export function applyOrderDetailToCustomOrderForms(
       carModelBodyImageUrl: string
     }
     creativeForm: {
-      designMode: string
+      design_type: string
       structure: string
       finishCardId: number | null
       finishCardOrderNote: string
@@ -337,13 +337,9 @@ export function applyOrderDetailToCustomOrderForms(
     }
   }
 
-  let dm = rootSpecMode
-  if (dm !== 'custom' && dm !== 'creative') dm = 'creative'
-  if (['split', 'same'].includes(rootSm)) {
-    /* 顶层把 split/same 误放在 spec_mode 时仍只控制镜像，不当下拉 designMode */
-    dm = 'creative'
-  }
-  forms.creativeForm.designMode = dm
+  let designType = str(o.design_type || (o as AnyRec).designType)
+  if (designType !== 'custom' && designType !== 'creative') designType = 'creative'
+  forms.creativeForm.design_type = designType
   if (structure) forms.creativeForm.structure = structure
 
   {

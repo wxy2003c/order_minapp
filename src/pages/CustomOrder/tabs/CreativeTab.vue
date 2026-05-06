@@ -17,11 +17,11 @@ const o = useCustomOrderContext()
     <div class="space-y-4 px-4 py-4">
       <div class="grid grid-cols-2 gap-3">
         <button
-          v-for="item in o.designModeOptions"
+          v-for="item in o.designTypeOptions"
           :key="item.id"
           type="button"
           class="rounded-2xl border px-4 py-5 text-left transition"
-          :class="o.creativeForm.designMode === item.id ? 'border-[#88AEE4] bg-[#EFF5FF] shadow-[inset_0_0_0_1px_rgba(136,174,228,0.25)]' : 'border-[#ECECEC] bg-white'"
+          :class="o.creativeForm.design_type === item.id ? 'border-[#88AEE4] bg-[#EFF5FF] shadow-[inset_0_0_0_1px_rgba(136,174,228,0.25)]' : 'border-[#ECECEC] bg-white'"
           @click="o.handelOutline(item, 0)">
           <Icon :icon="item.icon" width="22" height="22" class="text-[#6B7280]" />
           <div class="mt-4 text-4 font-700">{{ item.title }}</div>
@@ -45,7 +45,7 @@ const o = useCustomOrderContext()
         </div>
       </div>
 
-      <template v-if="o.creativeForm.designMode === 'creative'">
+      <template v-if="o.creativeForm.design_type === 'creative'">
         <div>
           <div class="mb-2 text-4 font-700">{{ t('customOrder.wheelStyleSection') }}</div>
 

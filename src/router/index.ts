@@ -2,7 +2,7 @@
  * @Author: wxy2003c 774078984@qq.com
  * @Date: 2026-04-17 10:48:46
  * @LastEditors: wxy2003c 774078984@qq.com
- * @LastEditTime: 2026-04-29 10:44:48
+ * @LastEditTime: 2026-05-06 10:16:47
  * @FilePath: \vite-project\src\router\index.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -65,8 +65,6 @@ const router = createRouter({
       name: '订单评价',
       component: () => import('@/pages/Evaluation/index.vue'),
     },
-    // Telegram Mini App 会在 hash 里注入自己的参数（tgWebAppData 等），
-    // 导致 hash 路由无法匹配任何页面 → 兜底重定向到首页
     {
       path: '/:pathMatch(.*)*',
       redirect: '/',
