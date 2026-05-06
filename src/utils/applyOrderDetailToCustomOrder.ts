@@ -462,7 +462,36 @@ export function applyOrderDetailToCustomOrderForms(
   }
   forms.addressForm.coupon = fv(['coupon', '优惠券']) || str(o.coupon)
   forms.addressForm.remark
-    = fv(['remark', 'notes', '买家备注', '留言']) || str(o.remark) || str(o.notes as string) || str(o.备注 as string)
+    = fv([
+      'remark',
+      'remarks',
+      'note',
+      'notes',
+      'order_remark',
+      'order_notes',
+      'buyer_remark',
+      'customer_remark',
+      'user_remark',
+      'admin_remark',
+      'custom_note',
+      '买家备注',
+      '订单备注',
+      '客户备注',
+      '备注',
+      '留言',
+    ])
+      || str(o.remark)
+      || str(o.remarks)
+      || str(o.note)
+      || str(o.notes)
+      || str(o.order_remark)
+      || str(o.order_notes)
+      || str(o.buyer_remark)
+      || str(o.customer_remark)
+      || str(o.user_remark)
+      || str(o.admin_remark)
+      || str(o.custom_note)
+      || str(o.备注)
 
   const base
     = fv(['base_price', '应付'])

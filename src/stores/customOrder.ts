@@ -2,7 +2,7 @@
  * 定制下单页（CustomOrder）共享状态：四步表单、Wheel-Size 联动、色卡与 Tab/弹层。
  * 逻辑仍由 `useCustomOrderSetup` 衔接路由 / `pageRoot` / Message；Tab 可直接 `useCustomOrderStore()`。
  */
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchFinishCards, resolveStyleModelItemForHydrate, getCurrentUserRole } from '@/api/rolesApi'
 import type { FinishCardGroup, FinishCardItem, StyleModelItem } from '@/api/rolesApi'
@@ -34,6 +34,18 @@ import {
 
 interface SelectOption extends SelectOptionLite {}
 
+type FitmentPresetId = 'oem' | 'full' | 'aggressive' | 'staggered'
+
+interface FitmentPresetOption {
+  id: FitmentPresetId
+  title: string
+  desc: string
+  stance: string
+  comfort: string
+  risk: string
+  dot: string
+}
+
 function resolveInitialCustomerName(): string {
   return readStaffCustomerDisplayName().trim()
 }
@@ -56,16 +68,16 @@ function createInitialVehicleForm(wheelSizeEnabled: boolean): VehicleFormState {
     wheelModification: '',
     brakeDisc: '',
     mirrorPair: true,
-    frontSize: '',
-    frontQuantity: '',
-    frontWidth: '',
-    frontEt: '',
+    frontSize: '20',
+    frontQuantity: '4',
+    frontWidth: '9',
+    frontEt: '30',
     frontPcdLeft: '',
     frontPcdRight: '',
     frontCb: '',
-    frontPaint: '',
-    frontHole: '',
-    frontBoltSeat: '',
+    frontPaint: '按所选色卡',
+    frontHole: '锥口',
+    frontBoltSeat: '原厂螺丝',
     rearSize: '',
     rearQuantity: '',
     rearWidth: '',
@@ -87,6 +99,10 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
   const wheelSizeEnabled = isWheelSizeEnabled()
 
   const vehicleForm = reactive<VehicleFormState>(createInitialVehicleForm(wheelSizeEnabled))
+  const selectedFitmentPreset = ref<FitmentPresetId>('full')
+  const fitmentParamsExpanded = ref(false)
+  const fitmentPresetDirty = ref(false)
+  const applyingFitmentPreset = ref(false)
 
   const cascade = useWheelSizeCascade(wheelSizeEnabled, vehicleForm)
 
@@ -225,6 +241,116 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
   const finishCardLoading = ref(false)
   const finishCardLoadError = ref('')
   const selectedFinishGroupIndex = ref(0)
+
+  const fitmentPresetOptions = computed<FitmentPresetOption[]>(() => [
+    {
+      id: 'oem',
+      title: t('customOrder.fitmentPresetOem'),
+      desc: t('customOrder.fitmentPresetOemDesc'),
+      stance: t('customOrder.fitmentStanceOem'),
+      comfort: t('customOrder.fitmentComfortHigh'),
+      risk: t('customOrder.fitmentRiskLow'),
+      dot: '38%',
+    },
+    {
+      id: 'full',
+      title: t('customOrder.fitmentPresetFull'),
+      desc: t('customOrder.fitmentPresetFullDesc'),
+      stance: t('customOrder.fitmentStanceFull'),
+      comfort: t('customOrder.fitmentComfortDaily'),
+      risk: t('customOrder.fitmentRiskLow'),
+      dot: '56%',
+    },
+    {
+      id: 'aggressive',
+      title: t('customOrder.fitmentPresetAggressive'),
+      desc: t('customOrder.fitmentPresetAggressiveDesc'),
+      stance: t('customOrder.fitmentStanceAggressive'),
+      comfort: t('customOrder.fitmentComfortMedium'),
+      risk: t('customOrder.fitmentRiskMedium'),
+      dot: '74%',
+    },
+    {
+      id: 'staggered',
+      title: t('customOrder.fitmentPresetStaggered'),
+      desc: t('customOrder.fitmentPresetStaggeredDesc'),
+      stance: t('customOrder.fitmentStanceStaggered'),
+      comfort: t('customOrder.fitmentComfortMedium'),
+      risk: t('customOrder.fitmentRiskNeedConfirm'),
+      dot: '66%',
+    },
+  ])
+
+  function applyFitmentPreset(id: FitmentPresetId) {
+    selectedFitmentPreset.value = id
+    fitmentPresetDirty.value = false
+    applyingFitmentPreset.value = true
+    try {
+      const common = {
+        frontPcdLeft: vehicleForm.frontPcdLeft,
+        frontPcdRight: vehicleForm.frontPcdRight,
+        frontCb: vehicleForm.frontCb,
+        frontPaint: vehicleForm.frontPaint || '按所选色卡',
+        frontHole: vehicleForm.frontHole || '锥口',
+        frontBoltSeat: vehicleForm.frontBoltSeat || '原厂螺丝',
+      }
+      if (id === 'oem') {
+        Object.assign(vehicleForm, {
+          mirrorPair: true,
+          frontSize: '19',
+          frontQuantity: '4',
+          frontWidth: '8.5',
+          frontEt: '35',
+          ...common,
+        })
+      }
+      else if (id === 'aggressive') {
+        Object.assign(vehicleForm, {
+          mirrorPair: true,
+          frontSize: '20',
+          frontQuantity: '4',
+          frontWidth: '9.5',
+          frontEt: '22',
+          ...common,
+        })
+      }
+      else if (id === 'staggered') {
+        Object.assign(vehicleForm, {
+          mirrorPair: false,
+          frontSize: '20',
+          frontQuantity: '2',
+          frontWidth: '9',
+          frontEt: '30',
+          rearSize: '20',
+          rearQuantity: '2',
+          rearWidth: '10',
+          rearEt: '38',
+          rearPcdLeft: vehicleForm.rearPcdLeft || vehicleForm.frontPcdLeft,
+          rearPcdRight: vehicleForm.rearPcdRight || vehicleForm.frontPcdRight,
+          rearCb: vehicleForm.rearCb || vehicleForm.frontCb,
+          rearHole: vehicleForm.rearHole || vehicleForm.frontHole || '锥口',
+          rearBoltSeat: vehicleForm.rearBoltSeat || vehicleForm.frontBoltSeat || '原厂螺丝',
+          ...common,
+        })
+      }
+      else {
+        Object.assign(vehicleForm, {
+          mirrorPair: true,
+          frontSize: '20',
+          frontQuantity: '4',
+          frontWidth: '9',
+          frontEt: '30',
+          ...common,
+        })
+      }
+    }
+    finally {
+      void nextTick(() => {
+        applyingFitmentPreset.value = false
+        fitmentPresetDirty.value = false
+      })
+    }
+  }
 
   const groupsWithItems = computed(() =>
     [...finishCardGroups.value]
@@ -369,6 +495,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
 
   async function resetCustomOrderFormsToInitial() {
     await cascade.onWheelBrandChange('')
+    applyingFitmentPreset.value = true
     Object.assign(vehicleForm, getDefaultVehicleFormState())
     Object.assign(creativeForm, {
       designMode: 'creative' as const,
@@ -405,6 +532,13 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
     })
     Object.assign(amountForm, { basePrice: '', currency: '' })
     vehicleExpanded.value = false
+    selectedFitmentPreset.value = 'full'
+    fitmentParamsExpanded.value = false
+    fitmentPresetDirty.value = false
+    void nextTick(() => {
+      applyingFitmentPreset.value = false
+      fitmentPresetDirty.value = false
+    })
     styleModelDrawerOpen.value = false
     orderSubmitError.value = ''
     await loadFinishCards()
@@ -416,6 +550,7 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
    */
   async function resetPageForNewVisit() {
     await cascade.onWheelBrandChange('')
+    applyingFitmentPreset.value = true
     Object.assign(vehicleForm, getDefaultVehicleFormState())
     Object.assign(creativeForm, {
       designMode: 'creative' as const,
@@ -455,6 +590,13 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
     allFinishItems.value = []
     selectedFinishGroupIndex.value = 0
     vehicleExpanded.value = false
+    selectedFitmentPreset.value = 'full'
+    fitmentParamsExpanded.value = false
+    fitmentPresetDirty.value = false
+    void nextTick(() => {
+      applyingFitmentPreset.value = false
+      fitmentPresetDirty.value = false
+    })
     styleModelDrawerOpen.value = false
     activeTab.value = 'vehicle'
     openOutline.value = false
@@ -553,6 +695,36 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
     () => vehicleForm.frontPaint,
     (v) => {
       vehicleForm.rearPaint = v
+    },
+  )
+
+  watch(
+    [
+      () => vehicleForm.mirrorPair,
+      () => vehicleForm.frontSize,
+      () => vehicleForm.frontQuantity,
+      () => vehicleForm.frontWidth,
+      () => vehicleForm.frontEt,
+      () => vehicleForm.frontPcdLeft,
+      () => vehicleForm.frontPcdRight,
+      () => vehicleForm.frontCb,
+      () => vehicleForm.frontPaint,
+      () => vehicleForm.frontHole,
+      () => vehicleForm.frontBoltSeat,
+      () => vehicleForm.rearSize,
+      () => vehicleForm.rearQuantity,
+      () => vehicleForm.rearWidth,
+      () => vehicleForm.rearEt,
+      () => vehicleForm.rearPcdLeft,
+      () => vehicleForm.rearPcdRight,
+      () => vehicleForm.rearCb,
+      () => vehicleForm.rearHole,
+      () => vehicleForm.rearBoltSeat,
+    ],
+    () => {
+      if (!applyingFitmentPreset.value && selectedFitmentPreset.value) {
+        fitmentPresetDirty.value = true
+      }
     },
   )
 
@@ -671,6 +843,11 @@ export const useCustomOrderStore = defineStore('customOrder', () => {
   return {
     wheelSizeEnabled,
     vehicleForm,
+    selectedFitmentPreset,
+    fitmentParamsExpanded,
+    fitmentPresetDirty,
+    fitmentPresetOptions,
+    applyFitmentPreset,
     creativeForm,
     addressForm,
     amountForm,

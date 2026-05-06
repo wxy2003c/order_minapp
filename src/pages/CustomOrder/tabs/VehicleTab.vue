@@ -7,6 +7,7 @@ import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import TgSelect from '@/components/TgSelect.vue'
 import TgSwitch from '@/components/TgSwitch.vue'
+import FitmentVisualizer from '@/components/FitmentVisualizer.vue'
 import type { WheelSizeGenerationRow } from '@/api/wheelsline-size'
 import { t } from '@/i18n/uiI18n'
 import { openPhotoSwipeGallery } from '@/utils/photoswipeGallery'
@@ -15,6 +16,25 @@ import { useCustomOrderContext } from '../customOrderContext'
 
 const o = useCustomOrderContext()
 const isAdmin = computed(() => getCurrentUserRole() === 'admin')
+
+const frontSpecSummary = computed(() => {
+  const v = o.vehicleForm
+  const size = v.frontSize ? `${v.frontSize}x${v.frontWidth || '?'}J` : ''
+  const et = v.frontEt ? `ET${v.frontEt}` : ''
+  return [size, et, v.frontPcdLeft && v.frontPcdRight ? `${v.frontPcdLeft}x${v.frontPcdRight}` : '', v.frontCb ? `CB${v.frontCb}` : '']
+    .filter(Boolean)
+    .join(' · ') || t('customOrder.fitmentParamsPending')
+})
+
+const rearSpecSummary = computed(() => {
+  const v = o.vehicleForm
+  if (v.mirrorPair) return t('customOrder.sameFrontRear')
+  const size = v.rearSize ? `${v.rearSize}x${v.rearWidth || '?'}J` : ''
+  const et = v.rearEt ? `ET${v.rearEt}` : ''
+  return [size, et, v.rearPcdLeft && v.rearPcdRight ? `${v.rearPcdLeft}x${v.rearPcdRight}` : '', v.rearCb ? `CB${v.rearCb}` : '']
+    .filter(Boolean)
+    .join(' · ') || t('customOrder.fitmentParamsPending')
+})
 
 const carModelGallerySlides = computed(() => {
   const out: { src: string; title?: string }[] = []
@@ -175,7 +195,7 @@ async function openCarModelLargeView() {
               :placeholder="t('customOrder.phSelectModelStatic')" />
           </div>
         </template>
-        <div>
+        <div v-if="o.fitmentParamsExpanded">
           <div class="mb-2 text-3.5 font-600">{{ t('customOrder.brakeDisc') }}</div>
           <input
             v-model="o.vehicleForm.brakeDisc"
@@ -184,6 +204,85 @@ async function openCarModelLargeView() {
             class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
         </div>
       </div>
+
+      <section class="space-y-3 rounded-3xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div>
+          <div class="text-4 font-700">{{ t('customOrder.fitmentTitle') }}</div>
+          <div class="mt-1 text-3 text-[#9CA3AF]">{{ t('customOrder.fitmentHint') }}</div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3">
+          <button
+            v-for="preset in o.fitmentPresetOptions"
+            :key="preset.id"
+            type="button"
+            class="rounded-2xl border p-3 text-left transition active:scale-[0.99]"
+            :class="o.selectedFitmentPreset === preset.id
+              ? 'border-[#3487FF] bg-[#EFF6FF] shadow-[0_8px_22px_rgba(52,135,255,0.12)]'
+              : 'border-[#E5E7EB] bg-[#FAFAFA]'"
+            @click="o.applyFitmentPreset(preset.id)"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="text-3.75 font-700 text-[#111827]">{{ preset.title }}</div>
+                <div class="mt-1 text-3 leading-relaxed text-[#6B7280]">{{ preset.desc }}</div>
+              </div>
+              <Icon
+                v-if="o.selectedFitmentPreset === preset.id"
+                icon="mdi:check-circle"
+                class="shrink-0 text-[#3487FF]"
+                width="20"
+                height="20"
+              />
+            </div>
+            <div class="mt-3">
+              <div class="relative h-2 rounded-full bg-gradient-to-r from-[#D1D5DB] via-[#60A5FA] to-[#F97316]">
+                <span
+                  class="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#111827] shadow"
+                  :style="{ left: preset.dot }"
+                />
+              </div>
+              <div class="mt-2 grid grid-cols-3 gap-2 text-2.75 text-[#6B7280]">
+                <div>{{ preset.stance }}</div>
+                <div>{{ preset.comfort }}</div>
+                <div>{{ preset.risk }}</div>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <div class="rounded-2xl bg-[#F9FAFB] p-3">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-3.25 font-700 text-[#111827]">{{ t('customOrder.fitmentParamsGenerated') }}</div>
+            <span
+              v-if="o.fitmentPresetDirty"
+              class="rounded-full bg-[#FFF7ED] px-2 py-1 text-2.75 font-700 text-[#C2410C]"
+            >
+              {{ t('customOrder.fitmentAdjusted') }}
+            </span>
+          </div>
+          <div class="mt-2 space-y-1 text-3 text-[#4B5563]">
+            <div>{{ t('customOrder.front') }}：{{ frontSpecSummary }}</div>
+            <div>{{ t('customOrder.rear') }}：{{ rearSpecSummary }}</div>
+          </div>
+          <button
+            type="button"
+            class="mt-3 flex items-center gap-1 text-3.25 font-700 text-[#3487FF]"
+            @click="o.fitmentParamsExpanded = !o.fitmentParamsExpanded"
+          >
+            <Icon :icon="o.fitmentParamsExpanded ? 'mdi:chevron-up' : 'mdi:tune-variant'" width="16" height="16" />
+            <span>{{ o.fitmentParamsExpanded ? t('customOrder.fitmentHideParams') : t('customOrder.fitmentEditParams') }}</span>
+          </button>
+        </div>
+      </section>
+
+      <FitmentVisualizer
+        :front-width="o.vehicleForm.frontWidth"
+        :front-et="o.vehicleForm.frontEt"
+        :rear-width="o.vehicleForm.rearWidth"
+        :rear-et="o.vehicleForm.rearEt"
+        :mirror-pair="o.vehicleForm.mirrorPair"
+      />
 
       <div v-if="o.vehicleExpanded" class="space-y-3">
         <div>
@@ -220,6 +319,7 @@ async function openCarModelLargeView() {
         <span>{{ o.vehicleExpanded ? t('common.collapse') : t('common.expand') }}</span>
       </button>
 
+      <template v-if="o.fitmentParamsExpanded">
       <div class="flex items-center gap-2">
         <TgSwitch v-model="o.vehicleForm.mirrorPair" aria-label="toggle same wheel config" />
         <div class="text-3.5 font-600">{{ t('customOrder.sameFrontRear') }}</div>
@@ -282,6 +382,7 @@ async function openCarModelLargeView() {
             class="h-11 w-full rounded-xl border border-[#E5E7EB] bg-white px-3 text-3.5 outline-none placeholder:text-[#B6BBC5]">
         </div>
       </div>
+      </template>
     </div>
   </div>
 </template>

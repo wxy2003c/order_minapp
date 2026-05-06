@@ -9,7 +9,7 @@ import CarSelectionPanel from '@/components/CarSelectionPanel.vue'
 import { STYLE_MOOD_TAGS } from '@/constants/styleMoodTags'
 import { useProductBrowseStore } from '@/stores/productBrowse'
 import { t } from '@/i18n/uiI18n'
-import { fetchHomePage, getCurrentUserRole } from '@/api/rolesApi'
+import { fetchHomePage } from '@/api/rolesApi'
 import type { HomePageData } from '@/api/rolesApi'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
 
@@ -22,7 +22,6 @@ const homeData = ref<HomePageData>({
   customer_cases: [],
 })
 const loading = ref(true)
-const canShowQuickOrder = computed(() => getCurrentUserRole() === 'admin')
 
 onMounted(async () => {
   try {
@@ -174,13 +173,5 @@ function img(path: string | null | undefined): string | null {
       </div>
     </div>
 
-    <!-- 快捷下单按钮 -->
-    <div
-      v-if="canShowQuickOrder"
-      class="pos-fixed right-5 top-1/2 h-12 w-12 flex flex-items-center justify-center rounded-50% border -translate-y-1/2"
-      style="border-color: var(--tg-theme-section-separator-color); background: var(--tg-theme-secondary-bg-color)"
-      @click="router.push('/CustomOrder')">
-      <Icon icon="mdi:plus" width="22" height="22" :style="{ color: 'var(--tg-theme-text-color)' }" />
-    </div>
   </div>
 </template>
