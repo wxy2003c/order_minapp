@@ -36,6 +36,9 @@ import {
   type ImgSlotValue,
   type WheelSpecRow,
 } from '@/utils/orderDetailHelpers'
+import { useMessage } from 'naive-ui'
+
+const message = useMessage()
 
 const router = useRouter()
 const route = useRoute()
@@ -161,6 +164,16 @@ const structureLabel = computed((): string => {
   if (raw.includes('越野')) return t('orderStructure.off_road')
   if (raw.includes('单片')) return t('orderStructure.one_piece')
   return raw
+})
+
+/** 与提交订单 `design_type` 一致：creative→型号库设计、custom→创意设计；历史单无字段时用通用标题 */
+const designTypeSectionTitle = computed(() => {
+  const d = detail.value as Record<string, unknown> | null
+  if (!d) return t('orderDetails.designLib')
+  const raw = str(d.design_type ?? d.designType).trim().toLowerCase()
+  if (raw === 'custom') return t('customOrder.designModeCustom')
+  if (raw === 'creative') return t('customOrder.designModeCreative')
+  return t('orderDetails.designLib')
 })
 
 const avatarUrl = computed(
@@ -512,6 +525,7 @@ function copyOrderNo() {
   const no = str((detail.value as { order_no?: string })?.order_no)
   if (no && navigator.clipboard?.writeText) {
     void navigator.clipboard.writeText(no)
+    message.success(t('common.copySuccess'))
   }
 }
 
@@ -583,30 +597,14 @@ function handleDetailAction(key: OrderDetailActionKey) {
         <img src="@/assets/image/navLogo.png" class="h-8 w-34 object-contain" alt="">
       </div>
 
-      <TgLoadingState
-        v-if="loading"
-        tone="light"
-        compact
-        spinning
-        :title="t('common.loading')"
-      />
-      <TgLoadingState
-        v-else-if="loadError"
-        tone="light"
-        :title="loadError"
-        :action-label="t('common.retry')"
-        @action="load"
-      />
+      <TgLoadingState v-if="loading" tone="light" compact spinning :title="t('common.loading')" />
+      <TgLoadingState v-else-if="loadError" tone="light" :title="loadError" :action-label="t('common.retry')"
+        @action="load" />
 
       <template v-else-if="detail">
         <div class="mt-4 flex items-center justify-between gap-3 border-b border-[#f0f1f4] pb-3">
           <div class="flex min-w-0 items-center gap-2 text-3.5">
-            <Icon
-              :icon="statusMeta.icon"
-              width="15"
-              height="15"
-              :class="statusMeta.statusClass"
-              color="#528FFF" />
+            <Icon :icon="statusMeta.icon" width="15" height="15" :class="statusMeta.statusClass" color="#528FFF" />
             <span :class="statusMeta.statusClass" class="color-[#528FFF]">{{ t(statusMeta.labelKey) }}</span>
           </div>
           <div class="text-3 text-[#BBBBBB] flex flex-items-center gap-2">
@@ -615,17 +613,13 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </button>
             <span class="truncate">{{
               (detail as { order_no?: string }).order_no || str((detail as { id?: unknown }).id) || '—'
-            }}</span>
+              }}</span>
           </div>
         </div>
 
         <div class="mt-4 flex items-center gap-3">
           <div class="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-[#d7d9df] bg-white">
-            <img
-              v-if="avatarUrl"
-              :src="avatarUrl"
-              class="h-full w-full object-cover"
-              alt="">
+            <img v-if="avatarUrl" :src="avatarUrl" class="h-full w-full object-cover" alt="">
           </div>
           <span class="flex-1 truncate text-3.5 text-[#555b67]">
             {{ customerDisplayName }}
@@ -649,17 +643,11 @@ function handleDetailAction(key: OrderDetailActionKey) {
           </div>
           <div class="flex gap-3">
             <template v-for="(cell, ci) in group.cells" :key="`c-${gi}-${ci}`">
-              <a
-                v-if="cell"
-                :href="cell"
-                target="_blank"
-                rel="noopener noreferrer"
+              <a v-if="cell" :href="cell" target="_blank" rel="noopener noreferrer"
                 class="flex h-12.5 w-12.5 items-center justify-center overflow-hidden rounded-[4px] bg-[#121318]">
                 <img :src="cell" class="h-full w-full object-cover" alt="">
               </a>
-              <div
-                v-else
-                class="flex h-12.5 w-12.5 items-center justify-center rounded-[4px] bg-[#121318]">
+              <div v-else class="flex h-12.5 w-12.5 items-center justify-center rounded-[4px] bg-[#121318]">
                 <Icon icon="mdi:wheel" width="20" height="20" class="text-white" />
               </div>
             </template>
@@ -673,8 +661,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
         <div v-if="carHeroSrc" class="h-34 w-full max-w-70 overflow-hidden rounded-[10px]">
           <img :src="carHeroSrc" class="h-full w-full object-cover" alt="">
         </div>
-        <div
-          v-else
+        <div v-else
           class="relative h-34 w-full max-w-70 overflow-hidden rounded-[10px] bg-[linear-gradient(135deg,#e5e7eb_0%,#f5f6f8_40%,#d9dde5_100%)]">
           <div class="absolute left-[10%] top-[48%] h-10 w-10 rounded-full border-[6px] border-[#2a2d35]" />
           <div class="absolute right-[12%] top-[48%] h-10 w-10 rounded-full border-[6px] border-[#2a2d35]" />
@@ -701,39 +688,27 @@ function handleDetailAction(key: OrderDetailActionKey) {
             <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
               {{ t(vehicleInfoRows[0].labelKey) }}
             </span>
-            <span
-              class="min-w-0 flex-1 text-right font-500 leading-5.5 text-[#333] break-words whitespace-pre-wrap">
+            <span class="min-w-0 flex-1 text-right font-500 leading-5.5 text-[#333] break-words whitespace-pre-wrap">
               {{ vehicleInfoRows[0].value }}
             </span>
           </div>
         </div>
-        <div
-          v-show="vehicleInfoOpen && vehicleInfoRowsRest.length"
-          class="mt-3 space-y-2.5 pt-1">
-          <div
-            v-for="(row, vi) in vehicleInfoRowsRest"
-            :key="`vrow-${vi}`"
+        <div v-show="vehicleInfoOpen && vehicleInfoRowsRest.length" class="mt-3 space-y-2.5 pt-1">
+          <div v-for="(row, vi) in vehicleInfoRowsRest" :key="`vrow-${vi}`"
             class="flex items-start justify-between gap-3 text-3.5">
             <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
               {{ t(row.labelKey) }}
             </span>
-            <span
-              class="min-w-0 flex-1 text-right font-500 leading-5.5 text-[#333] break-words whitespace-pre-wrap">
+            <span class="min-w-0 flex-1 text-right font-500 leading-5.5 text-[#333] break-words whitespace-pre-wrap">
               {{ row.value }}
             </span>
           </div>
         </div>
         <div v-if="vehicleInfoRowsRest.length" class="mt-3 flex justify-center pt-1">
-          <button
-            type="button"
-            :aria-expanded="vehicleInfoOpen"
-            class="tg-collapse-toggle"
+          <button type="button" :aria-expanded="vehicleInfoOpen" class="tg-collapse-toggle"
             @click="vehicleInfoOpen = !vehicleInfoOpen">
             <span class="font-700">{{ vehicleInfoOpen ? t('common.collapse') : t('common.expand') }}</span>
-            <Icon
-              :icon="vehicleInfoOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-              width="16"
-              height="16" />
+            <Icon :icon="vehicleInfoOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" width="16" height="16" />
           </button>
         </div>
 
@@ -742,52 +717,38 @@ function handleDetailAction(key: OrderDetailActionKey) {
             <span class="h-px flex-1 shrink-0 bg-[#e5e7eb]" />
             <span class="shrink-0 text-center">{{
               wheelsIdentical ? t('orderDetails.wheelsIdentical') : t('orderDetails.wheelSpecSplitHint')
-            }}</span>
+              }}</span>
             <span class="h-px min-w-0 flex-1 bg-[#e5e7eb]" />
           </div>
 
           <template v-if="wheelsIdentical">
             <div class="space-y-2.5">
-              <div
-                v-for="(w, wi) in wheelSpecUnifiedHR.head"
-                :key="`wuh-${wi}`"
+              <div v-for="(w, wi) in wheelSpecUnifiedHR.head" :key="`wuh-${wi}`"
                 class="flex items-start justify-between gap-3 text-3.5">
                 <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
                   {{ t(w.labelKey) }}
                 </span>
-                <span
-                  class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
+                <span class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
                   {{ w.value }}
                 </span>
               </div>
             </div>
             <div v-show="wheelSpecOpen" class="mt-2.5 space-y-2.5">
-              <div
-                v-for="(w, wi) in wheelSpecUnifiedHR.rest"
-                :key="`wur-${wi}`"
+              <div v-for="(w, wi) in wheelSpecUnifiedHR.rest" :key="`wur-${wi}`"
                 class="flex items-start justify-between gap-3 text-3.5">
                 <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
                   {{ t(w.labelKey) }}
                 </span>
-                <span
-                  class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
+                <span class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
                   {{ w.value }}
                 </span>
               </div>
             </div>
-            <div
-              v-if="wheelSpecUnifiedHR.rest.length"
-              class="mt-3 flex justify-center pt-1">
-              <button
-                type="button"
-                :aria-expanded="wheelSpecOpen"
-                class="tg-collapse-toggle"
+            <div v-if="wheelSpecUnifiedHR.rest.length" class="mt-3 flex justify-center pt-1">
+              <button type="button" :aria-expanded="wheelSpecOpen" class="tg-collapse-toggle"
                 @click="wheelSpecOpen = !wheelSpecOpen">
                 <span class="font-700">{{ wheelSpecOpen ? t('common.collapse') : t('common.expand') }}</span>
-                <Icon
-                  :icon="wheelSpecOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-                  width="16"
-                  height="16" />
+                <Icon :icon="wheelSpecOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" width="16" height="16" />
               </button>
             </div>
           </template>
@@ -797,45 +758,32 @@ function handleDetailAction(key: OrderDetailActionKey) {
                 {{ t('orderDetails.frontWheel') }}
               </div>
               <div class="mt-2.5 space-y-2.5">
-                <div
-                  v-for="(w, wi) in wheelSpecFrontHR.head"
-                  :key="`wfh-${wi}`"
+                <div v-for="(w, wi) in wheelSpecFrontHR.head" :key="`wfh-${wi}`"
                   class="flex items-start justify-between gap-3 text-3.5">
                   <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
                     {{ t(w.labelKey) }}
                   </span>
-                  <span
-                    class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
+                  <span class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
                     {{ w.value }}
                   </span>
                 </div>
               </div>
               <div v-show="frontWheelSpecOpen" class="mt-2.5 space-y-2.5">
-                <div
-                  v-for="(w, wi) in wheelSpecFrontHR.rest"
-                  :key="`wfr-${wi}`"
+                <div v-for="(w, wi) in wheelSpecFrontHR.rest" :key="`wfr-${wi}`"
                   class="flex items-start justify-between gap-3 text-3.5">
                   <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
                     {{ t(w.labelKey) }}
                   </span>
-                  <span
-                    class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
+                  <span class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
                     {{ w.value }}
                   </span>
                 </div>
               </div>
-              <div
-                v-if="wheelSpecFrontHR.rest.length"
-                class="mt-3 flex justify-center pt-1">
-                <button
-                  type="button"
-                  :aria-expanded="frontWheelSpecOpen"
-                  class="tg-collapse-toggle"
+              <div v-if="wheelSpecFrontHR.rest.length" class="mt-3 flex justify-center pt-1">
+                <button type="button" :aria-expanded="frontWheelSpecOpen" class="tg-collapse-toggle"
                   @click="frontWheelSpecOpen = !frontWheelSpecOpen">
                   <span class="font-700">{{ frontWheelSpecOpen ? t('common.collapse') : t('common.expand') }}</span>
-                  <Icon
-                    :icon="frontWheelSpecOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-                    width="16"
+                  <Icon :icon="frontWheelSpecOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" width="16"
                     height="16" />
                 </button>
               </div>
@@ -845,45 +793,32 @@ function handleDetailAction(key: OrderDetailActionKey) {
                 {{ t('orderDetails.rearWheel') }}
               </div>
               <div class="mt-2.5 space-y-2.5">
-                <div
-                  v-for="(w, wi) in wheelSpecRearHR.head"
-                  :key="`wrh-${wi}`"
+                <div v-for="(w, wi) in wheelSpecRearHR.head" :key="`wrh-${wi}`"
                   class="flex items-start justify-between gap-3 text-3.5">
                   <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
                     {{ t(w.labelKey) }}
                   </span>
-                  <span
-                    class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
+                  <span class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
                     {{ w.value }}
                   </span>
                 </div>
               </div>
               <div v-show="rearWheelSpecOpen" class="mt-2.5 space-y-2.5">
-                <div
-                  v-for="(w, wi) in wheelSpecRearHR.rest"
-                  :key="`wrr-${wi}`"
+                <div v-for="(w, wi) in wheelSpecRearHR.rest" :key="`wrr-${wi}`"
                   class="flex items-start justify-between gap-3 text-3.5">
                   <span class="max-w-[48%] shrink-0 text-3 text-[#a3a7b0]">
                     {{ t(w.labelKey) }}
                   </span>
-                  <span
-                    class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
+                  <span class="min-w-0 flex-1 text-right font-500 break-words text-[#333] whitespace-pre-wrap">
                     {{ w.value }}
                   </span>
                 </div>
               </div>
-              <div
-                v-if="wheelSpecRearHR.rest.length"
-                class="mt-3 flex justify-center pt-1">
-                <button
-                  type="button"
-                  :aria-expanded="rearWheelSpecOpen"
-                  class="tg-collapse-toggle"
+              <div v-if="wheelSpecRearHR.rest.length" class="mt-3 flex justify-center pt-1">
+                <button type="button" :aria-expanded="rearWheelSpecOpen" class="tg-collapse-toggle"
                   @click="rearWheelSpecOpen = !rearWheelSpecOpen">
                   <span>{{ rearWheelSpecOpen ? t('common.collapse') : t('common.expand') }}</span>
-                  <Icon
-                    :icon="rearWheelSpecOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-                    width="16"
+                  <Icon :icon="rearWheelSpecOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" width="16"
                     height="16" />
                 </button>
               </div>
@@ -894,12 +829,11 @@ function handleDetailAction(key: OrderDetailActionKey) {
 
       <div class="pt-4">
         <div class="min-w-0 text-4 font-700">
-          {{ t('orderDetails.designLib') }}
+          {{ designTypeSectionTitle }}
         </div>
 
         <div v-show="designCustomOpen" class="mt-4 space-y-0">
-          <div
-            class="flex items-center justify-between gap-3 border-b border-[#e5e7eb] pb-3 text-3.5">
+          <div class="flex items-center justify-between gap-3 border-b border-[#e5e7eb] pb-3 text-3.5">
             <span class="shrink-0 text-[#a3a7b0]">
               {{ t('orderDetails.structureType') }}
             </span>
@@ -914,26 +848,19 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </div>
             <div class="mt-2 flex flex-wrap gap-3">
               <template v-if="slotImgUrls.color_sample.length">
-                <button
-                  v-for="(u, si) in slotImgUrls.color_sample"
-                  :key="`cs-${si}`"
-                  type="button"
+                <button v-for="(u, si) in slotImgUrls.color_sample" :key="`cs-${si}`" type="button"
                   class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
                   :aria-label="t('common.tapImageEnlarge')"
                   @click="openOrderThumbGallery(slotImgUrls.color_sample, si)">
                   <img :src="u" class="h-full w-full object-cover" alt="">
                 </button>
               </template>
-              <button
-                v-else-if="libThumb"
-                type="button"
+              <button v-else-if="libThumb" type="button"
                 class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
-                :aria-label="t('common.tapImageEnlarge')"
-                @click="openOrderThumbGallery([libThumb], 0)">
+                :aria-label="t('common.tapImageEnlarge')" @click="openOrderThumbGallery([libThumb], 0)">
                 <img :src="libThumb" class="h-full w-full object-cover" alt="">
               </button>
-              <div
-                v-else
+              <div v-else
                 class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[#111216] ring-1 ring-[#e8eaef]">
                 <Icon icon="mdi:wheel" width="20" height="20" class="text-white" />
               </div>
@@ -952,8 +879,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </div>
             <div v-if="swatchThumbs.length" class="mt-2 flex flex-wrap gap-3">
               <div v-for="(item, idx) in swatchThumbs" :key="`api-sw-${idx}`" class="w-12 shrink-0 text-center">
-                <button
-                  type="button"
+                <button type="button"
                   class="mx-auto block h-10 w-10 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
                   :aria-label="t('common.tapImageEnlarge')"
                   @click="openOrderThumbGallery(swatchThumbs.map(s => s.url), idx)">
@@ -966,8 +892,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
             </div>
             <div v-else class="mt-2 flex flex-wrap gap-3">
               <div v-for="item in wheelColors" :key="item.code" class="w-12 shrink-0 text-center">
-                <div
-                  class="mx-auto h-10 w-10 rounded-[4px] ring-1 ring-[#e8eaef]"
+                <div class="mx-auto h-10 w-10 rounded-[4px] ring-1 ring-[#e8eaef]"
                   :style="{ backgroundColor: item.hex }" />
                 <div class="mt-1.5 text-[10px] leading-4 text-[#6d727c]">
                   {{ item.code }}
@@ -988,22 +913,14 @@ function handleDetailAction(key: OrderDetailActionKey) {
             <div class="text-3 text-[#a3a7b0]">
               {{ t('orderDetails.imgType.cover') }}
             </div>
-            <div
-              v-if="coverDisplayUrls.length"
-              class="mt-2 flex flex-wrap gap-3">
-              <button
-                v-for="(u, ci) in coverDisplayUrls"
-                :key="`cv-${ci}`"
-                type="button"
+            <div v-if="coverDisplayUrls.length" class="mt-2 flex flex-wrap gap-3">
+              <button v-for="(u, ci) in coverDisplayUrls" :key="`cv-${ci}`" type="button"
                 class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
-                :aria-label="t('common.tapImageEnlarge')"
-                @click="openOrderThumbGallery(coverDisplayUrls, ci)">
+                :aria-label="t('common.tapImageEnlarge')" @click="openOrderThumbGallery(coverDisplayUrls, ci)">
                 <img :src="u" class="h-full w-full object-cover" alt="">
               </button>
             </div>
-            <div
-              v-else
-              class="mt-2 h-10 w-10 shrink-0 rounded-[4px] bg-[#d8d8d8] ring-1 ring-[#e8eaef]" />
+            <div v-else class="mt-2 h-10 w-10 shrink-0 rounded-[4px] bg-[#d8d8d8] ring-1 ring-[#e8eaef]" />
             <div class="mt-3 text-3 text-[#a3a7b0]">
               {{ t('orderDetails.capDesc') }}
             </div>
@@ -1016,22 +933,14 @@ function handleDetailAction(key: OrderDetailActionKey) {
             <div class="text-3 text-[#a3a7b0]">
               {{ t('orderDetails.imgType.front_mark') }}
             </div>
-            <div
-              v-if="slotImgUrls.front_mark.length"
-              class="mt-2 flex flex-wrap gap-3">
-              <button
-                v-for="(u, fi) in slotImgUrls.front_mark"
-                :key="`fm-${fi}`"
-                type="button"
+            <div v-if="slotImgUrls.front_mark.length" class="mt-2 flex flex-wrap gap-3">
+              <button v-for="(u, fi) in slotImgUrls.front_mark" :key="`fm-${fi}`" type="button"
                 class="block h-10 w-10 shrink-0 overflow-hidden rounded-[4px] ring-1 ring-[#e8eaef] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#88AEE4] focus-visible:ring-offset-1"
-                :aria-label="t('common.tapImageEnlarge')"
-                @click="openOrderThumbGallery(slotImgUrls.front_mark, fi)">
+                :aria-label="t('common.tapImageEnlarge')" @click="openOrderThumbGallery(slotImgUrls.front_mark, fi)">
                 <img :src="u" class="h-full w-full object-cover" alt="">
               </button>
             </div>
-            <div
-              v-else
-              class="mt-2 h-10 w-10 shrink-0 rounded-[4px] bg-[#d8d8d8] ring-1 ring-[#e8eaef]" />
+            <div v-else class="mt-2 h-10 w-10 shrink-0 rounded-[4px] bg-[#d8d8d8] ring-1 ring-[#e8eaef]" />
             <div class="mt-3 text-3 text-[#a3a7b0]">
               {{ t('orderDetails.engraveDesc') }}
             </div>
@@ -1050,16 +959,10 @@ function handleDetailAction(key: OrderDetailActionKey) {
           </div>
         </div>
         <div class="mt-3 flex justify-center pt-1">
-          <button
-            type="button"
-            :aria-expanded="designCustomOpen"
-            class="tg-collapse-toggle"
+          <button type="button" :aria-expanded="designCustomOpen" class="tg-collapse-toggle"
             @click="designCustomOpen = !designCustomOpen">
             <span>{{ designCustomOpen ? t('common.collapse') : t('common.expand') }}</span>
-            <Icon
-              :icon="designCustomOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-              width="16"
-              height="16" />
+            <Icon :icon="designCustomOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" width="16" height="16" />
           </button>
         </div>
       </div>
@@ -1102,9 +1005,7 @@ function handleDetailAction(key: OrderDetailActionKey) {
       </div>
       <div class="mt-4 space-y-3 text-3.5">
         <template v-if="amountRows.length">
-          <div
-            v-for="(item, bi) in amountRows"
-            :key="`am-${item.label}-${bi}`"
+          <div v-for="(item, bi) in amountRows" :key="`am-${item.label}-${bi}`"
             class="flex items-center justify-between gap-3">
             <span class="text-[#8f949d]">{{ item.label }}</span>
             <span class="shrink-0 text-right">{{ item.value }}</span>
@@ -1120,31 +1021,21 @@ function handleDetailAction(key: OrderDetailActionKey) {
       </div>
     </section>
 
-    <div
-      v-if="detail && !loadError"
+    <div v-if="detail && !loadError"
       class="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 bg-white px-4 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
       <div class="flex gap-3">
-        <TgButton
-          v-for="action in statusMeta.detailActions"
-          :key="action.key"
-          type="button"
-          :variant="action.variant === 'primary' ? 'primary' : 'outline'"
-          :class="[
+        <TgButton v-for="action in statusMeta.detailActions" :key="action.key" type="button"
+          :variant="action.variant === 'primary' ? 'primary' : 'outline'" :class="[
             '!h-12 !min-h-0 flex-1 !rounded-[4px] !text-4 !font-700',
             action.variant === 'outline' && '!bg-white !text-[color:var(--app-on-light)]',
-          ]"
-          @click="handleDetailAction(action.key)">
+          ]" @click="handleDetailAction(action.key)">
           {{ t(action.labelKey) }}
         </TgButton>
       </div>
     </div>
 
-    <NModal
-      v-model:show="cancelModalOpen"
-      preset="card"
-      :style="{ maxWidth: 'min(90vw, 450px)' }"
-      :mask-closable="!cancelSubmitting"
-      :closable="!cancelSubmitting">
+    <NModal v-model:show="cancelModalOpen" preset="card" :style="{ maxWidth: 'min(90vw, 450px)' }"
+      :mask-closable="!cancelSubmitting" :closable="!cancelSubmitting">
       <template #header>
         <div class="text-center text-[17px] font-semibold">
           {{ t('orderAction.cancel_order') }}
@@ -1153,26 +1044,17 @@ function handleDetailAction(key: OrderDetailActionKey) {
       <div class="text-sm text-[#4B5563] leading-normal">
         {{ t('orderDetails.confirmCancel') }}
       </div>
-      <div
-        v-if="cancelError"
+      <div v-if="cancelError"
         class="mt-3 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-3.25 text-[#B91C1C]">
         {{ cancelError }}
       </div>
       <template #footer>
         <div class="mt-2 flex w-full justify-between gap-3">
-          <TgButton
-            class="!min-w-0 flex-1"
-            variant="outline"
-            type="button"
-            :disabled="cancelSubmitting"
+          <TgButton class="!min-w-0 flex-1" variant="outline" type="button" :disabled="cancelSubmitting"
             @click="cancelModalOpen = false">
             {{ t('common.cancel') }}
           </TgButton>
-          <TgButton
-            class="!min-w-0 flex-1"
-            type="button"
-            :disabled="cancelSubmitting"
-            @click="confirmCancel">
+          <TgButton class="!min-w-0 flex-1" type="button" :disabled="cancelSubmitting" @click="confirmCancel">
             {{ cancelSubmitting ? t('common.submitting') : t('common.confirm') }}
           </TgButton>
         </div>

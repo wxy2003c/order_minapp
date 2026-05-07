@@ -8,6 +8,8 @@
  */
 import { createRouter, createWebHashHistory } from 'vue-router'
 
+const CHUNK_RELOAD_KEY = '__wl_chunk_reload'
+
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
@@ -70,6 +72,20 @@ const router = createRouter({
       redirect: '/',
     },
   ],
+})
+
+// iOS / TG WebView：路由懒加载 chunk 下载失败时自动重载一次，避免持续白屏
+router.onError((err) => {
+  const isChunkError = err?.message
+    && (/loading chunk/i.test(err.message) || /failed to fetch dynamically imported/i.test(err.message) || /importing a module script failed/i.test(err.message))
+  if (!isChunkError) return
+  const alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1'
+  if (alreadyReloaded) {
+    sessionStorage.removeItem(CHUNK_RELOAD_KEY)
+    return
+  }
+  sessionStorage.setItem(CHUNK_RELOAD_KEY, '1')
+  window.location.reload()
 })
 
 export default router

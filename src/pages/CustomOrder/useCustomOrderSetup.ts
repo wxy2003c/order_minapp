@@ -32,8 +32,20 @@ import {
   validateVehicleRequired,
   validateWheelSizeAndFinish,
 } from '@/utils/customOrderValidation'
+import { readStaffCustomerTelegramId } from '@/utils/deeplinkStaffContext'
+import { getTelegramDisplayName, getTelegramUserId } from '@/utils/userTelegram'
 import type { OrderTab } from './models'
 import { CUSTOM_ORDER_INJECTION_KEY, type CustomOrderPageInstance } from './customOrderContext'
+
+/** 链接未带「客户 Telegram 昵称」时，用当前打开者的 TG SDK 展示名（本人下单）；代客且客户 id≠本人时不顶替 */
+function fillTelegramCustomerNicknameIfMissing(vehicleForm: { customerName: string }): void {
+  if (String(vehicleForm.customerName ?? '').trim()) return
+  const staffCustomerId = readStaffCustomerTelegramId().trim()
+  const selfId = getTelegramUserId().trim()
+  if (staffCustomerId && staffCustomerId !== selfId) return
+  const nick = getTelegramDisplayName().trim()
+  if (nick) vehicleForm.customerName = nick
+}
 
 /** 订单详情里各种 `unknown` 字段转字符串，用于与 Wheel-Size 选项匹配 */
 function strU(v: unknown) {
@@ -410,6 +422,8 @@ export function useCustomOrderSetup(
       store.orderSubmitError = wheelErr
       return
     }
+    /* 昵称：深链未带时用 Telegram SDK（本人）；代客且客户 id≠本人时不套用管理员昵称 */
+    fillTelegramCustomerNicknameIfMissing(store.vehicleForm)
     await ensureOrderApiRoutingReady()
     if (getCurrentUserRole() === 'admin') {
       if (!String(store.amountForm.basePrice).trim()) {
@@ -515,6 +529,8 @@ export function useCustomOrderSetup(
         }
         store.orderEditLoading = false
       }
+
+      if (!oid) fillTelegramCustomerNicknameIfMissing(store.vehicleForm)
 
       if (skipVehiclePrefill) {
         const q = { ...route.query } as Record<string, string | string[] | null | undefined>

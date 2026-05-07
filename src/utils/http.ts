@@ -216,7 +216,7 @@ const httpApi = axios.create({
  */
 function applyGlobalQueryAndLang(config: InternalAxiosRequestConfig): void {
   const lang = getApiLang();
-  const uid = resolveHttpDefaultUserId().trim();
+  const uid = config.skipGlobalUserId ? '' : resolveHttpDefaultUserId().trim();
   const identity: Record<string, string> = { platform: 'telegram' };
   if (uid) identity.user_id = uid;
 

@@ -1,5 +1,7 @@
+import { writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig, type UserConfig } from 'vite'
+import { defineConfig, type Plugin, type UserConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'

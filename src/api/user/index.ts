@@ -33,8 +33,10 @@ export function isElevatedStaffRole(role: UserRoleSnapshot | null | undefined): 
 }
 
 let usesAdminOrderEndpoints = false
-/** Vue ref — computed() 可追踪变化，fetchUserDetail 回调后 UI 自动更新 */
-const currentUserRoleRef = ref<CurrentUserRole>('user')
+/** Vue ref — computed() 可追踪变化，fetchUserDetail 回调后 UI 自动更新。
+ * 与 {@link getCurrentUserRole} 同源；Telegram user id 晚到时角色会稍后更新，订单列表应 watch 本 ref 再拉一次。
+ */
+export const orderRoutingRoleRef = ref<CurrentUserRole>('user')
 /** 单例 Promise：只在「没有 user_id 时的首次」或「显式调用 refreshUserRole」时才重新请求 */
 let userDetailPromise: Promise<unknown> | null = null
 let lastFetchedUserId = ''
@@ -42,17 +44,36 @@ let lastFetchedUserId = ''
 function applyRoleRoutingFromDetailRaw(raw: unknown) {
   try {
     const role = extractUserRoleFromDetailPayload(raw)
-    usesAdminOrderEndpoints = isElevatedStaffRole(role)
-    currentUserRoleRef.value = usesAdminOrderEndpoints ? 'admin' : 'user'
-  } catch {
+    const elevated = isElevatedStaffRole(role)
+    usesAdminOrderEndpoints = elevated
+    orderRoutingRoleRef.value = elevated ? 'admin' : 'user'
+  } catch (e) {
     usesAdminOrderEndpoints = false
-    currentUserRoleRef.value = 'user'
+    orderRoutingRoleRef.value = 'user'
+  }
+}
+
+/** 首包在无 Telegram user id 下返回后，SDK 可能稍后才注入 user：短时补拉以对齐 Android */
+function scheduleRefetchUserDetailIfTelegramUserAppearsLater(capturedId: string) {
+  if (capturedId || typeof window === 'undefined') return
+  for (const ms of [80, 280, 800, 1600, 3200]) {
+    window.setTimeout(() => {
+      const now = getTelegramUserId().trim()
+      if (!now || now === lastFetchedUserId) return
+      userDetailPromise = null
+      lastFetchedUserId = ''
+      void fetchUserDetail()
+    }, ms)
   }
 }
 
 /**
  * 拉取用户详情并缓存角色结果。
- * 同一个 user_id 只请求一次；切换用户（user_id 变化）时自动重新请求。
+ * 同一个 Telegram `user_id` 只请求一次；切换用户时重新请求。
+ *
+ * Android Telegram WebView 上 `initDataUnsafe.user` 偶发晚于首帧脚本，
+ * 若首请求在无 `user_id` 下返回并已套用角色，而稍后 SDK 补全 id，会导致订单路由永久走错；
+ * 因此在响应落地时再比对当前 id，不一致则作废缓存并 **立刻重拉**。
  */
 export function fetchUserDetail(): Promise<unknown> {
   const selfId = getTelegramUserId().trim()
@@ -61,21 +82,33 @@ export function fetchUserDetail(): Promise<unknown> {
     userDetailPromise = null
     lastFetchedUserId = selfId
   }
-  userDetailPromise ??= httpApi
-    .get('/users/detail', selfId ? { params: { user_id: selfId } } : undefined)
-    .then((raw) => {
+  userDetailPromise ??= (async (): Promise<unknown> => {
+    const capturedId = getTelegramUserId().trim()
+    try {
+      /** 必须跳过全局 `user_id`：否则在无 Telegram id 的首帧会用深链 `platformUid` 拉客户资料，角色被误判为 user */
+      const raw = await httpApi.get('/users/detail', {
+        params: capturedId ? { user_id: capturedId } : {},
+        skipGlobalUserId: true,
+      })
+      const nowId = getTelegramUserId().trim()
+      if (nowId !== capturedId) {
+        userDetailPromise = null
+        lastFetchedUserId = ''
+        return fetchUserDetail()
+      }
       applyRoleRoutingFromDetailRaw(raw)
+      scheduleRefetchUserDetailIfTelegramUserAppearsLater(capturedId)
       return raw
-    })
-    .catch((err) => {
+    }
+    catch (_err) {
       // 失败时重置缓存，下次调用会重新请求
       userDetailPromise = null
       lastFetchedUserId = ''
       usesAdminOrderEndpoints = false
-      currentUserRoleRef.value = 'user'
-      console.warn('[auth] /users/detail failed, defaulting to user role:', err?.message ?? err)
+      orderRoutingRoleRef.value = 'user'
       return null
-    })
+    }
+  })()
   return userDetailPromise
 }
 
@@ -85,7 +118,7 @@ export const getUserInfo = fetchUserDetail
 /** 从用户详情解析后的当前角色：`admin` 走 `api/admin/`，`user` 走 `api/user/`。
  *  返回 ref.value，Vue computed() 会自动追踪依赖、fetchUserDetail 后触发 UI 更新。 */
 export function getCurrentUserRole(): CurrentUserRole {
-  return currentUserRoleRef.value
+  return orderRoutingRoleRef.value
 }
 
 /** 订单等模块在发起分支请求前 await，确保 fetchUserDetail 完成后再分发 */

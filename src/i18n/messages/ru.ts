@@ -41,6 +41,7 @@ export const ru: MessageSchema = {
     noData: 'Нет данных',
     retry: 'Повторить',
     loadFailed: 'Не удалось загрузить. Попробуйте ещё раз.',
+    copySuccess:'Копирование успешно выполнено'
   },
   nav: {
     home: 'Главная',

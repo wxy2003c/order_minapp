@@ -1,3 +1,11 @@
+/*
+ * @Author: wxy2003c 774078984@qq.com
+ * @Date: 2026-04-29 14:37:10
+ * @LastEditors: wxy2003c 774078984@qq.com
+ * @LastEditTime: 2026-05-07 13:16:35
+ * @FilePath: \vite-project\src\utils\myVehicleStorage.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 /**
  * 个人中心「我的车辆」：按用户 id 存 localStorage，供定制单页预填车型链。
  */
@@ -54,6 +62,5 @@ export function saveMyVehicleSelection(v: MyVehicleCache): void {
       }),
     )
   } catch {
-    /* ignore quota / privacy mode */
   }
 }

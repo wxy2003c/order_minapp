@@ -2,7 +2,7 @@
  * @Author: wxy2003c 774078984@qq.com
  * @Date: 2026-04-15 14:44:28
  * @LastEditors: wxy2003c 774078984@qq.com
- * @LastEditTime: 2026-04-27 10:25:25
+ * @LastEditTime: 2026-05-07 14:45:59
  * @FilePath: \vite-project\src\main.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -18,13 +18,13 @@ import '@unocss/reset/tailwind.css'
 import 'uno.css'
 import '@/style.css'
 import { fetchUserDetail } from '@/api/rolesApi'
-import { initTelegramAppDisplay } from '@/utils/userTelegram'
+import { getTelegramUserLanguageCode, initTelegramAppDisplay } from '@/utils/userTelegram'
 
 initApiLangFromStorage()
 initTelegramAppDisplay()
 
-// 默认界面与 API 均为中文；不因 Telegram `language_code` 自动切换语言
-applyLanguageFromTelegram(undefined)
+// 默认英文；在 Telegram 内按 SDK `initDataUnsafe.user.language_code` 映射为 en/zh/ru
+applyLanguageFromTelegram(getTelegramUserLanguageCode())
 initUiLanguage()
 
 const app = createApp(App)
@@ -40,8 +40,8 @@ router.afterEach((to) => {
 ;(async () => {
   await router.isReady()
   await tryApplyTelegramStaffDeepLink(router)
-  // 启动时请求一次用户权限，挂载前完成角色判断，后续所有接口直接复用缓存结果
-  await fetchUserDetail().catch(() => null)
+  // 立即挂载，避免 iOS 白屏等待权限接口；权限在后台加载，订单接口分发前会自动 await
   app.mount('#app')
+  void fetchUserDetail().catch(() => null)
 })()
 

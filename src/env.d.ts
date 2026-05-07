@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+import 'axios'
+
+declare module 'axios' {
+  /** 为 true 时不注入 HTTP 全局默认 `user_id`（见 `resolveHttpDefaultUserId`），避免深链客户 id 污染操作者身份接口 */
+  interface AxiosRequestConfig {
+    skipGlobalUserId?: boolean
+  }
+}
+
 /**
  * Vite 在 **build 时** 把 `VITE_*` 编译进 JS；服务器上仅放静态文件不会自动带上你本机 `.env`。
  * 部署到 Telegram 小程若报「签名错误」，先确认 CI/构建机已设置 `VITE_API_SECRET_RAW`（与后端验签明文一致）。

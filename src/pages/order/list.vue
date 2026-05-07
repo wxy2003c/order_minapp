@@ -7,7 +7,7 @@ import NoPermissionModal from '@/components/NoPermissionModal.vue'
 import TgListSkeleton from '@/components/TgListSkeleton.vue'
 import TgLoadingState from '@/components/TgLoadingState.vue'
 import type { OrderListItem, OrderListStatusTab } from '@/utils/orderHelpers'
-import { ensureOrderApiRoutingReady, fetchOrdersList, getCurrentUserRole } from '@/api/rolesApi'
+import { ensureOrderApiRoutingReady, fetchOrdersList, getCurrentUserRole, orderRoutingRoleRef } from '@/api/rolesApi'
 import { t } from '@/i18n/uiI18n'
 import { getTelegramUserId } from '@/utils/userTelegram'
 import { useStaffDeeplinkStore } from '@/stores/staffDeeplink'
@@ -63,6 +63,11 @@ function scheduleSearchDebounce() {
 
 watch(search, () => {
   scheduleSearchDebounce()
+})
+
+/** Telegram Android 上角色可能晚于首屏 `/users/detail` 才就绪；就绪后改走管理员 orders */
+watch(orderRoutingRoleRef, () => {
+  void load()
 })
 
 watch(

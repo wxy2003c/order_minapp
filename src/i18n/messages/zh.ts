@@ -41,6 +41,7 @@ export const zh: MessageSchema = {
     noData: '暂无数据',
     retry: '重试',
     loadFailed: '加载失败，请稍后重试。',
+    copySuccess:'复制成功'
   },
   nav: {
     home: '首页',

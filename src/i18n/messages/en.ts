@@ -39,6 +39,7 @@ export const en = {
     noData: 'No data',
     retry: 'Retry',
     loadFailed: 'Could not load. Please try again.',
+    copySuccess:'Copy successful'
   },
   nav: {
     home: 'Home',

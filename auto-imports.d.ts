@@ -35,6 +35,7 @@ declare global {
   const discoverBillItemsInDetail: typeof import('./src/utils/orderDetailHelpers').discoverBillItemsInDetail
   const effectScope: typeof import('vue').effectScope
   const enrichWheelColorSampleWithFinishCode: typeof import('./src/utils/orderMedia').enrichWheelColorSampleWithFinishCode
+  const ensureFreshBundleOrReload: typeof import('./src/utils/appVersionGuard').ensureFreshBundleOrReload
   const fieldFromOrder: typeof import('./src/utils/orderDetailHelpers').fieldFromOrder
   const findSelectValue: typeof import('./src/utils/applyOrderDetailToCustomOrder').findSelectValue
   const finishItemDisplayLabel: typeof import('./src/utils/finishCardDisplayHelpers').finishItemDisplayLabel
@@ -59,6 +60,7 @@ declare global {
   const h: typeof import('vue').h
   const http: typeof import('./src/utils/http').default
   const imgItemMatchesSlot: typeof import('./src/utils/orderDetailHelpers').imgItemMatchesSlot
+  const initAppVersionPoll: typeof import('./src/utils/appVersionGuard').initAppVersionPoll
   const initTelegramAppDisplay: typeof import('./src/utils/userTelegram').initTelegramAppDisplay
   const inject: typeof import('vue').inject
   const isDesignSlotCategory: typeof import('./src/utils/orderDetailHelpers').isDesignSlotCategory
@@ -245,6 +247,7 @@ declare module 'vue' {
     readonly getTelegramPhotoUrl: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramPhotoUrl']>
     readonly getTelegramStartParam: UnwrapRef<typeof import('./src/composables/TelegramParams')['getTelegramStartParam']>
     readonly getTelegramUserId: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramUserId']>
+    readonly getTelegramUserLanguageCode: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramUserLanguageCode']>
     readonly getTelegramWebApp: UnwrapRef<typeof import('./src/utils/userTelegram')['getTelegramWebApp']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
     readonly http: UnwrapRef<typeof import('./src/utils/http')['default']>

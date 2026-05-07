@@ -45,6 +45,12 @@ html,
 body,
 #app {
   min-height: 100%;
+  /* iOS Safari: 用 dvh 作为兜底，JS 会实时覆盖 --tg-vh */
+  min-height: 100dvh;
+}
+
+:root {
+  --tg-vh: 1vh;
 }
 
 body {

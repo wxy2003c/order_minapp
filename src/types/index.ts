@@ -25,6 +25,11 @@ export interface TelegramUser {
   first_name: string
   last_name?: string
   username?: string
+  /**
+   * Optional. IETF language tag (BCP-47) of the user's interface language.
+   * Returned **only** on the `User` object (e.g. Web App `initDataUnsafe.user`).
+   * @see https://core.telegram.org/bots/api#user
+   */
   language_code?: string
   photo_url?: string
 }

@@ -8,10 +8,10 @@ const catalogs: Record<AppLang, typeof en> = { en, zh, ru }
 
 /**
  * 当前 UI 语言（`en` | `zh` | `ru`），与请求参数 `lang` 一致。
- * 由 `applyLanguageFromTelegram(languageCode)` 更新；本项目启动时传入 `undefined` 即默认中文。
+ * 默认英文；在 Telegram 内由 `applyLanguageFromTelegram(Telegram user.language_code)` 切换。
  * `document.documentElement.lang` 仅作无障碍镜像写入，不作为语言检测来源。
  */
-export const uiLocale: Ref<AppLang> = ref('zh')
+export const uiLocale: Ref<AppLang> = ref('en')
 
 function getByPath(obj: unknown, path: string): string | undefined {
   const parts = path.split('.')
@@ -45,8 +45,9 @@ function htmlLangForUi(lang: AppLang): string {
 }
 
 /**
- * 使用 Telegram 用户 `language_code`（原始 BCP-47 字符串，来自 `initDataUnsafe.user`）设置：
+ * 使用 Telegram `User.language_code`（可选 **IETF / BCP-47**，仅在 user；前端路径 `initDataUnsafe.user`）设置：
  * API `lang`、`uiLocale`、并镜像写入 `document.documentElement.lang`（不参与读取）。
+ * 传入 `undefined`/`null` 表示无 Telegram 语言信息时保持 **默认英文**（见 {@link normalizeAppLangCode}）。
  */
 export function applyLanguageFromTelegram(languageCode: string | undefined | null): void {
   const lang = normalizeAppLangCode(languageCode)

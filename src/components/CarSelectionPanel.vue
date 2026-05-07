@@ -174,8 +174,16 @@ function isSyncedWithProps() {
 }
 
 function buildPropsKey() {
-  return [props.brand, props.model, props.year, props.wheelGeneration, props.wheelYear, props.wheelModification]
-    .map(x => (x || '').trim())
+  return [
+    props.brandModelOnly ? 1 : 0,
+    props.brand,
+    props.model,
+    props.year,
+    props.wheelGeneration,
+    props.wheelYear,
+    props.wheelModification,
+  ]
+    .map(x => (typeof x === 'number' ? String(x) : (x || '').trim()))
     .join('\0')
 }
 
@@ -461,12 +469,96 @@ async function ensureMakesLoaded() {
   await loadMakes()
 }
 
+function isBrandModelOnlySyncedWithProps(): boolean {
+  return (
+    normalizeForMatch(props.brand) === normalizeForMatch(makeLabel.value)
+    && normalizeForMatch(props.model) === normalizeForMatch(modelLabel.value)
+  )
+}
+
+function clampApiActiveStepToEffectiveRange() {
+  const max = effectiveStepCount.value - 1
+  if (apiActiveStep.value > max) apiActiveStep.value = max
+}
+
+/**
+ * 产品/案例等仅「品牌 + 车型」：不与世代/年款/配置对齐，避免 hydrate 把步骤推到第 3 级或拉世代列表。
+ */
+async function hydrateBrandModelOnlyFromProps() {
+  const k = buildPropsKey()
+  if (isHydrating.value) return
+  if (hydrationSettledKey.value === k && isBrandModelOnlySyncedWithProps()) {
+    if (!makeOptions.value.length) void loadMakes()
+    clampApiActiveStepToEffectiveRange()
+    return
+  }
+  if (isBrandModelOnlySyncedWithProps()) {
+    if (!makeOptions.value.length) void loadMakes()
+    hydrationSettledKey.value = k
+    clampApiActiveStepToEffectiveRange()
+    return
+  }
+  isHydrating.value = true
+  apiErrorKey.value = null
+  try {
+    const b = props.brand?.trim()
+    const m = props.model?.trim()
+    if (!b) {
+      clearMakeAndDown()
+      apiActiveStep.value = 0
+      await ensureMakesLoaded()
+      hydrationSettledKey.value = k
+      return
+    }
+    await loadMakes()
+    const makeOpt = findMatchingOption(makeOptions.value, b)
+    if (!makeOpt) {
+      apiErrorKey.value = 'carSelection.hydrateBrandMismatch'
+      hydrationSettledKey.value = k
+      return
+    }
+    makeId.value = String(makeOpt.id)
+    makeLabel.value = makeOpt.label
+    clearGenerationCacheAndDown()
+    if (!m) {
+      apiActiveStep.value = 1
+      await loadModels(makeId.value)
+      emitApiSummary()
+      hydrationSettledKey.value = k
+      return
+    }
+    await loadModels(makeId.value)
+    const modelOpt = findMatchingOption(modelOptions.value, m)
+    if (!modelOpt) {
+      apiActiveStep.value = 1
+      apiErrorKey.value = 'carSelection.hydrateModelMismatch'
+      emitApiSummary()
+      hydrationSettledKey.value = k
+      return
+    }
+    modelId.value = String(modelOpt.id)
+    modelLabel.value = modelOpt.label
+    apiActiveStep.value = 1
+    emitApiSummary()
+    hydrationSettledKey.value = k
+  }
+  finally {
+    isHydrating.value = false
+    clampApiActiveStepToEffectiveRange()
+  }
+}
+
 /**
  * 父级 v-model（如路由带入）与内部 API 状态对齐，打开弹层前即可在后台把列表与选中项拉好。
  * year 为「世代 · 年款/年份 · 配置」拼接；若仅一段则尽量按「世代或年段」在接口里对。
  */
 async function hydrateFromProps() {
   if (!useApi.value) return
+  if (props.brandModelOnly) {
+    await hydrateBrandModelOnlyFromProps()
+    return
+  }
+
   const k = buildPropsKey()
   if (isHydrating.value) return
   if (hydrationSettledKey.value === k && isSyncedWithProps()) {
@@ -654,6 +746,7 @@ const lastHydrationPropsKey = ref('')
 watch(
   () =>
     [
+      props.brandModelOnly,
       props.brand,
       props.model,
       props.year,
@@ -664,6 +757,7 @@ watch(
     ] as const,
   () => {
     const k = [
+      props.brandModelOnly ? '1' : '0',
       props.brand,
       props.model,
       props.year,
@@ -681,6 +775,10 @@ watch(
   },
   { immediate: true, deep: true },
 )
+
+watch([effectiveStepCount, apiActiveStep], () => {
+  clampApiActiveStepToEffectiveRange()
+})
 
 /** 上级被清空时，避免右侧仍停在已锁定的层级 */
 watch(

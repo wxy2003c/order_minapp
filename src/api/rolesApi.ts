@@ -1,3 +1,11 @@
+/*
+ * @Author: wxy2003c 774078984@qq.com
+ * @Date: 2026-04-30 14:03:12
+ * @LastEditors: wxy2003c 774078984@qq.com
+ * @LastEditTime: 2026-05-07 10:11:14
+ * @FilePath: \vite-project\src\api\rolesApi.ts
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 /**
  * 角色动态接口分发器
  * 根据当前用户角色，自动将请求派发到 admin/ 或 user/ 对应接口。
@@ -9,8 +17,10 @@ import * as userOrdersApi from '@/api/user/orders'
 import { ensureOrderApiRoutingReady, getCurrentUserRole } from '@/api/user/index'
 
 // 调用时取角色，确保 fetchUserDetail 已完成
-const orderApi = () =>
-  (getCurrentUserRole() === 'admin' ? adminApi : userOrdersApi) as typeof adminApi
+const orderApi = () => {
+  const role = getCurrentUserRole()
+  return (role === 'admin' ? adminApi : userOrdersApi) as typeof adminApi
+}
 
 async function readyOrderApi(): Promise<typeof adminApi> {
   await ensureOrderApiRoutingReady()
@@ -82,4 +92,4 @@ export type { ReviewOrderParams } from '@/api/user/orders'
 // 用户接口
 // ══════════════════════════════════════════════════════════════════════════════
 
-export { fetchUserDetail, getCurrentUserRole, ensureOrderApiRoutingReady } from '@/api/user/index'
+export { fetchUserDetail, getCurrentUserRole, ensureOrderApiRoutingReady, orderRoutingRoleRef } from '@/api/user/index'

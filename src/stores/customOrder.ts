@@ -7,7 +7,7 @@ import { defineStore } from 'pinia'
 import { fetchFinishCards, resolveStyleModelItemForHydrate, getCurrentUserRole } from '@/api/rolesApi'
 import type { FinishCardGroup, FinishCardItem, StyleModelItem } from '@/api/rolesApi'
 import { resolveOrderAssetUrl } from '@/utils/orderMedia'
-import { getTelegramUserId } from '@/utils/userTelegram'
+import { getTelegramDisplayName, getTelegramUserId } from '@/utils/userTelegram'
 import { readStaffCustomerDisplayName, readStaffCustomerTelegramId } from '@/utils/deeplinkStaffContext'
 import { isWheelSizeEnabled, yearFitsWheelSizeGeneration } from '@/api/wheelsline-size'
 import {
@@ -47,7 +47,13 @@ interface FitmentPresetOption {
 }
 
 function resolveInitialCustomerName(): string {
-  return readStaffCustomerDisplayName().trim()
+  const fromLink = readStaffCustomerDisplayName().trim()
+  if (fromLink) return fromLink
+  const staffCustomerId = readStaffCustomerTelegramId().trim()
+  const selfId = getTelegramUserId().trim()
+  /* 代客：链接只带客户 telegram_id、未带展示名时，不能用当前打开者 SDK 昵称顶替客户 */
+  if (staffCustomerId && staffCustomerId !== selfId) return ''
+  return getTelegramDisplayName().trim()
 }
 
 /** 客户 ID：代客深链时用参数里的客户 telegram；否则为当前打开者 Telegram id（直接进创建页与昵称一致） */
